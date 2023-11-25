@@ -35,7 +35,7 @@ enum {
     TOK_INSTRUCTION,
     TOK_IDENTIFIER,
     TOK_RPAREN,
-    TOK_LPAREN,
+    TOK_LPAREN,                     // 10
     TOK_COMMA,
     TOK_PLUS,
     TOK_MINUS,
@@ -45,7 +45,7 @@ enum {
     TOK_DIRECTIVE_BYTE,
     TOK_DIRECTIVE_COMM,
     TOK_DIRECTIVE_DATA,
-    TOK_DIRECTIVE_FILE,
+    TOK_DIRECTIVE_FILE,             // 20
     TOK_DIRECTIVE_GLOBL,
     TOK_DIRECTIVE_LOCAL,
     TOK_DIRECTIVE_LONG,
@@ -55,7 +55,7 @@ enum {
     TOK_DIRECTIVE_STRING,
     TOK_DIRECTIVE_RODATA,
     TOK_DIRECTIVE_TEXT,
-    TOK_DIRECTIVE_TYPE,
+    TOK_DIRECTIVE_TYPE,             // 30
     TOK_DIRECTIVE_ULEB128,
     TOK_DIRECTIVE_WORD,
     TOK_DIRECTIVE_ZERO,
@@ -71,10 +71,18 @@ enum {
 #define REG_QUAD 0x30
 #define REG_XMM  0x40
 
-extern char *cur_filename;             // Current filename being lexed
-extern int cur_line;                   // Current line number being lexed
-extern int cur_token;                  // Current token
+extern char *cur_filename;      // Current filename being lexed
+extern int cur_line;            // Current line number being lexed
+
+extern int cur_token;                       // Current token
+extern char *cur_identifier;                // Current identifier
+extern int cur_register;                    // Current register id
+extern long cur_long;                       // Current integer
+extern StringLiteral cur_string_literal;    // Current string literal
 
 void init_lexer(char *filename);
 void next(void);
 void free_lexer(void);
+
+// parser.c
+int parse(void);

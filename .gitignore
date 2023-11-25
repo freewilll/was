@@ -3,5 +3,8 @@
 was
 core
 a.out
+test.c
 test.s
 test2.s
+hello.c
+hello.s

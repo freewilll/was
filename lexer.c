@@ -10,13 +10,14 @@ static char *input_end;         // Input file data
 static char *ip;                // Input pointer to currently lexed char.
 static int seen_instruction;    // Currently lexing labels or instructions
 
-int cur_token;                  // Current token
-int cur_line;                   // Current line
 char *cur_filename;
-char *cur_identifier;
-int cur_register;
-long cur_long;
-StringLiteral cur_string_literal;
+int cur_line;                   // Current line
+
+int cur_token;                      // Current token
+char *cur_identifier;               // Current identifier
+int cur_register;                   // Current register id
+long cur_long;                      // Current integer
+StringLiteral cur_string_literal;   // Current string literal
 
 void free_lexer(void) {
     free(cur_identifier);
@@ -286,10 +287,11 @@ void next(void) {
             else if (is_label) {
                 // Label
                 cur_token = TOK_LABEL;
+                cur_identifier[j - 1] = 0;
             }
 
             else {
-                if (seen_instruction) {
+                if (!seen_instruction) {
                     // Instruction
                     cur_token = TOK_INSTRUCTION;
                     seen_instruction = 1;

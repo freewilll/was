@@ -4,10 +4,6 @@
 
 void assemble(char *filename) {
     init_lexer(filename);
-
-    while (cur_token != TOK_EOF) {
-        next();
-    }
-
+    parse();
     free_lexer();
 }
