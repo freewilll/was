@@ -1,0 +1,7 @@
+*.o
+*.s
+was
+core
+a.out
+test.s
+test2.s
