@@ -8,8 +8,8 @@ int main(int argc, char **argv) {
     int exit_code = 0;
     int help = 0;
     int verbose = 0;
-    char *output_filename = 0;
-    List *input_filenames = new_list(32);
+    char *input_filename = NULL;
+    char *output_filename = NULL;
 
     argc--;
     argv++;
@@ -28,7 +28,11 @@ int main(int argc, char **argv) {
             }
         }
         else {
-            append_to_list(input_filenames, argv[0]);
+            if (input_filename) {
+                printf("Multiple input filenames not supported\n");
+                exit(1);
+            }
+            input_filename = argv[0];
             argc--;
             argv++;
         }
@@ -48,19 +52,9 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    if (!input_filenames->length) {
-        printf("Missing input filename\n");
-        exit(1);
-    }
-
     if (!output_filename) output_filename = "a.out";
 
-    for (int i = 0; i < input_filenames->length; i++) {
-        char *input_filename = input_filenames->elements[i];
-        printf("TODO process input_filename=%s\n", input_filename);
-    }
-
-    free_list(input_filenames);
+    assemble(input_filename);
 
     exit(exit_code);
 }

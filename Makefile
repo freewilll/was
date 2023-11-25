@@ -3,8 +3,8 @@ all: was
 %.o: %.c was.h
 	gcc -g  -Wunused -c $< -o $@
 
-was: main.o list.o utils.o
-	gcc main.o list.o utils.o -o was
+was: main.o was.o list.o utils.o lexer.o
+	gcc main.o was.o list.o utils.o lexer.o -o was
 
 clean:
 	@rm -f *.o
