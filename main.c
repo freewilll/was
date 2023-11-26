@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
     if (!output_filename) output_filename = "a.out";
 
-    assemble(input_filename);
+    assemble(input_filename, output_filename);
 
     exit(exit_code);
 }

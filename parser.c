@@ -146,4 +146,3 @@ int parse(void) {
         while (cur_token == TOK_EOL) next();
     }
 }
-

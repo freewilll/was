@@ -1,3 +1,6 @@
+#ifndef _WAS_H
+#define _WAS_H
+
 #define MAX_IDENTIFIER_SIZE           1024
 #define MAX_STRING_LITERAL_SIZE       4095
 
@@ -22,7 +25,7 @@ void panic(char *format, ...);
 void error(char *format, ...);
 
 // was.c
-void assemble(char *filename);
+void assemble(char *input_filename, char *output_filename);
 
 // lexer.c
 enum {
@@ -86,3 +89,5 @@ void free_lexer(void);
 
 // parser.c
 int parse(void);
+
+#endif
