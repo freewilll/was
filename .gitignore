@@ -1,11 +1,11 @@
 *.o
-*.s
+/*.s
 was
 core
 a.out
 test
-test.c
-test.s
-test2.s
-hello.c
-hello.s
+/test.c
+/test.s
+/test2.s
+/hello.c
+/hello.s

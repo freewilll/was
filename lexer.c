@@ -1,14 +1,16 @@
 #include <stdio.h>
 #include <string.h>
-
 #include <stdlib.h>
 
+#include "lexer.h"
+#include "utils.h"
 #include "was.h"
 
 static char *input;             // Input file data
 static char *input_end;         // Input file data
 static char *ip;                // Input pointer to currently lexed char.
 static int seen_instruction;    // Currently lexing labels or instructions
+static int seen_directive;      // Currently lexing a directive
 
 char *cur_filename;
 int cur_line;                   // Current line
@@ -55,6 +57,7 @@ void init_lexer(char *filename) {
     cur_identifier = malloc(MAX_IDENTIFIER_SIZE);
     cur_string_literal.data = malloc(MAX_STRING_LITERAL_SIZE * 4);
     seen_instruction = 0;
+    seen_directive = 0;
     cur_register = 0;
 
     next();
@@ -193,6 +196,12 @@ void next(void) {
         char c1 = ip[0];
         char c2 = ip[1];
 
+        if (c1 == '/' && c2 == '/') {
+            // Skip comments
+            while (*ip != '\n' && ip < input_end) ip++;
+            continue;
+        }
+
              if (c1 == '('  )  { ip += 1;  cur_token = TOK_LPAREN;   }
         else if (c1 == ')'  )  { ip += 1;  cur_token = TOK_RPAREN;   }
         else if (c1 == ','  )  { ip += 1;  cur_token = TOK_COMMA;    }
@@ -206,6 +215,7 @@ void next(void) {
             ip += 1;
             cur_token = TOK_EOL;
             seen_instruction = 0;
+            seen_directive = 0;
         }
 
         // Newline
@@ -213,6 +223,7 @@ void next(void) {
             ip += 1;
             cur_token = TOK_EOL;
             seen_instruction = 0;
+            seen_directive = 0;
             cur_line++;
         }
 
@@ -258,27 +269,27 @@ void next(void) {
 
             cur_identifier[j] = 0;
 
-            if (!is_label && cur_identifier[0] == '.') {
+            if (!seen_directive && !is_label && cur_identifier[0] == '.') {
                 // Parse directive or identifier starting with dot
-                     if (!strcmp(cur_identifier, ".align"   )) { cur_token = TOK_DIRECTIVE_ALIGN;   }
-                else if (!strcmp(cur_identifier, ".byte"    )) { cur_token = TOK_DIRECTIVE_BYTE;    }
-                else if (!strcmp(cur_identifier, ".comm"    )) { cur_token = TOK_DIRECTIVE_COMM;    }
-                else if (!strcmp(cur_identifier, ".data"    )) { cur_token = TOK_DIRECTIVE_DATA;    }
-                else if (!strcmp(cur_identifier, ".file"    )) { cur_token = TOK_DIRECTIVE_FILE;    }
-                else if (!strcmp(cur_identifier, ".globl"   )) { cur_token = TOK_DIRECTIVE_GLOBL;   }
-                else if (!strcmp(cur_identifier, ".local"   )) { cur_token = TOK_DIRECTIVE_LOCAL;   }
-                else if (!strcmp(cur_identifier, ".long"    )) { cur_token = TOK_DIRECTIVE_LONG;    }
-                else if (!strcmp(cur_identifier, ".quad"    )) { cur_token = TOK_DIRECTIVE_QUAD;    }
-                else if (!strcmp(cur_identifier, ".section" )) { cur_token = TOK_DIRECTIVE_SECTION; }
-                else if (!strcmp(cur_identifier, ".size"    )) { cur_token = TOK_DIRECTIVE_SIZE;    }
-                else if (!strcmp(cur_identifier, ".string"  )) { cur_token = TOK_DIRECTIVE_STRING;  }
-                else if (!strcmp(cur_identifier, ".rodata"  )) { cur_token = TOK_DIRECTIVE_RODATA;  }
-                else if (!strcmp(cur_identifier, ".text"    )) { cur_token = TOK_DIRECTIVE_TEXT;    }
-                else if (!strcmp(cur_identifier, ".type"    )) { cur_token = TOK_DIRECTIVE_TYPE;    }
-                else if (!strcmp(cur_identifier, ".uleb128" )) { cur_token = TOK_DIRECTIVE_ULEB128; }
-                else if (!strcmp(cur_identifier, ".word"    )) { cur_token = TOK_DIRECTIVE_WORD;    }
-                else if (!strcmp(cur_identifier, ".zero"    )) { cur_token = TOK_DIRECTIVE_ZERO;    }
-                else if (!strcmp(cur_identifier, "."        )) { cur_token = TOK_DOT_SYMBOL;        }
+                     if (!strcmp(cur_identifier, ".align"   )) { cur_token = TOK_DIRECTIVE_ALIGN;   seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".byte"    )) { cur_token = TOK_DIRECTIVE_BYTE;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".comm"    )) { cur_token = TOK_DIRECTIVE_COMM;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".data"    )) { cur_token = TOK_DIRECTIVE_DATA;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".file"    )) { cur_token = TOK_DIRECTIVE_FILE;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".globl"   )) { cur_token = TOK_DIRECTIVE_GLOBL;   seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".local"   )) { cur_token = TOK_DIRECTIVE_LOCAL;   seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".long"    )) { cur_token = TOK_DIRECTIVE_LONG;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".quad"    )) { cur_token = TOK_DIRECTIVE_QUAD;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".section" )) { cur_token = TOK_DIRECTIVE_SECTION; seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".size"    )) { cur_token = TOK_DIRECTIVE_SIZE;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".string"  )) { cur_token = TOK_DIRECTIVE_STRING;  seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".rodata"  )) { cur_token = TOK_DIRECTIVE_RODATA;  seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".text"    )) { cur_token = TOK_DIRECTIVE_TEXT;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".type"    )) { cur_token = TOK_DIRECTIVE_TYPE;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".uleb128" )) { cur_token = TOK_DIRECTIVE_ULEB128; seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".word"    )) { cur_token = TOK_DIRECTIVE_WORD;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".zero"    )) { cur_token = TOK_DIRECTIVE_ZERO;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, "."        )) { cur_token = TOK_DOT_SYMBOL;        seen_directive = 1; }
                 else {
                     cur_token = TOK_IDENTIFIER;
                 }
@@ -291,7 +302,7 @@ void next(void) {
             }
 
             else {
-                if (!seen_instruction) {
+                if (!seen_directive && !seen_instruction) {
                     // Instruction
                     cur_token = TOK_INSTRUCTION;
                     seen_instruction = 1;
@@ -310,4 +321,8 @@ void next(void) {
     }
 
     cur_token = TOK_EOF;
+}
+
+void expect(int token, char *what) {
+    if (cur_token != token) error("Expected %s", what);
 }

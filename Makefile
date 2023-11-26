@@ -1,11 +1,40 @@
 all: was
 
-%.o: %.c was.h elf.h
+HEADERS = \
+	elf.h \
+	lexeer.h \
+	list.h \
+	parser.h \
+	relocations.h \
+	strmap.h \
+	symbols.h \
+	utils.h \
+	was.h \
+
+OBJECTS = \
+	elf.o \
+	lexer.o \
+	list.o \
+	main.o \
+	parser.o \
+	relocations.o \
+	strmap.o \
+	symbols.o \
+	utils.o \
+	was.o \
+
+%.o: %.c ${HEADERS}
 	gcc -g  -Wunused -c $< -o $@
 
-was: main.o was.o list.o utils.o lexer.o parser.o elf.o
-	gcc main.o was.o list.o utils.o lexer.o parser.o elf.o -o was
+was: ${OBJECTS}
+	gcc -g ${OBJECTS} -o was
+
+.PHONY: test
+test: was
+	make -C tests
 
 clean:
 	@rm -f *.o
 	@rm -f was
+
+	make -C tests clean

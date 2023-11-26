@@ -4,118 +4,127 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "was.h"
 #include "elf.h"
+#include "relocations.h"
+#include "symbols.h"
+#include "utils.h"
+#include "was.h"
 
-typedef struct section {
-    int number;     // Index in the section header table
-    char *name;     // Name of the section
-    int type;       // Type of the section
-    int flags;      // Section attributes
-    int align;      // Contains the required alignment of the section. This field must be a power of two.
-    int link;       // Contains the section index of an associated section.
-    int info;       // Contains extra information about the section.
-    char *data;     // Contents of the section
-    int size;       // Size of the section
-    int start;      // Start address of the section in the ELF
-    long entsize;   // Contains the size, in bytes, of each entry, for sections that contain fixed-size entries. Otherwise, this field contains zero.
-} Section;
+// ELF sections
+//                               id name          type          flags                      alignment
+ElfSection section_null      = { 0, "" ,          0,            0,                         0    };
+ElfSection section_text      = { 1, ".text",      SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0x10 };
+ElfSection section_rela_text = { 2, ".rela.text", SHT_RELA,     SHF_INFO_LINK,             0x08 };
+ElfSection section_data      = { 3, ".data",      SHT_PROGBITS, SHF_ALLOC | SHF_WRITE,     0x04 };
+ElfSection section_bss       = { 4, ".bss",       SHT_NOBITS,   SHF_ALLOC | SHF_WRITE,     0x04 };
+ElfSection section_rodata    = { 5, ".rodata",    SHT_PROGBITS, SHF_ALLOC,                 0x04 };
+ElfSection section_symtab    = { 6, ".symtab",    SHT_SYMTAB,   0,                         0x08 };
+ElfSection section_strtab    = { 7, ".strtab",    SHT_STRTAB,   0,                         0x01 };
+ElfSection section_shstrtab  = { 8, ".shstrtab",  SHT_STRTAB,   0,                         0x01 };
 
-// Sections
-//                           num name        type          flags                      align
-Section section_null     = { 0, "" ,         0,            0,                         0    };
-Section section_text     = { 1, ".text",     SHT_PROGBITS, SHF_ALLOC + SHF_EXECINSTR, 0x10 };
-Section section_data     = { 2, ".data",     SHT_PROGBITS, SHF_WRITE + SHF_ALLOC,     0x04 };
-Section section_bss      = { 3, ".bss",      SHT_NOBITS,   SHF_WRITE + SHF_ALLOC,     0x04 };
-Section section_symtab   = { 4, ".symtab",   SHT_SYMTAB,   0,                         0x08 };
-Section section_strtab   = { 5, ".strtab",   SHT_STRTAB,   0,                         0x01 };
-Section section_shstrtab = { 6, ".shstrtab", SHT_STRTAB,   0,                         0x01 };
-
-const int section_count = 7;
-Section *sections[] = {
+ElfSection *sections[] = {
     &section_null,
     &section_text,
+    &section_rela_text,
     &section_data,
     &section_bss,
+    &section_rodata,
     &section_symtab,
     &section_strtab,
     &section_shstrtab,
 };
+const int section_count = sizeof(sections) / sizeof(char *);
 
-static int symbol_count;        // Amount of symbols
-static char **shstrtab;         // Section header string table
-static int *shstrtab_indexes;   // Section header string table indexes
-static int shdr_start;          // Start address of the section header
-static int total_size;          // Total size of the ELF
+static ElfSection *current_section = &section_text; // Current section code/data is being added to
+static int local_symbol_end = 0;                    // Index of last local symbol
 
 
 #define ALIGN(address, alignment) ((address) + (alignment) - 1) & (~((alignment) - 1));
 
-static void make_string_list(char** strings, int len, char **string_list, int *indexes, int *size) {
-    *size = 0;
-    for (int i = 0; i < len; i++) *size += strlen(strings[i]) + 1;
-
-    char *result = malloc(*size);
-
-    char *dst = result;
-    for (int i = 0; i < len; i++) {
-        char *src = strings[i];
-        indexes[i] = dst - result;
-        while (*dst++ = *src++);
+// Lookup the section by name and make it the current section code/data is being
+// appended to.
+void set_current_section(char *name) {
+    for (int i = 0; i < section_count; i++) {
+        ElfSection *s = sections[i];
+        if (!strcmp(s->name, name)) {
+            current_section = s;
+            return;
+        }
     }
 
-    *string_list = result;
+    simple_error("Unknown section %s", name);
 }
 
-static void layout_elf_sections(void) {
-    int shdr_size;
-    shdr_size = sizeof(struct section_header);
-
-    // Make section headers string table data
-    shstrtab = malloc(sizeof(char *) * section_count);
-    shstrtab_indexes = malloc(sizeof(int) * section_count);
-    for (int i = 0; i < section_count; i++)
-        shstrtab[i] = sections[i]->name;
-    make_string_list(shstrtab, section_count, &section_shstrtab.data, shstrtab_indexes, &section_shstrtab.size);
-
-    section_symtab.size = symbol_count * sizeof(struct symbol);
-
-    // Determine section offsets
-    shdr_start = sizeof(struct elf_header);
-
-    int offset = ALIGN(shdr_start + shdr_size * section_count, 16);
-    for (int i = 1; i < section_count; i++) {
-        Section *section = sections[i];
-        section->start = offset;
-        offset = ALIGN(offset + section->size, 16);
+// Allocate space at the end of a section and return a pointer to it.
+// Dynamically allocate space size as needed.
+static void *allocate_in_section(ElfSection *section, int size) {
+    int new_section_size = section->size + size;
+    if (new_section_size > section->allocated) {
+        if (!section->allocated) section->allocated = 1;
+        while (new_section_size > section->allocated) section->allocated *= 2;
+        section->data = realloc(section->data, section->allocated);
     }
 
-    total_size = offset;
+    void *result = section->data + section->size;
+    section->size = new_section_size;
+
+    return result;
 }
 
-void add_section_header(char *headers, Section *section) {
-    struct section_header *sh;
-    sh = (struct section_header *) (headers + sizeof(struct section_header) * section->number);
-
-    sh->sh_name      = shstrtab_indexes[section->number];
-    sh->sh_type      = section->type;
-    sh->sh_flags     = section->flags;
-    sh->sh_offset    = section->start;
-    sh->sh_size      = section->size;
-    sh->sh_link      = section->link;
-    sh->sh_info      = section->info;
-    sh->sh_addralign = section->align;
-    sh->sh_entsize   = section->entsize;
+// Copy src to the end of a section and return the offset
+static int add_to_section(ElfSection *section, void *src, int size) {
+    char *data = allocate_in_section(section, size);
+    memcpy(data, src, size);
+    return data - section->data;
 }
 
-void write_elf(char *filename) {
-    layout_elf_sections();
+// Copy src to the end of the current section and return the offset
+int add_to_current_section(void *src, int size) {
+    return add_to_section(current_section, src, size);
+}
 
-    char *program = malloc(total_size);
-    memset(program, 0, total_size);
+// Add a symbol to the ELF symbol table symtab
+static int add_elf_symbol(char *name, long value, int binding, int type, int section_index) {
+    // Add a string to the strtab unless name is "".
+    // Empty names are all mapped to the first entry in the string table.
+    int strtab_offset = *name ? add_to_section(&section_strtab, name, strlen(name) + 1) : 0;
 
-    struct elf_header *elf_header = (struct elf_header *) program;
+    ElfSymbol *symbol = allocate_in_section(&section_symtab, sizeof(ElfSymbol));
+    memset(symbol, 0, sizeof(ElfSymbol));
+    symbol->st_name = strtab_offset;
+    symbol->st_value = value;
+    symbol->st_info = (binding << 4) + type;
+    symbol->st_shndx = section_index;
 
+    int index = symbol - (ElfSymbol *) section_symtab.data;
+
+    if (binding == STB_LOCAL) local_symbol_end = index;
+
+    return index;
+}
+
+// Add a special symbol with the source filename
+void add_file_symbol(char *filename) {
+    add_elf_symbol(filename, 0, STB_LOCAL, STT_FILE, SHN_ABS);
+}
+
+// Point the symbol offset and section_index to the current section & offset in it
+void associate_symbol_with_current_section(Symbol *symbol) {
+    symbol->offset = current_section->size;
+    symbol->section_index = current_section->index;
+}
+
+// Add a relocation to the ELF rela_text section.
+void add_elf_relocation(int type, int symbol_index, long offset, long addend) {
+    ElfRelocation *r = allocate_in_section(&section_rela_text, sizeof(ElfRelocation));
+
+    r->r_offset = offset;
+    r->r_info = type + ((long) symbol_index << 32);
+    r->r_addend = addend;
+}
+
+// Populate the ELF header
+static void make_elf_header(ElfHeader *elf_header) {
     // ELF header
     elf_header->ei_magic0 = 0x7f;                           // Magic
     elf_header->ei_magic1 = 'E';
@@ -129,26 +138,96 @@ void write_elf(char *filename) {
     elf_header->e_machine   = E_MACHINE_TYPE_X86_64;         // x86-64
     elf_header->e_version   = 1;                             // EV_CURRENT Current version of ELF
     elf_header->e_phoff     = 0;                             // Offset to program header table
-    elf_header->e_shoff     = shdr_start;                    // Offset to section header table
-    elf_header->e_ehsize    = sizeof(struct elf_header);     // The size of this header, 0x40 for 64-bit
+    elf_header->e_shoff     = sizeof(ElfHeader);             // Offset to section header table
+    elf_header->e_ehsize    = sizeof(ElfHeader);             // The size of this header, 0x40 for 64-bit
     elf_header->e_phentsize = 0;                             // The size of the program header
     elf_header->e_phnum     = 0;                             // Number of program header entries
-    elf_header->e_shentsize = sizeof(struct section_header); // The size of the section header
+    elf_header->e_shentsize = sizeof(ElfSectionHeader);      // The size of the section header
     elf_header->e_shnum     = section_count;                 // Number of section header entries
-    elf_header->e_shstrndx  = SEC_SHSTRTAB;                  // The string table index is the fourth section
+    elf_header->e_shstrndx  = section_shstrtab.index;        // The section header string table index
+}
 
-    // Set some oddballs in the section header
-    section_symtab.link = SEC_STRTAB;
-    section_symtab.info = symbol_count;
-    section_symtab.entsize = sizeof(struct symbol);
+// Make ELF section header
+static void make_section_header(ElfSectionHeader *sh, ElfSection *section) {
+    sh->sh_name = add_to_section(&section_shstrtab, section->name, strlen(section->name) + 1);
+    sh->sh_type      = section->type;
+    sh->sh_flags     = section->flags;
+    sh->sh_offset    = section->start;
+    sh->sh_size      = section->size;
+    sh->sh_link      = section->link;
+    sh->sh_info      = section->info;
+    sh->sh_addralign = section->align;
+    sh->sh_entsize   = section->entsize;
+}
 
-    // Set section headers + copy data
-    for (int i = 1; i < section_count; i++) {
-        Section *section = sections[i];
-        add_section_header(program + shdr_start, section);
-        memcpy(&program[section->start], section->data, section->size);
+void make_section_headers(int *psection_headers_size, ElfSectionHeader **psection_headers) {
+    *psection_headers_size = sizeof(ElfSectionHeader) * section_count;
+    *psection_headers = calloc(1, *psection_headers_size);
+
+    for (int i = 0; i < section_count; i++)
+        make_section_header(&(*psection_headers)[i], sections[i]);
+}
+
+// Add non-global, then global symbols to the symtab section
+static void make_symbols_section(void) {
+    // Add non-global symbols
+    for (StrMapIterator it = strmap_iterator(symbols); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
+        char *name = strmap_iterator_key(&it);
+        Symbol *symbol = strmap_get(symbols, name);
+
+        if (symbol->binding != STB_GLOBAL)
+            symbol->symtab_index = add_elf_symbol(name, 0, symbol->binding, symbol->type, symbol->section_index);
     }
 
+    // Add global symbols
+    for (StrMapIterator it = strmap_iterator(symbols); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
+        char *name = strmap_iterator_key(&it);
+        Symbol *symbol = strmap_get(symbols, name);
+
+        if (symbol->binding == STB_GLOBAL)
+            symbol->symtab_index = add_elf_symbol(name, 0, symbol->binding, symbol->type, symbol->section_index);
+    }
+
+    section_symtab.link = section_strtab.index;
+    section_symtab.info = local_symbol_end + 1; // Index of the first global symbol
+    section_symtab.entsize = sizeof(ElfSymbol);
+}
+
+// Make ELF relocations section
+void make_rela_text_section(void) {
+    add_elf_relocations();
+
+    section_rela_text.link = section_symtab.index;
+    section_rela_text.info = section_text.index;
+    section_rela_text.entsize = sizeof(ElfRelocation);
+}
+
+// Determine offsets for all the sections within the final ELF file.
+static int layout_elf_sections(ElfSectionHeader *section_headers) {
+    int shdr_size = sizeof(ElfSectionHeader);
+
+    // Determine section offsets
+    int offset = ALIGN(sizeof(ElfHeader) + shdr_size * section_count, 16);
+    for (int i = 1; i < section_count; i++) {
+        ElfSection *section = sections[i];
+        section->start = offset;
+        section_headers[i].sh_offset = offset;
+        offset = ALIGN(offset + section->size, 16);
+    }
+
+    return offset;
+}
+
+// Copy all the section data to the final positions in the ELF file.
+void copy_sections_to_elf(char *program) {
+    for (int i = 0; i < section_count; i++) {
+        ElfSection *section = sections[i];
+        memcpy(&program[section->start], section->data, section->size);
+    }
+}
+
+// Write the ELF file
+void write_elf_file(char *filename, void *program, int size) {
     // Write output file
     FILE *f;
     if (!strcmp(filename, "-")) {
@@ -159,7 +238,40 @@ void write_elf(char *filename) {
         if (!f) { perror("Unable to open write output file"); exit(1); }
     }
 
-    int written = fwrite(program, 1, total_size, f);
+    int written = fwrite(program, 1, size, f);
     if (written < 0) { perror("Unable to write to output file"); exit(1); }
     fclose(f);
+}
+
+// Final stage of the assembly
+void finish_elf(char *filename) {
+    int section_headers_size;
+    ElfSectionHeader *section_headers;
+
+    make_symbols_section();
+    make_rela_text_section();
+    make_section_headers(&section_headers_size, &section_headers);
+
+    int size = layout_elf_sections(section_headers);
+    char *program = calloc(1, size);
+
+    make_elf_header((ElfHeader *) program);
+    memcpy(program + sizeof(ElfHeader), section_headers, section_headers_size);
+    copy_sections_to_elf(program);
+
+    write_elf_file(filename, program, size);
+}
+
+void init_elf() {
+    init_symbols();
+    init_relocations();
+
+    // Start string table entries at 1, so that the zero value goes to an empty string
+    add_to_section(&section_strtab, "", 1);
+
+    add_elf_symbol("", 0, STB_LOCAL, STT_NOTYPE,  SHN_UNDEF); // Null symbol
+
+    // By convention, the section indexes correspond with the symbol table indexes
+    for (int i = 1; i < section_count; i++)
+        add_elf_symbol("", 0, STB_LOCAL, STT_SECTION, sections[i]->index);
 }
