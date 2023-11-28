@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "elf.h"
+#include "instr.h"
 #include "lexer.h"
 #include "list.h"
 #include "relocations.h"
@@ -11,12 +12,22 @@
 #include "utils.h"
 #include "was.h"
 
+// https://wiki.osdev.org/X86-64_Instruction_Encoding#Registers
+const char *register_names[] = {
+    "al",   "cl",   "dl",   "bl",   "ah",   "ch",   "dh",   "bh",   "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b",
+    "ax",   "cx",   "dx",   "bx",   "sp",   "bp",   "si",   "di",   "r8w",  "r9w",  "r10w",  "r11w",  "r12w",  "r13w",  "r14w",  "r15w",
+    "eax",  "ecx",  "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",  "r8d",  "r9d",  "r10d",  "r11d",  "r12d",  "r13d",  "r14d",  "r15d",
+    "rax",  "rcx",  "rdx",  "rbx",  "rsp",  "rbp",  "rsi",  "rdi",  "r8",   "r9",   "r10",   "r11",   "r12",   "r13",   "r14",   "r15",
+    "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15",
+    "rip",  "st",
+};
+
 // TODO remove skip
-void skip() {
+static void skip() {
     while (cur_token != TOK_EOL && cur_token != TOK_EOF) next();
 }
 
-void parse_directive_statement(void) {
+static void parse_directive_statement(void) {
     int directive = cur_token;
     next();
 
@@ -121,50 +132,202 @@ void parse_directive_statement(void) {
     }
 }
 
-void parse_instruction_statement(void) {
-    printf("TODO: instruction %s\n", cur_identifier);
-    skip();
+// Truncate the register to a range 0-15 if it's one of the common registers.
+static int get_cur_register_reg(void) {
+    return cur_register < REG_RIP ? cur_register & 0xf : cur_register;
 }
 
-// Add code for a hello world test program.
-static void add_test_program() {
-    char hello_world[] = {
-        0x55,                                       //  0:   55                      push   %rbp
-        0x48, 0x89, 0xe5,                           //  1:   48 89 e5                mov    %rsp,%rbp
+// Parse register, putting the details in op.
+static void parse_register(Operand *op) {
+    memset(op, 0, sizeof(Operand));
 
-        0x48, 0x8d, 0x05, 0x00, 0x00, 0x00, 0x00,   //  4:   48 8d 05 00 00 00 00    lea    0x0(%rip),%rax  // .SL0 relocation
-        0x48, 0x89, 0xc7,                           //  b:   48 89 c7                mov    %rax,%rdi
-        0xb0, 0x00,                                 //  e:   b0 00                   mov    $0x0,%al
-        0xe8, 0x00, 0x00, 0x00, 0x00,               // 10:   e8 00 00 00 00          callq  15 <main+0x15>
+    // Truncate unless it's RIP or SP
+    op->reg = get_cur_register_reg();
 
-        0x48, 0x8d, 0x05, 0x00, 0x00, 0x00, 0x00,   // 15:   48 8d 05 00 00 00 00    lea    0x0(%rip),%rax  // .SL1 relocation
-        0x48, 0x89, 0xc7,                           // 1c:   48 89 c7                mov    %rax,%rdi
-        0xb0, 0x00,                                 // 1f:   b0 00                   mov    $0x0,%al
-        0xe8, 0x00, 0x00, 0x00, 0x00,               // 21:   e8 00 00 00 00          callq  26 <main+0x26>  // printf relocation
+    op->type =
+          cur_register < REG_WORD ? REG08
+        : cur_register < REG_LONG ? REG16
+        : cur_register < REG_QUAD ? REG32
+                                  : REG64;
 
-        0x48, 0xc7, 0xc0, 0x00, 0x00, 0x00, 0x00,   // 26:   48 c7 c0 00 00 00 00    mov    $0x0,%rax
-        0xc9,                                       // 2d:   c9                      leaveq
-        0xc3,                                       // 2e:   c3                      retq
-    };
+    next();
+}
 
-    set_current_section(".text");
-    add_to_current_section(hello_world, sizeof(hello_world));
+// Parse a parenthesis expression of the form
+// (%rax)
+// (%rax, %rbx, 2)
+static void parse_indirect_operand(Operand *op) {
+    consume(TOK_LPAREN, "(");
+    parse_register(op);
 
-    // printf relocations
-    Symbol *printf_symbol = get_or_add_symbol("printf");
-    printf_symbol->binding = STB_GLOBAL;
-    add_relocation(printf_symbol, R_X86_64_PLT32, 0x11);
-    add_relocation(printf_symbol, R_X86_64_PLT32, 0x22);
+    if (cur_token == TOK_COMMA) {
+        // Parse (base, index, scale)
 
-    // .SL0 relocation
-    Symbol *sl0_symbol = get_symbol(".SL0");
-    if (!sl0_symbol) panic(".SL0 undefined");
-    add_relocation(sl0_symbol, R_X86_64_PC32, 0x7);
+        op->has_sib = 1;
+        op->base = op->reg;
+        next();
 
-    // .SL1 relocation
-    Symbol *sl1_symbol = get_symbol(".SL1");
-    if (!sl1_symbol) panic(".SL1 undefined");
-    add_relocation(sl1_symbol, R_X86_64_PC32, 0x18);
+        expect(TOK_REGISTER, "register");
+        op->index = get_cur_register_reg();
+        next();
+
+        consume(TOK_COMMA, ",");
+        expect(TOK_INTEGER, "integer");
+
+        switch (cur_long) {
+            case 1: op->scale = 0; break;
+            case 2: op->scale = 1; break;
+            case 4: op->scale = 2; break;
+            case 8: op->scale = 3; break;
+            default: error("Invalid scale");
+        }
+
+        next();
+    }
+
+    consume(TOK_RPAREN, ")");
+
+    op->indirect = 1;
+}
+
+// Register/look up the symbol for a relocation and store it in the op.
+static void preprocess_op_relocation(Operand *op, char *identifier) {
+    if (string_ends_with(identifier, "@PLT")) {
+        char *symbol_name = strdup(identifier);
+        symbol_name[strlen(identifier) - 4] = 0;
+        identifier = symbol_name;
+    }
+    else
+        identifier = strdup(identifier);
+
+    Symbol *symbol = get_or_add_symbol(identifier);
+    op->relocation_symbol = symbol;
+}
+
+// Add a relocation to the relocation section
+static void add_instruction_relocation(Instructions *instr, Operand *op1, Operand *op2, int base_offset) {
+    Operand *op;
+    if (op1 && op1->relocation_symbol)
+        op = op1;
+    else if (op2 && op2->relocation_symbol)
+        op = op2;
+    else
+        return;
+
+    if (instr->branch)
+        op->relocation_type = R_X86_64_PLT32; // This depends on the opcode
+    else
+        op->relocation_type = R_X86_64_PC32;
+
+    add_relocation(op->relocation_symbol, op->relocation_type, base_offset + instr->relocation_offset);
+}
+
+// Determine integer size
+static int get_integer_size(long value) {
+    if ((unsigned long) value <= 0xff)
+        return SIZE08;
+    else if ((unsigned long) value <= 0xffff)
+        return SIZE16;
+    else if ((unsigned long) value <= 0xffffffff)
+        return SIZE32;
+    else
+        return SIZE64;
+}
+
+// Parse an operand
+static void parse_operand(Operand *op) {
+    memset(op, 0, sizeof(Operand));
+
+    if (cur_token == TOK_REGISTER) {
+        parse_register(op);
+    }
+
+    else if (cur_token == TOK_DOLLAR) {
+        // Immediate
+        next();
+        expect(TOK_INTEGER, "integer");
+        op->type = get_integer_size(cur_long) + IMM08 -  SIZE08;
+        op->imm_or_mem_value = cur_long;
+        next();
+    }
+
+    else if (cur_token == TOK_INTEGER) {
+        // Memory
+        op->type = MEM32; // Default memory address size
+        next();
+
+        if (cur_token == TOK_LPAREN) {
+            // Parse 5(...)
+            long value = cur_long;
+            parse_indirect_operand(op);
+            op->displacement = value;
+            op->displacement_size = get_integer_size(value);
+
+            // Displacements are only possible with 8 and 32 bits
+            if (op->displacement_size == SIZE16)
+                op->displacement_size = SIZE32;
+            else if (op->displacement_size == SIZE64)
+                error("Invalid operand size");
+        }
+    }
+
+    else if (cur_token == TOK_LPAREN) {
+        // Indirect without a displacement
+        parse_indirect_operand(op);
+    }
+
+    else if (cur_token == TOK_IDENTIFIER) {
+        // Identifier with potential indirect
+        op->type = MEM32; // Default memory address size
+        char *identifier_copy = strdup(cur_identifier);
+        preprocess_op_relocation(op, cur_identifier);
+        next();
+
+        if (cur_token == TOK_LPAREN) {
+            // Parse identifier(...)
+            parse_indirect_operand(op);
+            op->displacement_size = SIZE32;
+
+            preprocess_op_relocation(op, identifier_copy);
+            free(identifier_copy);
+        }
+    }
+
+    else
+        panic("Unable to parse operand for token %d\n", cur_token);
+}
+
+Instructions parse_instruction_statement(void) {
+    char *mnemonic = strdup(cur_identifier);
+    next();
+
+    // Only one instruction will ever be processed at the same time, so
+    // use static memory for the operands.
+    static Operand static_op1;
+    static Operand static_op2;
+
+    Operand *op1 = NULL;
+    Operand *op2 = NULL;
+
+    if (cur_token != TOK_EOL && cur_token != TOK_EOF) {
+        parse_operand(&static_op1);
+        op1 = &static_op1;
+    }
+
+    if (cur_token == TOK_COMMA) {
+        next();
+        parse_operand(&static_op2);
+        op2 = &static_op2;
+    }
+
+    Instructions instr = make_instructions(mnemonic, op1, op2);
+    free(mnemonic);
+
+    int base_offset = get_current_section_size();
+    add_to_current_section(instr.data, instr.size);
+    if (instr.relocation_size) add_instruction_relocation(&instr, op1, op2, base_offset);
+
+    return instr;
 }
 
 int parse(void) {
@@ -189,6 +352,8 @@ int parse(void) {
             parse_directive_statement();
         else if (cur_token == TOK_INSTRUCTION)
             parse_instruction_statement();
+        else if (cur_token == TOK_EOF)
+            break;
         else {
             skip();
             panic("Don't know what do do with token %d", cur_token);
@@ -199,6 +364,4 @@ int parse(void) {
 
         while (cur_token == TOK_EOL) next();
     }
-
-    add_test_program();
 }

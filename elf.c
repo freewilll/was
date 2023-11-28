@@ -55,6 +55,11 @@ void set_current_section(char *name) {
     simple_error("Unknown section %s", name);
 }
 
+// Return the size of the current section
+int get_current_section_size(void) {
+    return current_section->size;
+}
+
 // Allocate space at the end of a section and return a pointer to it.
 // Dynamically allocate space size as needed.
 static void *allocate_in_section(ElfSection *section, int size) {
@@ -174,6 +179,9 @@ static void make_symbols_section(void) {
     for (StrMapIterator it = strmap_iterator(symbols); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
         char *name = strmap_iterator_key(&it);
         Symbol *symbol = strmap_get(symbols, name);
+
+        // All undefined symbols must be global.
+        if (!symbol->section_index) symbol->binding = STB_GLOBAL;
 
         if (symbol->binding != STB_GLOBAL)
             symbol->symtab_index = add_elf_symbol(name, 0, symbol->binding, symbol->type, symbol->section_index);

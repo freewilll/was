@@ -27,6 +27,18 @@ void free_lexer(void) {
     free(input);
 }
 
+static void start_lexer(void) {
+    ip = input;
+    cur_line = 1;
+    cur_identifier = malloc(MAX_IDENTIFIER_SIZE);
+    cur_string_literal.data = malloc(MAX_STRING_LITERAL_SIZE * 4);
+    seen_instruction = 0;
+    seen_directive = 0;
+    cur_register = 0;
+
+    next();
+}
+
 void init_lexer(char *filename) {
     cur_filename = filename;
 
@@ -52,15 +64,14 @@ void init_lexer(char *filename) {
     input_end = input + input_size;
     fclose(f);
 
-    ip = input;
-    cur_line = 1;
-    cur_identifier = malloc(MAX_IDENTIFIER_SIZE);
-    cur_string_literal.data = malloc(MAX_STRING_LITERAL_SIZE * 4);
-    seen_instruction = 0;
-    seen_directive = 0;
-    cur_register = 0;
+    start_lexer();
+}
 
-    next();
+void init_lexer_from_string(char *string) {
+    input = string;
+    input_end = input + strlen(string);
+
+    start_lexer();
 }
 
 static void skip_whitespace(void) {
@@ -76,28 +87,6 @@ static void skip_comments(void) {
     while (*ip != '\n' && ip < input_end) ip++;
 }
 
-static void lex_non_hex_literal(void) {
-    int has_leading_zero = *ip == '0';
-    long octal_integer = 0;
-    long decimal_integer = 0;
-    while ((*ip >= '0' && *ip <= '9') && ip < input_end) {
-        octal_integer = octal_integer * 8  + (*ip - '0');
-        decimal_integer = decimal_integer * 10 + (*ip - '0');
-        ip++;
-    }
-
-    if (has_leading_zero) {
-        // It's an octal number
-        cur_token = TOK_INTEGER;
-        cur_long = octal_integer;
-    }
-    else {
-        // It's a decimal number
-        cur_token = TOK_INTEGER;
-        cur_long = decimal_integer;
-    }
-}
-
 static void lex_octal_literal(void) {
     cur_long = 0;
     int c = 0;
@@ -106,6 +95,55 @@ static void lex_octal_literal(void) {
         ip++;
         c++;
         if (c == 3) break;
+    }
+}
+
+static void lex_integer(void) {
+    cur_token = TOK_INTEGER;
+
+    int is_octal = 0;
+    int is_decimal = 0;
+    int is_hex = 0;
+    int base;
+
+    if (*ip == '0') {
+        if (ip[1] == 'x') {
+            ip += 2;
+            is_hex = 1;
+            base = 16;
+        }
+        else {
+            is_octal = 1;
+            ip += 1;
+            base = 8;
+        }
+    }
+    else {
+        is_decimal = 1;
+        base = 10;
+    }
+
+    cur_long = 0;
+    while (
+        ip < input_end &&
+            (is_octal && (*ip >= '0' && *ip <= '7')) ||
+            (is_decimal && (*ip >= '0' && *ip <= '9')) ||
+            (is_hex && ((*ip >= '0' && *ip <= '9') || (*ip >= 'a' && *ip <= 'f') || (*ip >= 'A' && *ip <= 'Z')))
+        ) {
+
+        int digit = is_hex
+            ? (
+                *ip >= 'a'
+                ? *ip - 'a' + 10
+                : *ip >= 'A'
+                    ? *ip - 'A' + 10
+                : *ip - '0'
+              )
+            : *ip - '0';
+
+        cur_long = cur_long * base + digit;
+
+        ip++;
     }
 }
 
@@ -167,10 +205,11 @@ static void parse_register(void) {
         }
         name[j] = 0;
 
-    char *regs0[] = {"al",   "bl",   "cl",   "dl",   "sil",  "dil",  "bpl",  "spl",  "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b"};
-    char *regs1[] = {"ax",   "bx",   "cx",   "dx",   "si",   "di",   "bp",   "sp",   "r8w",  "r9w",  "r10w",  "r11w",  "r12w",  "r13w",  "r14w",  "r15w"};
-    char *regs2[] = {"eax",  "ebx",  "ecx",  "edx",  "esi",  "edi",  "ebp",  "esp",  "r8d",  "r9d",  "r10d",  "r11d",  "r12d",  "r13d",  "r14d",  "r15d"};
-    char *regs3[] = {"rax",  "rbx",  "rcx",  "rdx",  "rsi",  "rdi",  "rbp",  "rsp",  "r8",   "r9",   "r10",   "r11",   "r12",   "r13",   "r14",   "r15"};
+    // https://wiki.osdev.org/X86-64_Instruction_Encoding#Registers
+    char *regs0[] = {"al",   "cl",   "dl",   "bl",   "ah",   "ch",   "dh",   "bh",   "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b"};
+    char *regs1[] = {"ax",   "cx",   "dx",   "bx",   "sp",   "bp",   "si",   "di",   "r8w",  "r9w",  "r10w",  "r11w",  "r12w",  "r13w",  "r14w",  "r15w"};
+    char *regs2[] = {"eax",  "ecx",  "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",  "r8d",  "r9d",  "r10d",  "r11d",  "r12d",  "r13d",  "r14d",  "r15d"};
+    char *regs3[] = {"rax",  "rcx",  "rdx",  "rbx",  "rsp",  "rbp",  "rsi",  "rdi",  "r8",   "r9",   "r10",   "r11",   "r12",   "r13",   "r14",   "r15"  };
     char *regs4[] = {"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"};
 
     FIND_REG(regs0, REG_BYTE);
@@ -208,7 +247,7 @@ void next(void) {
         else if (c1 == '+'  )  { ip += 1;  cur_token = TOK_PLUS;     }
         else if (c1 == '-'  )  { ip += 1;  cur_token = TOK_MINUS;    }
         else if (c1 == '*'  )  { ip += 1;  cur_token = TOK_MULTIPLY; }
-        else if (c1 == '/'  )  { ip += 1;  cur_token = TOK_DIVIDE;   }
+        else if (c1 == '$'  )  { ip += 1;  cur_token = TOK_DOLLAR;   }
 
         // Instruction separator
         else if (c1 == ';') {
@@ -227,9 +266,10 @@ void next(void) {
             cur_line++;
         }
 
-        // Decimal and octal literal
-        else if ((c1 >= '0' && c1 <= '9') || (input_end - ip >= 2 && c1 == '.' && c2 >= '0' && c2 <= '9'))
-            lex_non_hex_literal();
+        // Decimal literal
+        else if (c1 >= '0' && c1 <= '9') {
+            lex_integer();
+        }
 
         // String literal
         else if ((c1 == '"') || (input_end - ip >= 2 && c1 == 'L' && c2 == '"')) {
@@ -244,7 +284,7 @@ void next(void) {
         }
 
         // Label, instruction, directive or identifier
-        else if (((c1 >= 'a' && c1 <= 'z') || (c1 >= 'A' && c1 <= 'Z') || c1 == '_' || c1 == '$' || c1 == '.') || c1 == '@') {
+        else if (((c1 >= 'a' && c1 <= 'z') || (c1 >= 'A' && c1 <= 'Z') || c1 == '_' || c1 == '.') || c1 == '@') {
 
             int j = 0;
             while (
@@ -252,7 +292,6 @@ void next(void) {
                         (*ip >= 'A' && *ip <= 'Z') ||
                         (*ip >= '0' && *ip <= '9') ||
                         (*ip == '_' ||
-                        (*ip == '$') ||
                         (*ip == '@') ||
                         (*ip == ':') ||
                         (*ip == '.'))) && ip < input_end) {
@@ -325,4 +364,9 @@ void next(void) {
 
 void expect(int token, char *what) {
     if (cur_token != token) error("Expected %s", what);
+}
+
+void consume(int token, char *what) {
+    expect(token, what);
+    next();
 }

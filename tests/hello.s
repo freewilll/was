@@ -15,6 +15,10 @@ main:
     movq        %rax, %rdi
     movb        $0, %al
     callq       printf@PLT
-    movq        $0, %rax
+    leaq        .SL1(%rip), %rax
+    movq        %rax, %rdi
+    movb        $0, %al
+    callq       printf@PLT
+    movq        $0, %rax            // Exit code
     leaveq
     retq

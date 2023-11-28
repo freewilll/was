@@ -4,6 +4,7 @@ was
 core
 a.out
 test
+test-instr
 /test.c
 /test.s
 /test2.s
