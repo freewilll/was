@@ -7,6 +7,7 @@ Opcode opcodes[] = {
 {%- for opcode in opcodes %}
     {
         "{{opcode.mnem}}",
+        0x{{opcode.prefix}},
         0x{{opcode.value}},
         {{opcode.opcd_ext}},
         {{opcode.needs_mod_rm}},

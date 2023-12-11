@@ -17,6 +17,7 @@
 // Encoding contains all the details necessary to generate the bytes for an instruction
 typedef struct encoding {
     int size;               // Size of operation
+    char prefix;            // Optional prefix. Zero if no prefix
     char primary_opcode;    // Primary opcode
     int rex_w;              // Need to set REX W bit
     int has_mod_rm;         // Has Mod RM byte
@@ -235,8 +236,9 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     enc.size = get_operation_size(opcode_alias, op1, op2, opcode_arg_count);
     enc.has_mod_rm = (opcode->needs_mod_rm || opcode->opcd_ext != -1);
     enc.branch = opcode->branch;
+    enc.prefix = opcode->prefix;
 
-    int primary_opcode = opcode->value;
+    int primary_opcode = opcode->primary_opcode;
 
     Operand *indirect_op = NULL;
 
@@ -306,6 +308,7 @@ static int encoding_size(Encoding *enc) {
     return
         needs_rex_prefix(enc) +     // REX prefix
         (enc->size == SIZE16)  +    // 16-bit size override
+        (enc->prefix != 0) +        // Prefix
         1 +                         // Primary opcode
         enc->has_mod_rm +           // Mod RM byte
         enc->has_sib +              // SIB byte
@@ -397,6 +400,7 @@ static void emit_instructions(Instructions *instr, Encoding *enc) {
 
     if (enc->size == SIZE16) emit_uint8(instr, OPCODE_SET_SIZE16);
     emit_REX_prefix(instr, enc);
+    if (enc->prefix) emit_uint8(instr, enc->prefix);
     emit_uint8(instr, enc->primary_opcode);
     if (enc->has_mod_rm) emit_modrm(instr, enc);
     if (enc->has_sib) emit_sib(instr, enc);

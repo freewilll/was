@@ -55,18 +55,12 @@ def make_sized_aliases(mnem: str, sizes=None, short_mnem=None):
 OPCODE_ALIASES = {
     **make_sized_aliases("add"),
     **make_sized_aliases("and"),
-    "call": LongOpCode(mnem="call", size=None),
-    "callq": LongOpCode(mnem="call", size=None),
     **make_sized_aliases("cmp"),
     **make_sized_aliases("div", sizes={Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("idiv", sizes={Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("imul"),
-    "jmp": LongOpCode(mnem="jmp", size=None),
     **make_sized_aliases("lea", sizes={Size.SIZE64}),
-    "leave": LongOpCode(mnem="leave", size=None),
-    "leaveq": LongOpCode(mnem="leave", size=None),
     **make_sized_aliases("mov"),
-    "movabsq": LongOpCode(mnem="mov", size=Size.SIZE64),
     **make_sized_aliases("not"),
     **make_sized_aliases("or"),
     **make_sized_aliases("pop", sizes={Size.SIZE64}),
@@ -78,18 +72,56 @@ OPCODE_ALIASES = {
     **make_sized_aliases("sub"),
     **make_sized_aliases("test"),
     **make_sized_aliases("xor"),
+    "call": LongOpCode(mnem="call", size=None),
+    "callq": LongOpCode(mnem="call", size=None),
+    "jmp": LongOpCode(mnem="jmp", size=None),
+    "leave": LongOpCode(mnem="leave", size=None),
+    "leaveq": LongOpCode(mnem="leave", size=None),
+    "movabsq": LongOpCode(mnem="mov", size=Size.SIZE64),
+    "jb": LongOpCode(mnem="jb", size=None),
+    "jnae": LongOpCode(mnem="jnae", size=None),
+    "jc": LongOpCode(mnem="jc", size=None),
+    "jnb": LongOpCode(mnem="jnb", size=None),
+    "jae": LongOpCode(mnem="jae", size=None),
+    "jnc": LongOpCode(mnem="jnc", size=None),
+    "jz": LongOpCode(mnem="jz", size=None),
+    "je": LongOpCode(mnem="je", size=None),
+    "jnz": LongOpCode(mnem="jnz", size=None),
+    "jne": LongOpCode(mnem="jne", size=None),
+    "jbe": LongOpCode(mnem="jbe", size=None),
+    "jna": LongOpCode(mnem="jna", size=None),
+    "jnbe": LongOpCode(mnem="jnbe", size=None),
+    "ja": LongOpCode(mnem="ja", size=None),
+    "jo": LongOpCode(mnem="jo", size=None),
+    "jno": LongOpCode(mnem="jno", size=None),
+    "js": LongOpCode(mnem="js", size=None),
+    "jns": LongOpCode(mnem="jns", size=None),
+    "jp": LongOpCode(mnem="jp", size=None),
+    "jnp": LongOpCode(mnem="jnp", size=None),
+    "jl": LongOpCode(mnem="jl", size=None),
+    "jnge": LongOpCode(mnem="jnge", size=None),
+    "jnl": LongOpCode(mnem="jnl", size=None),
+    "jge": LongOpCode(mnem="jge", size=None),
+    "jle": LongOpCode(mnem="jle", size=None),
+    "jng": LongOpCode(mnem="jng", size=None),
+    "jnle": LongOpCode(mnem="jnle", size=None),
+    "jg": LongOpCode(mnem="jg", size=None),
 }
 
 
 class AddressingMode(Enum):
+    C = "C"  # The reg field of the ModR/M byte selects a control register
+    D = "D"  # The reg field of the ModR/M byte selects a debug register
     E = "E"  # Uses ModR/M byte
     G = "G"  # The reg field of the ModR/M byte selects a general register
     I = "I"  # Immediate
     J = "J"  # RIP relative
+    H = "H"  # The r/m field of the ModR/M byte always selects a general register, regardless of the mod field
     M = "M"  # The ModR/M byte may refer only to memory
     O = "O"  # Offset
     R = "R"  # Not used
     S = "S"  # Not used
+    T = "T"  ## The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
     Z = "Z"  # The three least-significant bits of the opcode byte selects a general-purpose register
 
 
@@ -185,6 +217,7 @@ class WasOperand:
 @dataclass
 class WasOpcode:
     mnem: str
+    prefix: int
     value: int
     opcd_ext: int
     needs_mod_rm: int
@@ -208,7 +241,7 @@ class WasOpcode:
         src_amt = f"{self.src.am.value if self.src.am else ''}{self.src.type.value if self.src.type else ''}"
 
         acc = "a" if self.acc else " "
-        return f"{self.value} {direction}{op_size} {'b' if self.branch else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {dst_amt:5s} {src_amt:5s} {self.note}"
+        return f"{self.prefix if self.prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {dst_amt:5s} {src_amt:5s} {self.note}"
 
 
 OPCODES = {opcode.mnem for opcode in OPCODE_ALIASES.values()}
@@ -238,55 +271,67 @@ def parse_operands(entry, operand: str) -> WasOperand:
     return WasOperand.from_am_and_type(am, type)
 
 
-def make_was_opcodes(x86reference):
-    one_byte = x86reference.find_all("one-byte")
-
+def parse_pri_opcd(one_byte, prefix):
     was_opcodes = []
 
-    for x in one_byte:
-        for pri_opcd in x.find_all("pri_opcd"):
-            pri_opcd_was_opcodes = []
-            found_invalid_flag = False
+    for pri_opcd in one_byte.find_all("pri_opcd"):
+        pri_opcd_was_opcodes = []
+        found_invalid_flag = False
 
-            value = pri_opcd["value"].lower()
+        value = pri_opcd["value"].lower()
 
-            # To print out the XML for an opcode
-            # if value == "...":
-            #     print(pri_opcd.prettify())
-            #     # exit(1)
+        # To print out the XML for an opcode
+        # if value == "...":
+        #     # print(pri_opcd.prettify())
+        #     # exit(1)
+        # else:
+        #     continue
 
-            for entry in pri_opcd.find_all("entry"):
-                note = entry.note.brief.text if entry.note else None
+        for entry in pri_opcd.find_all("entry"):
+            note = entry.note.brief.text if entry.note else None
 
-                attr = entry.get("attr")
-                acc = attr == "acc"
+            attr = entry.get("attr")
+            acc = attr == "acc"
 
-                op_size = int(entry.get("op_size", -1))
-                direction = int(entry.get("direction", -1))
+            op_size = int(entry.get("op_size", -1))
+            direction = int(entry.get("direction", -1))
 
-                # print(note)
-                if note is not None and "Invalid Instruction in 64-Bit Mode" in note:
-                    found_invalid_flag = True
-                    continue
+            # print(note)
+            if note is not None and "Invalid Instruction in 64-Bit Mode" in note:
+                found_invalid_flag = True
+                continue
 
-                opcd_ext = entry.opcd_ext.text if entry.opcd_ext else None
+            opcd_ext = entry.opcd_ext.text if entry.opcd_ext else None
 
-                r = entry.get("r") == "yes"
+            r = entry.get("r") == "yes"
 
-                if entry.mnem is not None:
-                    mnem = entry.mnem.text.lower()
+            branch = False
+            for grp2 in entry.find_all("grp2"):
+                if grp2.text == "branch":
+                    branch = True
+
+            for syntax in entry.find_all("syntax"):
+                if syntax.mnem is not None:
+                    mnem = syntax.mnem.text.lower()
                     if mnem not in OPCODES:
                         continue
                 else:
                     continue
 
-                src = parse_operands(entry, "src")
-                dst = parse_operands(entry, "dst")
+                src = parse_operands(syntax, "src")
+                dst = parse_operands(syntax, "dst")
 
-                branch = False
-                for grp2 in entry.find_all("grp2"):
-                    if grp2.text == "branch":
-                        branch = True
+                # Not implemented
+                if dst.am == AddressingMode.C or src.am == AddressingMode.C:
+                    continue
+
+                # Not implemented
+                if dst.am == AddressingMode.D or src.am == AddressingMode.D:
+                    continue
+
+                # Not implemented
+                if dst.am == AddressingMode.H or src.am == AddressingMode.H:
+                    continue
 
                 # GNU as ignores opcodes with a memory offset addressing mode (a0-a3) , so I will too.
                 if dst.am == AddressingMode.O or src.am == AddressingMode.O:
@@ -297,11 +342,16 @@ def make_was_opcodes(x86reference):
                     continue
 
                 # Not implemented
+                if dst.am == AddressingMode.T or src.am == AddressingMode.T:
+                    continue
+
+                # Not implemented
                 if src.am in (OperandType.bs, OperandType.bss):
                     continue
 
                 was_opcode = WasOpcode(
                     mnem=mnem,
+                    prefix=prefix,
                     value=value,
                     opcd_ext=opcd_ext if opcd_ext is not None else -1,
                     needs_mod_rm=1 if r else 0,
@@ -314,10 +364,24 @@ def make_was_opcodes(x86reference):
                     src=src,
                 )
 
+                print(was_opcode)
+
                 pri_opcd_was_opcodes.append(was_opcode)
 
-            if not found_invalid_flag:
-                was_opcodes += pri_opcd_was_opcodes
+        if not found_invalid_flag:
+            was_opcodes += pri_opcd_was_opcodes
+
+    return was_opcodes
+
+
+def make_was_opcodes(x86reference):
+    was_opcodes = []
+
+    for one_byte in x86reference.find_all("one-byte"):
+        was_opcodes += parse_pri_opcd(one_byte, "00")
+
+    for two_byte in x86reference.find_all("two-byte"):
+        was_opcodes += parse_pri_opcd(two_byte, "0f")
 
     return was_opcodes
 

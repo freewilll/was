@@ -28,7 +28,8 @@ typedef struct opcode_op {
 
 typedef struct opcode {
     char *mnem;
-    uint8_t value;
+    uint8_t prefix;
+    uint8_t primary_opcode;
     int opcd_ext;       // -1 if not used
     int needs_mod_rm;
     OpcodeOp dst;

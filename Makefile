@@ -38,7 +38,7 @@ scripts/venv:
 
 # Uncomment the following line to regenerate opcodes-generated.c with make
 # Requires a python virtualenv to be setup in scripts/venv
-# opcodes-generated.c: scripts/parse-x86reference.xml.py
+# opcodes-generated.c: scripts/parse-x86reference.xml.py scripts/opcodes.j2
 # 	scripts/venv/bin/python3 scripts/parse-x86reference.xml.py ../x86reference.xml opcodes-generated.c
 
 was: ${OBJECTS} main.o

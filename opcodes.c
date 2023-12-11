@@ -19,9 +19,18 @@ void print_opcode(Opcode *opcode) {
     char direction = opcode->direction == -1 ? ' ' : opcode->direction ? 'D' : 'd';
     char op_size = opcode->op_size == -1 ? ' ' : opcode->op_size ? 'W' : 's';
 
-    printf("  %s  0x%02x %c%c %c  %d  %c%s  %c%s\n",
+    char *prefix;
+    if (opcode->prefix) {
+        prefix = malloc(5);
+        sprintf(prefix, "0x%02x", opcode->prefix);
+    }
+    else
+        prefix = "    ";
+
+    printf("  %s  %s 0x%02x %c%c %c  %d  %c%s  %c%s\n",
         opcode->mnem,
-        opcode->value,
+        prefix,
+        opcode->primary_opcode,
         direction,
         op_size,
         opcd_ext,
