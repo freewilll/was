@@ -7,7 +7,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pprint import pprint
-from typing import List, Set
+from typing import List, Set, Tuple
 
 import bs4
 import jinja2
@@ -273,8 +273,8 @@ class WasOpcode:
     acc: int
     branch: int
     conver: int
-    dst: WasOperand
-    src: WasOperand
+    op1: WasOperand
+    op2: WasOperand
 
     def __str__(self):
         opcd_ext = str(self.opcd_ext) if self.opcd_ext != -1 else " "
@@ -284,11 +284,11 @@ class WasOpcode:
         direction = "dD"[self.direction] if self.direction != -1 else " "
         op_size = "wW"[self.op_size] if self.op_size != -1 else " "
 
-        dst_amt = f"{self.dst.am.value if self.dst.am else ''}{self.dst.type.value if self.dst.type else ''}"
-        src_amt = f"{self.src.am.value if self.src.am else ''}{self.src.type.value if self.src.type else ''}"
+        op1_amt = f"{self.op1.am.value if self.op1.am else ''}{self.op1.type.value if self.op1.type else ''}"
+        op2_amt = f"{self.op2.am.value if self.op2.am else ''}{self.op2.type.value if self.op2.type else ''}"
 
         acc = "a" if self.acc else " "
-        return f"{self.prefix if self.prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '}{'c' if self.conver else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {dst_amt:5s} {src_amt:5s} {self.note}"
+        return f"{self.prefix if self.prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '}{'c' if self.conver else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {op1_amt:5s} {op2_amt:5s} {self.note}"
 
 
 OPCODES = {opcode.mnem for opcode in OPCODE_ALIASES.values()}
@@ -304,9 +304,8 @@ def read_xml(input_path: str):
     return x86reference
 
 
-def parse_operands(entry, operand: str) -> WasOperand:
-    am = None
-    type = None
+def parse_operand(entry, operand: str) -> List[WasOperand]:
+    results = []
 
     for operand in entry.find_all(operand):
         if operand.get("displayed") == "no":
@@ -315,7 +314,37 @@ def parse_operands(entry, operand: str) -> WasOperand:
         am = AddressingMode(operand.a.text) if operand.a else None
         type = OperandType(operand.t.text) if operand.t else None
 
-    return WasOperand.from_am_and_type(am, type)
+        results.append(WasOperand.from_am_and_type(am, type))
+
+    return results
+
+
+def parse_operands(syntax) -> Tuple[WasOperand, WasOperand]:
+    srcs = parse_operand(syntax, "src")
+    dsts = parse_operand(syntax, "dst")
+
+    op1 = WasOperand.from_am_and_type(None, None)
+    op2 = WasOperand.from_am_and_type(None, None)
+
+    if len(srcs) == 1 and len(dsts) == 0:
+        op1 = srcs[0]
+    elif len(srcs) == 0 and len(dsts) == 1:
+        op1 = dsts[0]
+    elif len(srcs) == 1 and len(dsts) == 1:
+        op1 = srcs[0]
+        op2 = dsts[0]
+    elif len(srcs) == 2:
+        # Don't ask. This makes the test mnemonic get encoded correctly
+        op1 = srcs[1]
+        op2 = srcs[0]
+    elif len(srcs) == 0 and len(dsts) == 0:
+        pass
+    else:
+        raise ValueError(
+            f"Unable to interpret srcs/dsts for {mnem:10s} srcs={len(srcs)} dsts={len(dsts)}"
+        )
+
+    return op1, op2
 
 
 def parse_pri_opcd(one_byte, prefix):
@@ -330,9 +359,9 @@ def parse_pri_opcd(one_byte, prefix):
         # To print out the XML for an opcode
         # if value == "...":
         #     print(pri_opcd.prettify())
-        #     exit(1)
-        # # else:
-        # #     continue
+        #     # exit(1)
+        # else:
+        #     continue
 
         for entry in pri_opcd.find_all("entry"):
             note = entry.note.brief.text if entry.note else None
@@ -370,35 +399,34 @@ def parse_pri_opcd(one_byte, prefix):
                 else:
                     continue
 
-                src = parse_operands(syntax, "src")
-                dst = parse_operands(syntax, "dst")
+                op1, op2 = parse_operands(syntax)
 
                 # Not implemented
-                if dst.am == AddressingMode.C or src.am == AddressingMode.C:
+                if op2.am == AddressingMode.C or op1.am == AddressingMode.C:
                     continue
 
                 # Not implemented
-                if dst.am == AddressingMode.D or src.am == AddressingMode.D:
+                if op2.am == AddressingMode.D or op1.am == AddressingMode.D:
                     continue
 
                 # Not implemented
-                if dst.am == AddressingMode.H or src.am == AddressingMode.H:
+                if op2.am == AddressingMode.H or op1.am == AddressingMode.H:
                     continue
 
                 # GNU as ignores opcodes with a memory offset addressing mode (a0-a3) , so I will too.
-                if dst.am == AddressingMode.O or src.am == AddressingMode.O:
+                if op2.am == AddressingMode.O or op1.am == AddressingMode.O:
                     continue
 
                 # 16-bit segment registers not used in long mode
-                if dst.am == AddressingMode.S or src.am == AddressingMode.S:
+                if op2.am == AddressingMode.S or op1.am == AddressingMode.S:
                     continue
 
                 # Not implemented
-                if dst.am == AddressingMode.T or src.am == AddressingMode.T:
+                if op2.am == AddressingMode.T or op1.am == AddressingMode.T:
                     continue
 
                 # Not implemented
-                if src.am in (OperandType.bs, OperandType.bss):
+                if op1.am in (OperandType.bs, OperandType.bss):
                     continue
 
                 was_opcode = WasOpcode(
@@ -413,8 +441,8 @@ def parse_pri_opcd(one_byte, prefix):
                     acc=int(acc),
                     branch=int(branch),
                     conver=int(conver),
-                    dst=dst,
-                    src=src,
+                    op1=op1,
+                    op2=op2,
                 )
 
                 print(was_opcode)

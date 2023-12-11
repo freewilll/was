@@ -36,10 +36,10 @@ void print_opcode(Opcode *opcode) {
         op_size,
         opcd_ext,
         opcode->needs_mod_rm,
-        opcode->dst.am ? opcode->dst.am : ' ',
-        opcode->dst.type,
-        opcode->src.am ? opcode->src.am : ' ',
-        opcode->src.type
+        opcode->op1.am ? opcode->op1.am : ' ',
+        opcode->op1.type,
+        opcode->op2.am ? opcode->op2.am : ' ',
+        opcode->op2.type
     );
 }
 

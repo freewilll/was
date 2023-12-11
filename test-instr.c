@@ -319,6 +319,12 @@ int main() {
 
     test_assembly("movq     foo(%rax),                  %rbx", 0x48, 0x8b, 0x98, 0x00, 0x00, 0x00, 0x00, END);
 
+    test_assembly("test     %al,                        %bl",        0x84, 0xc3, END);
+    test_assembly("test     %bl,                        %al",        0x84, 0xd8, END);
+    test_assembly("test     %bx,                        %ax",  0x66, 0x85, 0xd8, END);
+    test_assembly("test     %ebx,                       %eax",       0x85, 0xd8, END);
+    test_assembly("test     %rbx,                       %rax", 0x48, 0x85, 0xd8, END);
+
     test_assembly("jb       foo", 0x0f, 0x82, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("jb       foo", 0x0f, 0x82, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("jb       foo", 0x0f, 0x82, 0x00, 0x00, 0x00, 0x00, END);

@@ -51,8 +51,8 @@ int dump_instructions(Instructions *instr) {
 static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
     // Check the number of arguments match
     int opcode_arg_count = 0;
-    if (opcode->dst.am) opcode_arg_count++;
-    if (opcode->src.am) opcode_arg_count++;
+    if (opcode->op1.am) opcode_arg_count++;
+    if (opcode->op2.am) opcode_arg_count++;
     if (opcode->acc) opcode_arg_count++;
 
     int arg_count = 0;
@@ -226,11 +226,11 @@ static void encode_indirect(Encoding *enc, Operand *op) {
 static void make_imm_or_memory_size(Encoding *enc, Opcode *opcode, Operand *op1) {
     int size = enc->size;
 
-    int value_size = opcode->src.uses_op_size
+    int value_size = opcode->op1.uses_op_size
         ? size == SIZE64 ? SIZE32: size // 16 or 32 bit
         : OP_TO_SIZE(op1); // Dubious. Should the instruction should determine the size of the immidate?
 
-    if (size == SIZE64 && opcode->src.can_be_imm64) value_size = SIZE64;
+    if (size == SIZE64 && opcode->op1.can_be_imm64) value_size = SIZE64;
 
     enc->imm_or_mem = op1->imm_or_mem_value;
     enc->imm_or_mem_size = value_size;
@@ -274,20 +274,20 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
         if (!single_opcode->word_or_double_word_operand) enc.rex_w = enc.size == SIZE64;
     }
     else if (opcode_arg_count == 2) {
-             if (opcode->src.am == AM_G) enc.reg = op1->reg;
-        else if (opcode->dst.am == AM_G) enc.reg = op2->reg;
+             if (opcode->op1.am == AM_G) enc.reg = op1->reg;
+        else if (opcode->op2.am == AM_G) enc.reg = op2->reg;
         else if (opcode->opcd_ext != -1) enc.reg = opcode->opcd_ext;
 
-        if (opcode->src.am == AM_E || opcode->src.am == AM_M) {
+        if (opcode->op1.am == AM_E || opcode->op1.am == AM_M) {
             enc.rm = op1->reg;
             if (op1->indirect) indirect_op = op1;
         }
-        else if (opcode->dst.am == AM_E || opcode->dst.am == AM_M) {
+        else if (opcode->op2.am == AM_E || opcode->op2.am == AM_M) {
             enc.rm = op2->reg;
             if (op2->indirect) indirect_op = op2;
         }
 
-        if (op2 && opcode->dst.am == AM_Z) {
+        if (op2 && opcode->op2.am == AM_Z) {
             enc.rm = op2->reg;
             primary_opcode += (op2->reg & 7);
         }
@@ -453,12 +453,12 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         // Check for match
         OpcodeOp *single_opcode = NULL;
         if (opcode_arg_count == 1) {
-            single_opcode = opcode->src.am ? &opcode->src : &opcode->dst;
+            single_opcode = opcode->op1.am ? &opcode->op1 : &opcode->op2;
             if (!op_matches(opcode, single_opcode, op1)) continue;
         }
         else if (opcode_arg_count == 2) {
-            if (!op_matches(opcode, &opcode->src, op1)) continue;
-            if (!op_matches(opcode, &opcode->dst, op2)) continue;
+            if (!op_matches(opcode, &opcode->op1, op1)) continue;
+            if (!op_matches(opcode, &opcode->op2, op2)) continue;
         }
 
         // At this point, the opcode can be used to generate code
@@ -478,7 +478,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         }
     }
 
-    if (best_enc_size == -1) panic("Unable to encode instruction %s\n", mnemonic);
+    if (best_enc_size == -1) panic("Unable to find encoding for instruction %s\n", mnemonic);
 
     // Generate the instructions
     Instructions instr;

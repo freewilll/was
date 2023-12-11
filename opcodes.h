@@ -32,8 +32,8 @@ typedef struct opcode {
     uint8_t primary_opcode;
     int opcd_ext;       // -1 if not used
     int needs_mod_rm;
-    OpcodeOp dst;
-    OpcodeOp src;
+    OpcodeOp op1;
+    OpcodeOp op2;
     char op_size;
     char direction;
     char acc; // Accumulator
