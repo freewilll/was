@@ -359,6 +359,13 @@ int main() {
     test_assembly("movzwl   %bx,                        %eax",       0x0f, 0xb7, 0xc3, END);
     test_assembly("movzwq   %bx,                        %rax", 0x48, 0x0f, 0xb7, 0xc3, END);
 
+    test_assembly("cwtd", 0x66, 0x99, END);
+    test_assembly("cltd",       0x99, END);
+    test_assembly("cqto", 0x48, 0x99, END);
+    test_assembly("cwtd", 0x66, 0x99, END);
+    test_assembly("cltd",       0x99, END);
+    test_assembly("cqto", 0x48, 0x99, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);

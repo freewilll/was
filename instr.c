@@ -253,7 +253,11 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     Operand *indirect_op = NULL;
 
     // Determing modrm reg and rm values
-    if (opcode_arg_count == 1) {
+    if (opcode_arg_count == 0) {
+        if (opcode->conver) enc.rex_w = enc.size == SIZE64;
+    }
+
+    else if (opcode_arg_count == 1) {
              if (single_opcode->am == AM_G) enc.reg = op1->reg;
         else if (single_opcode->am == AM_E) enc.reg = op1->reg;
 

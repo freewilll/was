@@ -116,6 +116,12 @@ OPCODE_ALIASES = {
     "jng": LongOpCode(mnem="jng", size=None),
     "jnle": LongOpCode(mnem="jnle", size=None),
     "jg": LongOpCode(mnem="jg", size=None),
+    "cwd": LongOpCode(mnem="cwd", size=Size.SIZE16),
+    "cwtd": LongOpCode(mnem="cwd", size=Size.SIZE16),
+    "cdq": LongOpCode(mnem="cdq", size=Size.SIZE32),
+    "cltd": LongOpCode(mnem="cdq", size=Size.SIZE32),
+    "cqo": LongOpCode(mnem="cqo", size=Size.SIZE64),
+    "cqto": LongOpCode(mnem="cqo", size=Size.SIZE64),
 }
 
 
