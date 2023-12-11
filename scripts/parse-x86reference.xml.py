@@ -78,6 +78,16 @@ OPCODE_ALIASES = {
     "leave": LongOpCode(mnem="leave", size=None),
     "leaveq": LongOpCode(mnem="leave", size=None),
     "movabsq": LongOpCode(mnem="mov", size=Size.SIZE64),
+    "movsbw": LongOpCode(mnem="movsx", size=None),
+    "movsbl": LongOpCode(mnem="movsx", size=None),
+    "movsbq": LongOpCode(mnem="movsx", size=None),
+    "movslq": LongOpCode(mnem="movsxd", size=None),
+    "movswl": LongOpCode(mnem="movsx", size=None),
+    "movswq": LongOpCode(mnem="movsx", size=None),
+    "movzbl": LongOpCode(mnem="movzx", size=None),
+    "movzbq": LongOpCode(mnem="movzx", size=None),
+    "movzwl": LongOpCode(mnem="movzx", size=None),
+    "movzwq": LongOpCode(mnem="movzx", size=None),
     "jb": LongOpCode(mnem="jb", size=None),
     "jnae": LongOpCode(mnem="jnae", size=None),
     "jc": LongOpCode(mnem="jc", size=None),
@@ -121,7 +131,7 @@ class AddressingMode(Enum):
     O = "O"  # Offset
     R = "R"  # Not used
     S = "S"  # Not used
-    T = "T"  ## The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
+    T = "T"  # The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
     Z = "Z"  # The three least-significant bits of the opcode byte selects a general-purpose register
 
 
@@ -130,6 +140,7 @@ class OperandType(Enum):
     bs = "bs"  # Byte, sign-extended to the size of the destination operand.
     bss = "bss"  # Byte, sign-extended to the size of the stack pointer (for example, PUSH (6A)).
     d = "d"  #  Doubleword
+    dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
     q = "q"  # Quad
     v = "v"  #   Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
     vds = "vds"  # Word or doubleword, depending on operand-size attribute, or doubleword, sign-extended to 64 bits for 64-bit operand size.
@@ -144,6 +155,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.bs: set([Size.SIZE08]),
     OperandType.bss: set([Size.SIZE08]),
     OperandType.d: set([Size.SIZE32]),
+    OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
     OperandType.q: set([Size.SIZE64]),
     OperandType.v: set([Size.SIZE16, Size.SIZE32]),
     OperandType.vds: set([Size.SIZE16, Size.SIZE32]),
@@ -226,6 +238,7 @@ class WasOpcode:
     direction: int
     acc: int
     branch: int
+    conver: int
     dst: WasOperand
     src: WasOperand
 
@@ -241,7 +254,7 @@ class WasOpcode:
         src_amt = f"{self.src.am.value if self.src.am else ''}{self.src.type.value if self.src.type else ''}"
 
         acc = "a" if self.acc else " "
-        return f"{self.prefix if self.prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {dst_amt:5s} {src_amt:5s} {self.note}"
+        return f"{self.prefix if self.prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '}{'c' if self.conver else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {dst_amt:5s} {src_amt:5s} {self.note}"
 
 
 OPCODES = {opcode.mnem for opcode in OPCODE_ALIASES.values()}
@@ -282,10 +295,10 @@ def parse_pri_opcd(one_byte, prefix):
 
         # To print out the XML for an opcode
         # if value == "...":
-        #     # print(pri_opcd.prettify())
-        #     # exit(1)
-        # else:
-        #     continue
+        #     print(pri_opcd.prettify())
+        #     exit(1)
+        # # else:
+        # #     continue
 
         for entry in pri_opcd.find_all("entry"):
             note = entry.note.brief.text if entry.note else None
@@ -309,6 +322,11 @@ def parse_pri_opcd(one_byte, prefix):
             for grp2 in entry.find_all("grp2"):
                 if grp2.text == "branch":
                     branch = True
+
+            conver = False
+            for grp2 in entry.find_all("grp2"):
+                if grp2.text == "conver":
+                    conver = True
 
             for syntax in entry.find_all("syntax"):
                 if syntax.mnem is not None:
@@ -360,6 +378,7 @@ def parse_pri_opcd(one_byte, prefix):
                     direction=direction,
                     acc=int(acc),
                     branch=int(branch),
+                    conver=int(conver),
                     dst=dst,
                     src=src,
                 )

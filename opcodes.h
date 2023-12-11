@@ -38,6 +38,7 @@ typedef struct opcode {
     char direction;
     char acc; // Accumulator
     char branch; // Is a branch instruction
+    char conver; // Is a type conversion
 } Opcode;
 
 typedef struct opcode_alias {

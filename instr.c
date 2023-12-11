@@ -17,9 +17,10 @@
 // Encoding contains all the details necessary to generate the bytes for an instruction
 typedef struct encoding {
     int size;               // Size of operation
+    int rex_w;              // Need to set REX W bit
+    int need_size16;        // Need to send 16-bit size override
     char prefix;            // Optional prefix. Zero if no prefix
     char primary_opcode;    // Primary opcode
-    int rex_w;              // Need to set REX W bit
     int has_mod_rm;         // Has Mod RM byte
     int mode;               // Mod RM mode
     int reg;                // Mod RM reg
@@ -64,27 +65,35 @@ static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
 }
 
 // Determine the size of the instruction from the opcode definition and operands
-static int get_operation_size(OpcodeAlias *opcode_alias, Operand *op1, Operand *op2, int opcode_arg_count) {
+static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand *op1, Operand *op2, int opcode_arg_count) {
     int size = opcode_alias->size;
 
     // Determine size from register operands
     if (!size) {
-             if (op1 && OP_TYPE_IS_REG(op1)) size = OP_TO_SIZE(op1);
-        else if (op2 && OP_TYPE_IS_REG(op2)) size = OP_TO_SIZE(op2);
+        if (op2 && opcode->conver)
+            size = OP_TO_SIZE(op2);
+        else if (op1 && OP_TYPE_IS_REG(op1))
+            size = OP_TO_SIZE(op1);
+        else if (op2 && OP_TYPE_IS_REG(op2))
+            size = OP_TO_SIZE(op2);
 
-        if (op1 && op2 && OP_TYPE_IS_REG(op1) && OP_TYPE_IS_REG(op2) && OP_TO_SIZE(op1) != OP_TO_SIZE(op2))
-            error("Size mismatch");
+        if (!opcode->conver) {
+            // Check operands are the same size
+            if (op1 && op2 && OP_TYPE_IS_REG(op1) && OP_TYPE_IS_REG(op2) && OP_TO_SIZE(op1) != OP_TO_SIZE(op2))
+                error("Size mismatch within oparands");
+        }
 
         if (!size) size = SIZE32; // In long mode, the default instruction size is 32 bits;
     }
 
     // Check for size mismatches when the size is specified in the mnemonic
     if (opcode_alias->size) {
-        if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect && OP_TO_SIZE(op1) != opcode_alias->size) error("Size mismatch");
-        if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect && OP_TO_SIZE(op2) != opcode_alias->size) error("Size mismatch");
+        if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect && OP_TO_SIZE(op1) != opcode_alias->size) error("Size mismatch with opcode");
+        if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect && OP_TO_SIZE(op2) != opcode_alias->size) error("Size mismatch with opcode");
     }
 
-    return size;}
+    return size;
+}
 
 // Check if an opcode's operand matches an operand
 static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op) {
@@ -233,10 +242,11 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     Encoding enc = {0};
 
     // Some oddballs stored in enc.
-    enc.size = get_operation_size(opcode_alias, op1, op2, opcode_arg_count);
+    enc.size = get_operation_size(opcode, opcode_alias, op1, op2, opcode_arg_count);
     enc.has_mod_rm = (opcode->needs_mod_rm || opcode->opcd_ext != -1);
     enc.branch = opcode->branch;
     enc.prefix = opcode->prefix;
+    enc.need_size16 = enc.size == SIZE16;
 
     int primary_opcode = opcode->primary_opcode;
 
@@ -307,7 +317,7 @@ static int needs_rex_prefix(Encoding *enc) {
 static int encoding_size(Encoding *enc) {
     return
         needs_rex_prefix(enc) +     // REX prefix
-        (enc->size == SIZE16)  +    // 16-bit size override
+        enc->need_size16 +          // 16-bit size override
         (enc->prefix != 0) +        // Prefix
         1 +                         // Primary opcode
         enc->has_mod_rm +           // Mod RM byte
@@ -398,7 +408,7 @@ static void emit_imm_or_memory(Instructions *instr, Encoding *enc) {
 static void emit_instructions(Instructions *instr, Encoding *enc) {
     memset(instr, 0, sizeof(Instructions));
 
-    if (enc->size == SIZE16) emit_uint8(instr, OPCODE_SET_SIZE16);
+    if (enc->need_size16) emit_uint8(instr, OPCODE_SET_SIZE16);
     emit_REX_prefix(instr, enc);
     if (enc->prefix) emit_uint8(instr, enc->prefix);
     emit_uint8(instr, enc->primary_opcode);

@@ -348,6 +348,17 @@ int main() {
     test_assembly("jg       foo", 0x0f, 0x8f, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("jg       foo", 0x0f, 0x8f, 0x00, 0x00, 0x00, 0x00, END);
 
+    test_assembly("movsbl   %bl,                        %eax",       0x0f, 0xbe, 0xc3, END);
+    test_assembly("movsbw   %bl,                        %ax",  0x66, 0x0f, 0xbe, 0xc3, END);
+    test_assembly("movsbq   %bl,                        %rax", 0x48, 0x0f, 0xbe, 0xc3, END);
+    test_assembly("movswl   %bx,                        %eax",       0x0f, 0xbf, 0xc3, END);
+    test_assembly("movswq   %bx,                        %rax", 0x48, 0x0f, 0xbf, 0xc3, END);
+    test_assembly("movslq   %eax,                       %rax", 0x48,       0x63, 0xc0, END);
+    test_assembly("movzbl   %bl,                        %eax",       0x0f, 0xb6, 0xc3, END);
+    test_assembly("movzbq   %bl,                        %rax", 0x48, 0x0f, 0xb6, 0xc3, END);
+    test_assembly("movzwl   %bx,                        %eax",       0x0f, 0xb7, 0xc3, END);
+    test_assembly("movzwq   %bx,                        %rax", 0x48, 0x0f, 0xb7, 0xc3, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);
