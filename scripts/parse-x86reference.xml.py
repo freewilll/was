@@ -215,7 +215,7 @@ SIGN_EXTENDED_OPERANDS = {
     OperandType.vds,
 }
 
-# Operand types that have the operand-size attribute set
+# Operands that have a 64-bit immediate when the opcode size is 64 bit
 IMM64_OPERANDS = {
     OperandType.vqp,
 }
@@ -355,13 +355,6 @@ def parse_pri_opcd(one_byte, prefix):
         found_invalid_flag = False
 
         value = pri_opcd["value"].lower()
-
-        # To print out the XML for an opcode
-        # if value == "...":
-        #     print(pri_opcd.prettify())
-        #     # exit(1)
-        # else:
-        #     continue
 
         for entry in pri_opcd.find_all("entry"):
             note = entry.note.brief.text if entry.note else None
