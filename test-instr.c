@@ -319,6 +319,17 @@ int main() {
 
     test_assembly("movq     foo(%rax),                  %rbx", 0x48, 0x8b, 0x98, 0x00, 0x00, 0x00, 0x00, END);
 
+    test_assembly("add      %cl,                        (%rax)",                 0x00, 0x08, END);
+    test_assembly("add      %cl,                        (%rbx)",                 0x00, 0x0b, END);
+    test_assembly("add      %r15w,                      (%r14)",           0x66, 0x45, 0x01, 0x3e, END);
+    test_assembly("addq     $0x42,                      5(%rax)",          0x48, 0x83, 0x40, 0x05, 0x42, END);
+    test_assembly("add      %bl,                        5(%rbx)",          0x00, 0x5b, 0x05, END);
+    test_assembly("addq     $0x42,                      5(%rbx)",          0x48, 0x83, 0x43, 0x05, 0x42, END);
+    test_assembly("addq     $0x4243,                    (%rbx)",           0x48, 0x81, 0x03, 0x43, 0x42, 0x00, 0x00, END);
+    test_assembly("addq     $0x4243,                    5(%rbx)",          0x48, 0x81, 0x43, 0x05,       0x43, 0x42, 0x00, 0x00, END);
+    test_assembly("addq     $0x4243,                    5(%rbx,%rcx,1)"  , 0x48, 0x81, 0x44, 0x0b, 0x05, 0x43, 0x42, 0x00, 0x00, END);
+    test_assembly("addq     $0x4243,                    (%rbx,%rcx,1)",    0x48, 0x81, 0x04, 0x0b,       0x43, 0x42, 0x00, 0x00, END);
+
     test_assembly("test     %al,                        %bl",        0x84, 0xc3, END);
     test_assembly("test     %bl,                        %al",        0x84, 0xd8, END);
     test_assembly("test     %bx,                        %ax",  0x66, 0x85, 0xd8, END);
