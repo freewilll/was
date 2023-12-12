@@ -332,6 +332,8 @@ Instructions parse_instruction_statement(void) {
 
 int parse(void) {
     while (cur_token != TOK_EOF) {
+        while (cur_token == TOK_EOL) next();
+
         List *labels = new_list(4);
 
         // Collect labels
