@@ -314,6 +314,11 @@ def parse_operand(entry, operand: str) -> List[WasOperand]:
         am = AddressingMode(operand.a.text) if operand.a else None
         type = OperandType(operand.t.text) if operand.t else None
 
+        if type is None:
+            type_from_attr = operand.get("type")
+            if type_from_attr is not None:
+                type = OperandType(type_from_attr)
+
         results.append(WasOperand.from_am_and_type(am, type))
 
     return results

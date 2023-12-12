@@ -103,9 +103,9 @@ int main() {
 
     // Check code generation with size in the mnemnonic
     test_assembly("addb     $42,                        %al",  0x04, 0x2a, END);
-    test_assembly("addw     $42,                        %ax",  0x66, 0x04, 0x2a, END);
-    test_assembly("addl     $42,                        %eax", 0x04, 0x2a, END);
-    test_assembly("addq     $42,                        %rax", 0x48, 0x04, 0x2a, END);
+    test_assembly("addw     $42,                        %ax",  0x66, 0x5, 0x2a, 0x00, END);
+    test_assembly("addl     $42,                        %eax", 0x83, 0xc0, 0x2a, END);
+    test_assembly("addq     $42,                        %rax", 0x48, 0x83, 0xc0, 0x2a, END);
 
     test_assembly("not      %al",                0xf6, 0xd0, END);
     test_assembly("not      %ax",    0x66,       0xf7, 0xd0, END);
@@ -342,6 +342,11 @@ int main() {
     test_assembly("testq    $0x42,                      (%rax)", 0x48, 0xf7, 0x00, 0x42, 0x00, 0x00, 0x00, END);
     test_assembly("testq    $0x4243,                    (%rax)", 0x48, 0xf7, 0x00, 0x43, 0x42, 0x00, 0x00, END);
     test_assembly("testq    $0x42434445,                (%rax)", 0x48, 0xf7, 0x00, 0x45, 0x44, 0x43, 0x42, END);
+
+    test_assembly("test     $0x42,                      %al",        0xa8, 0x42, END);
+    test_assembly("test     $0x42,                      %ax",  0x66, 0xa9, 0x42, 0x00, END);
+    test_assembly("test     $0x42,                      %eax",       0xa9, 0x42, 0x00, 0x00, 0x00, END);
+    test_assembly("test     $0x42,                      %rax", 0x48, 0xa9, 0x42, 0x00, 0x00, 0x00, END);
 
     test_assembly("jb       foo", 0x0f, 0x82, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("jb       foo", 0x0f, 0x82, 0x00, 0x00, 0x00, 0x00, END);
