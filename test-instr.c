@@ -388,6 +388,43 @@ int main() {
     test_assembly("movzwl   %bx,                        %eax",       0x0f, 0xb7, 0xc3, END);
     test_assembly("movzwq   %bx,                        %rax", 0x48, 0x0f, 0xb7, 0xc3, END);
 
+    test_assembly("cmovne   %ax,                        %bx",  0x66, 0x0f, 0x45, 0xd8, END);
+    test_assembly("cmovne   %cx,                        %dx",  0x66, 0x0f, 0x45, 0xd1, END);
+    test_assembly("cmovne   %cx,                        %dx",  0x66, 0x0f, 0x45, 0xd1, END);
+    test_assembly("cmovne   %ecx,                       %edx",       0x0f, 0x45, 0xd1, END);
+    test_assembly("cmovne   %rcx,                       %rdx", 0x48, 0x0f, 0x45, 0xd1, END);
+
+    test_assembly("cmovo    %cx,                        %dx",  0x66, 0x0f, 0x40, 0xd1, END);
+    test_assembly("cmovno   %cx,                        %dx",  0x66, 0x0f, 0x41, 0xd1, END);
+    test_assembly("cmovb    %cx,                        %dx",  0x66, 0x0f, 0x42, 0xd1, END);
+    test_assembly("cmovb    %cx,                        %dx",  0x66, 0x0f, 0x42, 0xd1, END);
+    test_assembly("cmovb    %cx,                        %dx",  0x66, 0x0f, 0x42, 0xd1, END);
+    test_assembly("cmovae   %cx,                        %dx",  0x66, 0x0f, 0x43, 0xd1, END);
+    test_assembly("cmovae   %cx,                        %dx",  0x66, 0x0f, 0x43, 0xd1, END);
+    test_assembly("cmovae   %cx,                        %dx",  0x66, 0x0f, 0x43, 0xd1, END);
+    test_assembly("cmove    %cx,                        %dx",  0x66, 0x0f, 0x44, 0xd1, END);
+    test_assembly("cmove    %cx,                        %dx",  0x66, 0x0f, 0x44, 0xd1, END);
+    test_assembly("cmovne   %cx,                        %dx",  0x66, 0x0f, 0x45, 0xd1, END);
+    test_assembly("cmovne   %cx,                        %dx",  0x66, 0x0f, 0x45, 0xd1, END);
+    test_assembly("cmovbe   %cx,                        %dx",  0x66, 0x0f, 0x46, 0xd1, END);
+    test_assembly("cmovbe   %cx,                        %dx",  0x66, 0x0f, 0x46, 0xd1, END);
+    test_assembly("cmova    %cx,                        %dx",  0x66, 0x0f, 0x47, 0xd1, END);
+    test_assembly("cmova    %cx,                        %dx",  0x66, 0x0f, 0x47, 0xd1, END);
+    test_assembly("cmovs    %cx,                        %dx",  0x66, 0x0f, 0x48, 0xd1, END);
+    test_assembly("cmovns   %cx,                        %dx",  0x66, 0x0f, 0x49, 0xd1, END);
+    test_assembly("cmovp    %cx,                        %dx",  0x66, 0x0f, 0x4a, 0xd1, END);
+    test_assembly("cmovp    %cx,                        %dx",  0x66, 0x0f, 0x4a, 0xd1, END);
+    test_assembly("cmovnp   %cx,                        %dx",  0x66, 0x0f, 0x4b, 0xd1, END);
+    test_assembly("cmovnp   %cx,                        %dx",  0x66, 0x0f, 0x4b, 0xd1, END);
+    test_assembly("cmovl    %cx,                        %dx",  0x66, 0x0f, 0x4c, 0xd1, END);
+    test_assembly("cmovl    %cx,                        %dx",  0x66, 0x0f, 0x4c, 0xd1, END);
+    test_assembly("cmovge   %cx,                        %dx",  0x66, 0x0f, 0x4d, 0xd1, END);
+    test_assembly("cmovge   %cx,                        %dx",  0x66, 0x0f, 0x4d, 0xd1, END);
+    test_assembly("cmovle   %cx,                        %dx",  0x66, 0x0f, 0x4e, 0xd1, END);
+    test_assembly("cmovle   %cx,                        %dx",  0x66, 0x0f, 0x4e, 0xd1, END);
+    test_assembly("cmovg    %cx,                        %dx",  0x66, 0x0f, 0x4f, 0xd1, END);
+    test_assembly("cmovg    %cx,                        %dx",  0x66, 0x0f, 0x4f, 0xd1, END);
+
     test_assembly("cwtd", 0x66, 0x99, END);
     test_assembly("cltd",       0x99, END);
     test_assembly("cqto", 0x48, 0x99, END);
