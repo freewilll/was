@@ -19,7 +19,8 @@ typedef struct encoding {
     int size;               // Size of operation
     int rex_w;              // Need to set REX W bit
     int need_size16;        // Need to send 16-bit size override
-    char prefix;            // Optional prefix. Zero if no prefix
+    char prefix;            // Optional prefix
+    char ohf_prefix;        // Optional 0xf prefix. Zero if no prefix
     char primary_opcode;    // Primary opcode
     int has_mod_rm;         // Has Mod RM byte
     int mode;               // Mod RM mode
@@ -35,6 +36,7 @@ typedef struct encoding {
     long imm_or_mem;        // Immediate or memory bytes
     int imm_or_mem_size;    // Size of immediate or memory bytes
     int branch;             // Is branch instruction
+    int is_xmm;             // Is an XMM instruction
 } Encoding;
 
 // Print hex bytes for the encoded instructions
@@ -88,8 +90,8 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
 
     // Check for size mismatches when the size is specified in the mnemonic
     if (opcode_alias->size) {
-        if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect && OP_TO_SIZE(op1) != opcode_alias->size) error("Size mismatch with opcode");
-        if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect && OP_TO_SIZE(op2) != opcode_alias->size) error("Size mismatch with opcode");
+        if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect && OP_HAS_SIZE(op1) && OP_TO_SIZE(op1) != opcode_alias->size) error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op1), opcode_alias->size);
+        if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect && OP_HAS_SIZE(op2) && OP_TO_SIZE(op2) != opcode_alias->size) error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op2), opcode_alias->size);
     }
 
     return size;
@@ -101,7 +103,8 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
 
     // If the operation is an indirect, the size is the size of the entire operation,
     // determined by either another operand or the opcode alias.
-    int op_size = op->indirect ? size : OP_TO_SIZE(op);
+    int op_size = (op->indirect || !OP_HAS_SIZE(op)) ? size : OP_TO_SIZE(op);
+    // int op_size = op->indirect ? size : OP_TO_SIZE(op);
 
     // IMM08 operands are also treated as IMM16 since some opcodes don't
     // encode IMM08 values.
@@ -129,6 +132,12 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
     // Addressing mode I is immediate
     if (opcode_op->am == AM_J && !OP_TYPE_IS_MEM(op)) return 0;
 
+    // Addressing mode V is xmm register
+    if (opcode_op->am == AM_V && (!OP_TYPE_IS_REG(op) || op->indirect)) return 0;
+
+    // Addressing mode W means xmm register or memory
+    if (opcode_op->am == AM_W && !(OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op))) return 0;
+
     // Check for illegal sign extensions
     if (opcode_op->am == AM_I && opcode_op->sign_extended && op->type == IMM32 && op->imm_or_mem_value >= 0x80000000) return 0;
 
@@ -136,7 +145,7 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
 }
 
 // Encode non-indirect operand
-static void encode_direct(Encoding *enc) {
+static void encode_mod_rm_register(Encoding *enc) {
     enc->mode = 0b11;
 }
 
@@ -153,16 +162,37 @@ static int encode_displacement(Encoding *enc, Operand *op) {
     return 0;
 }
 
-// Encode an indirect operand
+// Encode an indirect operand or memory without register
 // See 1.4.1 of 24594.pdf:
 // AMD64 Architecture Programmer’s Manual Volume 3: General-Purpose and System Instructions
 // https://wiki.osdev.org/X86-64_Instruction_Encoding#32.2F64-bit_addressing
-static void encode_indirect(Encoding *enc, Operand *op) {
+static void encode_mod_rm_memory(Encoding *enc, Operand *op) {
     enc->rm = op->reg;
 
     int short_rm = enc->rm & 7;
 
-    if (enc->rm == REG_RIP) {
+    if (OP_TYPE_IS_MEM(op)) {
+        // 32 bit displacement without a register, converted from a memory operand
+        // This is pretty ugly. The memory/immediate emitting code and this code
+        // should play together a bit more nicely. Modifying the op here is also
+        // pretty nasty.
+
+        enc->rm = 4;
+        enc->has_sib = 1;
+        enc->scale = 0;
+        enc->index = 4;
+        enc->base = 5;
+
+        // Disable emitting of memory value
+        enc->imm_or_mem_size = 0;
+        op->displacement = op->imm_or_mem_value;
+        op->displacement_size = SIZE32;
+        encode_displacement(enc, op);
+        enc->mode = 0;
+        op->type &= ~MEM; // Ugly!
+    }
+
+    else if (enc->rm == REG_RIP) {
         // Must have 32 bit displacement
         enc->rm = 5;
         encode_displacement(enc, op);
@@ -225,16 +255,16 @@ static void encode_indirect(Encoding *enc, Operand *op) {
 }
 
 // Determine the size of an immediate or memory operand.
-static void make_imm_or_memory_size(Encoding *enc, Opcode *opcode, Operand *op1) {
+static void make_imm_or_memory_size(Encoding *enc, OpcodeOp *opcode_op, Operand *op) {
     int size = enc->size;
 
-    int value_size = opcode->op1.uses_op_size
+    int value_size = opcode_op->uses_op_size
         ? size == SIZE64 ? SIZE32: size // 16 or 32 bit
-        : OP_TO_SIZE(op1); // Dubious. Should the instruction should determine the size of the immidate?
+        : OP_TO_SIZE(op); // Dubious. Should the instruction should determine the size of the immediate?
 
-    if (size == SIZE64 && opcode->op1.can_be_imm64) value_size = SIZE64;
+    if (size == SIZE64 && opcode_op->can_be_imm64) value_size = SIZE64;
 
-    enc->imm_or_mem = op1->imm_or_mem_value;
+    enc->imm_or_mem = op->imm_or_mem_value;
     enc->imm_or_mem_size = value_size;
 }
 
@@ -248,11 +278,13 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     enc.has_mod_rm = (opcode->needs_mod_rm || opcode->opcd_ext != -1);
     enc.branch = opcode->branch;
     enc.prefix = opcode->prefix;
-    enc.need_size16 = enc.size == SIZE16;
+    enc.ohf_prefix = opcode->ohf_prefix;
+    enc.is_xmm = (op1 && OP_IS_XMM(op1)) || (op2 && OP_IS_XMM(op2));
+    enc.need_size16 = (enc.size == SIZE16 && !enc.is_xmm);
 
     int primary_opcode = opcode->primary_opcode;
 
-    Operand *indirect_op = NULL;
+    Operand *memory_op = NULL;
 
     // Determing modrm reg and rm values
     if (opcode_arg_count == 0) {
@@ -261,7 +293,9 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
 
     else if (opcode_arg_count == 1) {
              if (single_opcode->am == AM_G) enc.reg = op1->reg;
+        else if (single_opcode->am == AM_V) enc.reg = op1->reg;
         else if (single_opcode->am == AM_E) enc.reg = op1->reg;
+        else if (single_opcode->am == AM_W) enc.reg = op1->reg;
 
         if (opcode->opcd_ext != -1) {
             enc.rm = enc.reg;
@@ -277,16 +311,18 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     }
     else if (opcode_arg_count == 2) {
              if (opcode->op1.am == AM_G) enc.reg = op1->reg;
+        else if (opcode->op1.am == AM_V) enc.reg = op1->reg;
         else if (opcode->op2.am == AM_G) enc.reg = op2->reg;
+        else if (opcode->op2.am == AM_V) enc.reg = op2->reg;
         else if (opcode->opcd_ext != -1) enc.reg = opcode->opcd_ext;
 
-        if (opcode->op1.am == AM_E || opcode->op1.am == AM_M) {
+        if (opcode->op1.am == AM_E || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
             enc.rm = op1->reg;
-            if (op1->indirect) indirect_op = op1;
+            if (op1->indirect || OP_TYPE_IS_MEM(op1)) memory_op = op1;
         }
-        else if (opcode->op2.am == AM_E || opcode->op2.am == AM_M) {
+        else if (opcode->op2.am == AM_E || opcode->op2.am == AM_W || opcode->op2.am == AM_M) {
             enc.rm = op2->reg;
-            if (op2->indirect) indirect_op = op2;
+            if (op2->indirect || OP_TYPE_IS_MEM(op2)) memory_op = op2;
         }
 
         if (op2 && opcode->op2.am == AM_Z) {
@@ -299,17 +335,20 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
 
     // Figure out mod/RM SIB and displacement
     if (opcode->needs_mod_rm || opcode->opcd_ext != -1) {
-        if (!indirect_op)
-            encode_direct(&enc);
+        if (memory_op)
+            encode_mod_rm_memory(&enc, memory_op);
         else
-            encode_indirect(&enc, indirect_op);
+            encode_mod_rm_register(&enc);
     }
 
     enc.primary_opcode = primary_opcode;
 
     // Store immediate/memory details
     if (op1 && (OP_TYPE_IS_IMM(op1) || OP_TYPE_IS_MEM(op1)))
-        make_imm_or_memory_size(&enc, opcode, op1);
+        make_imm_or_memory_size(&enc, &opcode->op1, op1);
+
+    if (op2 && (OP_TYPE_IS_IMM(op2) || OP_TYPE_IS_MEM(op2)))
+        make_imm_or_memory_size(&enc, &opcode->op2, op2);
 
     return enc;
 }
@@ -325,6 +364,7 @@ static int encoding_size(Encoding *enc) {
         needs_rex_prefix(enc) +     // REX prefix
         enc->need_size16 +          // 16-bit size override
         (enc->prefix != 0) +        // Prefix
+        (enc->ohf_prefix != 0) +    // 0x0f Prefix
         1 +                         // Primary opcode
         enc->has_mod_rm +           // Mod RM byte
         enc->has_sib +              // SIB byte
@@ -362,7 +402,7 @@ static void emit_sib(Instructions *instr, Encoding *enc) {
 
     if (enc->mode == 0b00) {
         if (short_base == 5) {
-            emit_sib_byte(0, 0, enc->base);
+            emit_sib_byte(enc->scale, enc->index, enc->base);
 
             if (enc->base == 5) {
                 enc->has_displacement = 1;
@@ -408,15 +448,17 @@ static void emit_imm_or_memory(Instructions *instr, Encoding *enc) {
     int value_size = enc->imm_or_mem_size;
     instr->relocation_offset = instr->size;
     instr->relocation_size = value_size;
-    emit_value(instr, value_size, enc->imm_or_mem);
+    long value = enc->branch ? 0 : enc->imm_or_mem;
+    emit_value(instr, value_size, value);
 }
 
 static void emit_instructions(Instructions *instr, Encoding *enc) {
     memset(instr, 0, sizeof(Instructions));
 
     if (enc->need_size16) emit_uint8(instr, OPCODE_SET_SIZE16);
-    emit_REX_prefix(instr, enc);
     if (enc->prefix) emit_uint8(instr, enc->prefix);
+    emit_REX_prefix(instr, enc);
+    if (enc->ohf_prefix) emit_uint8(instr, enc->ohf_prefix);
     emit_uint8(instr, enc->primary_opcode);
     if (enc->has_mod_rm) emit_modrm(instr, enc);
     if (enc->has_sib) emit_sib(instr, enc);

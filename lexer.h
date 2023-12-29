@@ -47,6 +47,7 @@ enum {
     TOK_DOLLAR,
 };
 
+// The order is used for size determination
 #define REG_BYTE 0x00
 #define REG_WORD 0x10
 #define REG_LONG 0x20

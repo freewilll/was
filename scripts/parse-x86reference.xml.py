@@ -180,13 +180,15 @@ OPCODE_ALIASES = {
     **make_sized_aliases("cmovng", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("cmovnle", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("cmovg", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
+    "movss": LongOpCode(mnem="movss", size=Size.SIZE16),
+    "movsd": LongOpCode(mnem="movsd", size=Size.SIZE32),
 }
 
 
 class AddressingMode(Enum):
     C = "C"  # The reg field of the ModR/M byte selects a control register
     D = "D"  # The reg field of the ModR/M byte selects a debug register
-    E = "E"  # Uses ModR/M byte
+    E = "E"  # The operand is either a general-purpose register or a memory address.
     G = "G"  # The reg field of the ModR/M byte selects a general register
     I = "I"  # Immediate
     J = "J"  # RIP relative
@@ -196,6 +198,8 @@ class AddressingMode(Enum):
     R = "R"  # Not used
     S = "S"  # Not used
     T = "T"  # The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
+    V = "V"  # The reg field of the ModR/M byte selects a 128-bit XMM register.
+    W = "W"  # The operand is either a 128-bit XMM register or a memory address.
     Z = "Z"  # The three least-significant bits of the opcode byte selects a general-purpose register
 
 
@@ -206,6 +210,8 @@ class OperandType(Enum):
     d = "d"  #  Doubleword
     dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
     q = "q"  # Quad
+    ss = "ss"  #  Scalar element of a 128-bit packed single-precision floating data.
+    sd = "sd"  #  Scalar element of a 128-bit packed double-precision floating data.
     v = "v"  #   Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
     vds = "vds"  # Word or doubleword, depending on operand-size attribute, or doubleword, sign-extended to 64 bits for 64-bit operand size.
     vq = "vq"  # Quadword (default) or word if operand-size prefix is used (for example, PUSH (50)).
@@ -220,6 +226,8 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.bss: set([Size.SIZE08]),
     OperandType.d: set([Size.SIZE32]),
     OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
+    OperandType.ss: set([Size.SIZE16]),
+    OperandType.sd: set([Size.SIZE32]),
     OperandType.q: set([Size.SIZE64]),
     OperandType.v: set([Size.SIZE16, Size.SIZE32]),
     OperandType.vds: set([Size.SIZE16, Size.SIZE32]),
@@ -293,7 +301,8 @@ class WasOperand:
 @dataclass
 class WasOpcode:
     mnem: str
-    prefix: int
+    prefix: int  # prefix
+    ohf_prefix: int  # 0x0f prefix
     value: int
     opcd_ext: int
     needs_mod_rm: int
@@ -318,7 +327,7 @@ class WasOpcode:
         op2_amt = f"{self.op2.am.value if self.op2.am else ''}{self.op2.type.value if self.op2.type else ''}"
 
         acc = "a" if self.acc else " "
-        return f"{self.prefix if self.prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '}{'c' if self.conver else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {op1_amt:5s} {op2_amt:5s} {self.note}"
+        return f"{self.prefix if self.prefix != '00' else '  '} {self.ohf_prefix if self.ohf_prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '}{'c' if self.conver else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {op1_amt:5s} {op2_amt:5s} {self.note}"
 
 
 OPCODES = {opcode.mnem for opcode in OPCODE_ALIASES.values()}
@@ -382,7 +391,7 @@ def parse_operands(syntax) -> Tuple[WasOperand, WasOperand]:
     return op1, op2
 
 
-def parse_pri_opcd(one_byte, prefix):
+def parse_pri_opcd(one_byte, ohf_prefix):
     was_opcodes = []
 
     for pri_opcd in one_byte.find_all("pri_opcd"):
@@ -392,6 +401,12 @@ def parse_pri_opcd(one_byte, prefix):
         value = pri_opcd["value"].lower()
 
         for entry in pri_opcd.find_all("entry"):
+            pref = getattr(entry, "pref")
+            if pref is not None:
+                pref = pref.text.lower()
+            else:
+                pref = "00"
+
             note = entry.note.brief.text if entry.note else None
 
             attr = entry.get("attr")
@@ -400,7 +415,6 @@ def parse_pri_opcd(one_byte, prefix):
             op_size = int(entry.get("op_size", -1))
             direction = int(entry.get("direction", -1))
 
-            # print(note)
             if note is not None and "Invalid Instruction in 64-Bit Mode" in note:
                 found_invalid_flag = True
                 continue
@@ -459,7 +473,8 @@ def parse_pri_opcd(one_byte, prefix):
 
                 was_opcode = WasOpcode(
                     mnem=mnem,
-                    prefix=prefix,
+                    prefix=pref,
+                    ohf_prefix=ohf_prefix,
                     value=value,
                     opcd_ext=opcd_ext if opcd_ext is not None else -1,
                     needs_mod_rm=1 if r else 0,

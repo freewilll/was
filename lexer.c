@@ -195,7 +195,7 @@ static void lex_string_literal(void) {
 static void parse_register(void) {
     char name[5];
 
-    #define MAX_REGISTER_SIZE 4
+    #define MAX_REGISTER_SIZE 5
         int j = 0;
         while (((*ip >= 'a' && *ip <= 'z') || (*ip >= '0' && *ip <= '9')) && ip < input_end) {
             if (j == MAX_REGISTER_SIZE) panic("Exceeded maximum register size %d", MAX_REGISTER_SIZE);

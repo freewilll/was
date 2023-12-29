@@ -148,6 +148,8 @@ static void parse_register(Operand *op) {
           cur_register < REG_WORD ? REG08
         : cur_register < REG_LONG ? REG16
         : cur_register < REG_QUAD ? REG32
+        : cur_register < REG_XMM  ? REG64
+        : cur_register < REG_RIP  ? REGXM
                                   : REG64;
 
     next();
@@ -269,6 +271,9 @@ static void parse_operand(Operand *op) {
             else if (op->displacement_size == SIZE64)
                 error("Invalid operand size");
         }
+
+        else
+            op->imm_or_mem_value = cur_long;
     }
 
     else if (cur_token == TOK_LPAREN) {

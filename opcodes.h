@@ -14,7 +14,10 @@
 #define AM_M 'M' // Operand is memory
 #define AM_O 'O' // Offset
 #define AM_S 'S' // Not used
+#define AM_V 'V' // Operand is a 128-bit XMM register..          Uses ModR/M byte
+#define AM_W 'W' // Operand is a 128-bit XMM register or memory. Uses ModR/M byte
 #define AM_Z 'Z' // The three least-significant bits of the opcode byte selects a general-purpose register
+
 
 typedef struct opcode_op {
     int am;
@@ -28,17 +31,18 @@ typedef struct opcode_op {
 
 typedef struct opcode {
     char *mnem;
-    uint8_t prefix;
+    uint8_t prefix;             // Optional prefix
+    uint8_t ohf_prefix;         // Optional 0xf prefix
     uint8_t primary_opcode;
-    int opcd_ext;       // -1 if not used
+    int opcd_ext;               // -1 if not used
     int needs_mod_rm;
     OpcodeOp op1;
     OpcodeOp op2;
     char op_size;
     char direction;
-    char acc; // Accumulator
-    char branch; // Is a branch instruction
-    char conver; // Is a type conversion
+    char acc;                   // Accumulator
+    char branch;                // Is a branch instruction
+    char conver;                // Is a type conversion
 } Opcode;
 
 typedef struct opcode_alias {

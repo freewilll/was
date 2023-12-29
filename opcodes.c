@@ -28,9 +28,18 @@ void print_opcode(Opcode *opcode) {
     else
         prefix = "    ";
 
-    printf("  %s  %s 0x%02x %c %c %c %s %c %c%s  %c%s\n",
+    char *ohf_prefix;
+    if (opcode->ohf_prefix) {
+        ohf_prefix = malloc(5);
+        sprintf(ohf_prefix, "0x%02x", opcode->ohf_prefix);
+    }
+    else
+        ohf_prefix = "    ";
+
+    printf("  %s  %s %s 0x%02x %c %c %c %s %c %c%s  %c%s\n",
         opcode->mnem,
         prefix,
+        ohf_prefix,
         opcode->primary_opcode,
         direction,
         op_size,

@@ -12,20 +12,22 @@
 #define REX_R 4 // The high bit of modrm reg
 #define REX_W 8 // Set to 1 when 64 bit operands are used
 
-#define SIZE08 1
-#define SIZE16 2
-#define SIZE32 4
-#define SIZE64 8
+#define SIZE08 0x01
+#define SIZE16 0x02
+#define SIZE32 0x04
+#define SIZE64 0x08
+#define SIZEXM 0x10 // A special size that means "unknown". Used for XMM registers where the opcode determines the size
 
-#define REG 0x10
-#define IMM 0x20
-#define MEM 0x40
+#define REG 0x20
+#define IMM 0x40
+#define MEM 0x80
 
 typedef enum operand_type {
     REG08 =  SIZE08 | REG,
     REG16 =  SIZE16 | REG,
     REG32 =  SIZE32 | REG,
     REG64 =  SIZE64 | REG,
+    REGXM =  SIZEXM | REG,
     IMM08 =  SIZE08 | IMM,
     IMM16 =  SIZE16 | IMM,
     IMM32 =  SIZE32 | IMM,
@@ -40,6 +42,8 @@ typedef enum operand_type {
 #define OP_TYPE_IS_IMM(op) (((op)->type & IMM) == IMM)
 #define OP_TYPE_IS_MEM(op) (((op)->type & MEM) == MEM)
 #define OP_TO_SIZE(op) ((op)->type & ~(IMM | REG | MEM))
+#define OP_HAS_SIZE(op) (!((op)->type & (SIZEXM | MEM)))
+#define OP_IS_XMM(op) ((op)->type & SIZEXM)
 
 typedef struct operand {
     OperandType type;           // Operand type

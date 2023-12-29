@@ -8,6 +8,7 @@ Opcode opcodes[] = {
         "add",
         0x00,
         0x00,
+        0x00,
         -1,
         1,
         {'G',SIZE08,0,0,0,0,"b"},
@@ -20,6 +21,7 @@ Opcode opcodes[] = {
     },
     {
         "add",
+        0x00,
         0x00,
         0x01,
         -1,
@@ -35,6 +37,7 @@ Opcode opcodes[] = {
     {
         "add",
         0x00,
+        0x00,
         0x02,
         -1,
         1,
@@ -48,6 +51,7 @@ Opcode opcodes[] = {
     },
     {
         "add",
+        0x00,
         0x00,
         0x03,
         -1,
@@ -63,6 +67,7 @@ Opcode opcodes[] = {
     {
         "add",
         0x00,
+        0x00,
         0x04,
         -1,
         0,
@@ -76,6 +81,7 @@ Opcode opcodes[] = {
     },
     {
         "add",
+        0x00,
         0x00,
         0x05,
         -1,
@@ -91,6 +97,7 @@ Opcode opcodes[] = {
     {
         "or",
         0x00,
+        0x00,
         0x08,
         -1,
         1,
@@ -104,6 +111,7 @@ Opcode opcodes[] = {
     },
     {
         "or",
+        0x00,
         0x00,
         0x09,
         -1,
@@ -119,6 +127,7 @@ Opcode opcodes[] = {
     {
         "or",
         0x00,
+        0x00,
         0x0a,
         -1,
         1,
@@ -132,6 +141,7 @@ Opcode opcodes[] = {
     },
     {
         "or",
+        0x00,
         0x00,
         0x0b,
         -1,
@@ -147,6 +157,7 @@ Opcode opcodes[] = {
     {
         "or",
         0x00,
+        0x00,
         0x0c,
         -1,
         0,
@@ -160,6 +171,7 @@ Opcode opcodes[] = {
     },
     {
         "or",
+        0x00,
         0x00,
         0x0d,
         -1,
@@ -175,6 +187,7 @@ Opcode opcodes[] = {
     {
         "pop",
         0x00,
+        0x00,
         0x0f,
         -1,
         0,
@@ -188,6 +201,7 @@ Opcode opcodes[] = {
     },
     {
         "and",
+        0x00,
         0x00,
         0x20,
         -1,
@@ -203,6 +217,7 @@ Opcode opcodes[] = {
     {
         "and",
         0x00,
+        0x00,
         0x21,
         -1,
         1,
@@ -216,6 +231,7 @@ Opcode opcodes[] = {
     },
     {
         "and",
+        0x00,
         0x00,
         0x22,
         -1,
@@ -231,6 +247,7 @@ Opcode opcodes[] = {
     {
         "and",
         0x00,
+        0x00,
         0x23,
         -1,
         1,
@@ -244,6 +261,7 @@ Opcode opcodes[] = {
     },
     {
         "and",
+        0x00,
         0x00,
         0x24,
         -1,
@@ -259,6 +277,7 @@ Opcode opcodes[] = {
     {
         "and",
         0x00,
+        0x00,
         0x25,
         -1,
         0,
@@ -272,6 +291,7 @@ Opcode opcodes[] = {
     },
     {
         "sub",
+        0x00,
         0x00,
         0x28,
         -1,
@@ -287,6 +307,7 @@ Opcode opcodes[] = {
     {
         "sub",
         0x00,
+        0x00,
         0x29,
         -1,
         1,
@@ -300,6 +321,7 @@ Opcode opcodes[] = {
     },
     {
         "sub",
+        0x00,
         0x00,
         0x2a,
         -1,
@@ -315,6 +337,7 @@ Opcode opcodes[] = {
     {
         "sub",
         0x00,
+        0x00,
         0x2b,
         -1,
         1,
@@ -328,6 +351,7 @@ Opcode opcodes[] = {
     },
     {
         "sub",
+        0x00,
         0x00,
         0x2c,
         -1,
@@ -343,6 +367,7 @@ Opcode opcodes[] = {
     {
         "sub",
         0x00,
+        0x00,
         0x2d,
         -1,
         0,
@@ -356,6 +381,7 @@ Opcode opcodes[] = {
     },
     {
         "xor",
+        0x00,
         0x00,
         0x30,
         -1,
@@ -371,6 +397,7 @@ Opcode opcodes[] = {
     {
         "xor",
         0x00,
+        0x00,
         0x31,
         -1,
         1,
@@ -384,6 +411,7 @@ Opcode opcodes[] = {
     },
     {
         "xor",
+        0x00,
         0x00,
         0x32,
         -1,
@@ -399,6 +427,7 @@ Opcode opcodes[] = {
     {
         "xor",
         0x00,
+        0x00,
         0x33,
         -1,
         1,
@@ -412,6 +441,7 @@ Opcode opcodes[] = {
     },
     {
         "xor",
+        0x00,
         0x00,
         0x34,
         -1,
@@ -427,6 +457,7 @@ Opcode opcodes[] = {
     {
         "xor",
         0x00,
+        0x00,
         0x35,
         -1,
         0,
@@ -440,6 +471,7 @@ Opcode opcodes[] = {
     },
     {
         "cmp",
+        0x00,
         0x00,
         0x38,
         -1,
@@ -455,6 +487,7 @@ Opcode opcodes[] = {
     {
         "cmp",
         0x00,
+        0x00,
         0x39,
         -1,
         1,
@@ -468,6 +501,7 @@ Opcode opcodes[] = {
     },
     {
         "cmp",
+        0x00,
         0x00,
         0x3a,
         -1,
@@ -483,6 +517,7 @@ Opcode opcodes[] = {
     {
         "cmp",
         0x00,
+        0x00,
         0x3b,
         -1,
         1,
@@ -496,6 +531,7 @@ Opcode opcodes[] = {
     },
     {
         "cmp",
+        0x00,
         0x00,
         0x3c,
         -1,
@@ -511,6 +547,7 @@ Opcode opcodes[] = {
     {
         "cmp",
         0x00,
+        0x00,
         0x3d,
         -1,
         0,
@@ -525,6 +562,7 @@ Opcode opcodes[] = {
     {
         "push",
         0x00,
+        0x00,
         0x50,
         -1,
         0,
@@ -538,6 +576,7 @@ Opcode opcodes[] = {
     },
     {
         "push",
+        0x00,
         0x00,
         0x50,
         -1,
@@ -553,6 +592,7 @@ Opcode opcodes[] = {
     {
         "pop",
         0x00,
+        0x00,
         0x58,
         -1,
         0,
@@ -566,6 +606,7 @@ Opcode opcodes[] = {
     },
     {
         "pop",
+        0x00,
         0x00,
         0x58,
         -1,
@@ -581,6 +622,7 @@ Opcode opcodes[] = {
     {
         "movsxd",
         0x00,
+        0x00,
         0x63,
         -1,
         1,
@@ -594,6 +636,7 @@ Opcode opcodes[] = {
     },
     {
         "push",
+        0x00,
         0x00,
         0x68,
         -1,
@@ -609,6 +652,7 @@ Opcode opcodes[] = {
     {
         "imul",
         0x00,
+        0x00,
         0x69,
         -1,
         1,
@@ -622,6 +666,7 @@ Opcode opcodes[] = {
     },
     {
         "push",
+        0x00,
         0x00,
         0x6a,
         -1,
@@ -637,6 +682,7 @@ Opcode opcodes[] = {
     {
         "imul",
         0x00,
+        0x00,
         0x6b,
         -1,
         1,
@@ -650,6 +696,7 @@ Opcode opcodes[] = {
     },
     {
         "jo",
+        0x00,
         0x00,
         0x70,
         -1,
@@ -665,6 +712,7 @@ Opcode opcodes[] = {
     {
         "jno",
         0x00,
+        0x00,
         0x71,
         -1,
         0,
@@ -678,6 +726,7 @@ Opcode opcodes[] = {
     },
     {
         "jb",
+        0x00,
         0x00,
         0x72,
         -1,
@@ -693,6 +742,7 @@ Opcode opcodes[] = {
     {
         "jnae",
         0x00,
+        0x00,
         0x72,
         -1,
         0,
@@ -706,6 +756,7 @@ Opcode opcodes[] = {
     },
     {
         "jc",
+        0x00,
         0x00,
         0x72,
         -1,
@@ -721,6 +772,7 @@ Opcode opcodes[] = {
     {
         "jnb",
         0x00,
+        0x00,
         0x73,
         -1,
         0,
@@ -734,6 +786,7 @@ Opcode opcodes[] = {
     },
     {
         "jae",
+        0x00,
         0x00,
         0x73,
         -1,
@@ -749,6 +802,7 @@ Opcode opcodes[] = {
     {
         "jnc",
         0x00,
+        0x00,
         0x73,
         -1,
         0,
@@ -762,6 +816,7 @@ Opcode opcodes[] = {
     },
     {
         "jz",
+        0x00,
         0x00,
         0x74,
         -1,
@@ -777,6 +832,7 @@ Opcode opcodes[] = {
     {
         "je",
         0x00,
+        0x00,
         0x74,
         -1,
         0,
@@ -790,6 +846,7 @@ Opcode opcodes[] = {
     },
     {
         "jnz",
+        0x00,
         0x00,
         0x75,
         -1,
@@ -805,6 +862,7 @@ Opcode opcodes[] = {
     {
         "jne",
         0x00,
+        0x00,
         0x75,
         -1,
         0,
@@ -818,6 +876,7 @@ Opcode opcodes[] = {
     },
     {
         "jbe",
+        0x00,
         0x00,
         0x76,
         -1,
@@ -833,6 +892,7 @@ Opcode opcodes[] = {
     {
         "jna",
         0x00,
+        0x00,
         0x76,
         -1,
         0,
@@ -846,6 +906,7 @@ Opcode opcodes[] = {
     },
     {
         "jnbe",
+        0x00,
         0x00,
         0x77,
         -1,
@@ -861,6 +922,7 @@ Opcode opcodes[] = {
     {
         "ja",
         0x00,
+        0x00,
         0x77,
         -1,
         0,
@@ -874,6 +936,7 @@ Opcode opcodes[] = {
     },
     {
         "js",
+        0x00,
         0x00,
         0x78,
         -1,
@@ -889,6 +952,7 @@ Opcode opcodes[] = {
     {
         "jns",
         0x00,
+        0x00,
         0x79,
         -1,
         0,
@@ -902,6 +966,7 @@ Opcode opcodes[] = {
     },
     {
         "jp",
+        0x00,
         0x00,
         0x7a,
         -1,
@@ -917,6 +982,7 @@ Opcode opcodes[] = {
     {
         "jnp",
         0x00,
+        0x00,
         0x7b,
         -1,
         0,
@@ -930,6 +996,7 @@ Opcode opcodes[] = {
     },
     {
         "jl",
+        0x00,
         0x00,
         0x7c,
         -1,
@@ -945,6 +1012,7 @@ Opcode opcodes[] = {
     {
         "jnge",
         0x00,
+        0x00,
         0x7c,
         -1,
         0,
@@ -958,6 +1026,7 @@ Opcode opcodes[] = {
     },
     {
         "jnl",
+        0x00,
         0x00,
         0x7d,
         -1,
@@ -973,6 +1042,7 @@ Opcode opcodes[] = {
     {
         "jge",
         0x00,
+        0x00,
         0x7d,
         -1,
         0,
@@ -986,6 +1056,7 @@ Opcode opcodes[] = {
     },
     {
         "jle",
+        0x00,
         0x00,
         0x7e,
         -1,
@@ -1001,6 +1072,7 @@ Opcode opcodes[] = {
     {
         "jng",
         0x00,
+        0x00,
         0x7e,
         -1,
         0,
@@ -1014,6 +1086,7 @@ Opcode opcodes[] = {
     },
     {
         "jnle",
+        0x00,
         0x00,
         0x7f,
         -1,
@@ -1029,6 +1102,7 @@ Opcode opcodes[] = {
     {
         "jg",
         0x00,
+        0x00,
         0x7f,
         -1,
         0,
@@ -1043,6 +1117,7 @@ Opcode opcodes[] = {
     {
         "add",
         0x00,
+        0x00,
         0x80,
         0,
         0,
@@ -1056,6 +1131,7 @@ Opcode opcodes[] = {
     },
     {
         "or",
+        0x00,
         0x00,
         0x80,
         1,
@@ -1071,6 +1147,7 @@ Opcode opcodes[] = {
     {
         "and",
         0x00,
+        0x00,
         0x80,
         4,
         0,
@@ -1084,6 +1161,7 @@ Opcode opcodes[] = {
     },
     {
         "sub",
+        0x00,
         0x00,
         0x80,
         5,
@@ -1099,6 +1177,7 @@ Opcode opcodes[] = {
     {
         "xor",
         0x00,
+        0x00,
         0x80,
         6,
         0,
@@ -1112,6 +1191,7 @@ Opcode opcodes[] = {
     },
     {
         "cmp",
+        0x00,
         0x00,
         0x80,
         7,
@@ -1127,6 +1207,7 @@ Opcode opcodes[] = {
     {
         "add",
         0x00,
+        0x00,
         0x81,
         0,
         0,
@@ -1140,6 +1221,7 @@ Opcode opcodes[] = {
     },
     {
         "or",
+        0x00,
         0x00,
         0x81,
         1,
@@ -1155,6 +1237,7 @@ Opcode opcodes[] = {
     {
         "and",
         0x00,
+        0x00,
         0x81,
         4,
         0,
@@ -1168,6 +1251,7 @@ Opcode opcodes[] = {
     },
     {
         "sub",
+        0x00,
         0x00,
         0x81,
         5,
@@ -1183,6 +1267,7 @@ Opcode opcodes[] = {
     {
         "xor",
         0x00,
+        0x00,
         0x81,
         6,
         0,
@@ -1196,6 +1281,7 @@ Opcode opcodes[] = {
     },
     {
         "cmp",
+        0x00,
         0x00,
         0x81,
         7,
@@ -1211,6 +1297,7 @@ Opcode opcodes[] = {
     {
         "add",
         0x00,
+        0x00,
         0x83,
         0,
         0,
@@ -1224,6 +1311,7 @@ Opcode opcodes[] = {
     },
     {
         "or",
+        0x00,
         0x00,
         0x83,
         1,
@@ -1239,6 +1327,7 @@ Opcode opcodes[] = {
     {
         "and",
         0x00,
+        0x00,
         0x83,
         4,
         0,
@@ -1252,6 +1341,7 @@ Opcode opcodes[] = {
     },
     {
         "sub",
+        0x00,
         0x00,
         0x83,
         5,
@@ -1267,6 +1357,7 @@ Opcode opcodes[] = {
     {
         "xor",
         0x00,
+        0x00,
         0x83,
         6,
         0,
@@ -1280,6 +1371,7 @@ Opcode opcodes[] = {
     },
     {
         "cmp",
+        0x00,
         0x00,
         0x83,
         7,
@@ -1294,6 +1386,7 @@ Opcode opcodes[] = {
     },
     {
         "test",
+        0x00,
         0x00,
         0x84,
         -1,
@@ -1309,6 +1402,7 @@ Opcode opcodes[] = {
     {
         "test",
         0x00,
+        0x00,
         0x85,
         -1,
         1,
@@ -1322,6 +1416,7 @@ Opcode opcodes[] = {
     },
     {
         "mov",
+        0x00,
         0x00,
         0x88,
         -1,
@@ -1337,6 +1432,7 @@ Opcode opcodes[] = {
     {
         "mov",
         0x00,
+        0x00,
         0x89,
         -1,
         1,
@@ -1351,6 +1447,7 @@ Opcode opcodes[] = {
     {
         "mov",
         0x00,
+        0x00,
         0x8a,
         -1,
         1,
@@ -1364,6 +1461,7 @@ Opcode opcodes[] = {
     },
     {
         "mov",
+        0x00,
         0x00,
         0x8b,
         -1,
@@ -1379,6 +1477,7 @@ Opcode opcodes[] = {
     {
         "lea",
         0x00,
+        0x00,
         0x8d,
         -1,
         1,
@@ -1392,6 +1491,7 @@ Opcode opcodes[] = {
     },
     {
         "pop",
+        0x00,
         0x00,
         0x8f,
         0,
@@ -1407,6 +1507,7 @@ Opcode opcodes[] = {
     {
         "pop",
         0x00,
+        0x00,
         0x8f,
         0,
         0,
@@ -1421,6 +1522,7 @@ Opcode opcodes[] = {
     {
         "cwd",
         0x00,
+        0x00,
         0x99,
         -1,
         0,
@@ -1434,6 +1536,7 @@ Opcode opcodes[] = {
     },
     {
         "cdq",
+        0x00,
         0x00,
         0x99,
         -1,
@@ -1449,6 +1552,7 @@ Opcode opcodes[] = {
     {
         "cwd",
         0x00,
+        0x00,
         0x99,
         -1,
         0,
@@ -1462,6 +1566,7 @@ Opcode opcodes[] = {
     },
     {
         "cdq",
+        0x00,
         0x00,
         0x99,
         -1,
@@ -1477,6 +1582,7 @@ Opcode opcodes[] = {
     {
         "cqo",
         0x00,
+        0x00,
         0x99,
         -1,
         0,
@@ -1489,7 +1595,38 @@ Opcode opcodes[] = {
         1
     },
     {
+        "movsd",
+        0x00,
+        0x00,
+        0xa5,
+        -1,
+        0,
+        {0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0},
+        1,
+        -1,
+        0,
+        0,
+        0
+    },
+    {
+        "movsd",
+        0x00,
+        0x00,
+        0xa5,
+        -1,
+        0,
+        {0,0,0,0,0,0,0},
+        {0,0,0,0,0,0,0},
+        1,
+        -1,
+        0,
+        0,
+        0
+    },
+    {
         "test",
+        0x00,
         0x00,
         0xa8,
         -1,
@@ -1504,6 +1641,7 @@ Opcode opcodes[] = {
     },
     {
         "test",
+        0x00,
         0x00,
         0xa9,
         -1,
@@ -1519,6 +1657,7 @@ Opcode opcodes[] = {
     {
         "mov",
         0x00,
+        0x00,
         0xb0,
         -1,
         0,
@@ -1532,6 +1671,7 @@ Opcode opcodes[] = {
     },
     {
         "mov",
+        0x00,
         0x00,
         0xb8,
         -1,
@@ -1547,6 +1687,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xc0,
         4,
         0,
@@ -1560,6 +1701,7 @@ Opcode opcodes[] = {
     },
     {
         "shr",
+        0x00,
         0x00,
         0xc0,
         5,
@@ -1575,6 +1717,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xc0,
         6,
         0,
@@ -1588,6 +1731,7 @@ Opcode opcodes[] = {
     },
     {
         "sar",
+        0x00,
         0x00,
         0xc0,
         7,
@@ -1603,6 +1747,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xc1,
         4,
         0,
@@ -1616,6 +1761,7 @@ Opcode opcodes[] = {
     },
     {
         "shr",
+        0x00,
         0x00,
         0xc1,
         5,
@@ -1631,6 +1777,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xc1,
         6,
         0,
@@ -1644,6 +1791,7 @@ Opcode opcodes[] = {
     },
     {
         "sar",
+        0x00,
         0x00,
         0xc1,
         7,
@@ -1658,6 +1806,7 @@ Opcode opcodes[] = {
     },
     {
         "retn",
+        0x00,
         0x00,
         0xc2,
         -1,
@@ -1673,6 +1822,7 @@ Opcode opcodes[] = {
     {
         "retn",
         0x00,
+        0x00,
         0xc3,
         -1,
         0,
@@ -1686,6 +1836,7 @@ Opcode opcodes[] = {
     },
     {
         "mov",
+        0x00,
         0x00,
         0xc6,
         0,
@@ -1701,6 +1852,7 @@ Opcode opcodes[] = {
     {
         "mov",
         0x00,
+        0x00,
         0xc7,
         0,
         0,
@@ -1715,6 +1867,7 @@ Opcode opcodes[] = {
     {
         "leave",
         0x00,
+        0x00,
         0xc9,
         -1,
         0,
@@ -1729,6 +1882,7 @@ Opcode opcodes[] = {
     {
         "leave",
         0x00,
+        0x00,
         0xc9,
         -1,
         0,
@@ -1743,6 +1897,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd0,
         4,
         0,
@@ -1756,6 +1911,7 @@ Opcode opcodes[] = {
     },
     {
         "shr",
+        0x00,
         0x00,
         0xd0,
         5,
@@ -1771,6 +1927,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd0,
         6,
         0,
@@ -1784,6 +1941,7 @@ Opcode opcodes[] = {
     },
     {
         "sar",
+        0x00,
         0x00,
         0xd0,
         7,
@@ -1799,6 +1957,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd1,
         4,
         0,
@@ -1812,6 +1971,7 @@ Opcode opcodes[] = {
     },
     {
         "shr",
+        0x00,
         0x00,
         0xd1,
         5,
@@ -1827,6 +1987,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd1,
         6,
         0,
@@ -1840,6 +2001,7 @@ Opcode opcodes[] = {
     },
     {
         "sar",
+        0x00,
         0x00,
         0xd1,
         7,
@@ -1855,6 +2017,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd2,
         4,
         0,
@@ -1868,6 +2031,7 @@ Opcode opcodes[] = {
     },
     {
         "shr",
+        0x00,
         0x00,
         0xd2,
         5,
@@ -1883,6 +2047,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd2,
         6,
         0,
@@ -1896,6 +2061,7 @@ Opcode opcodes[] = {
     },
     {
         "sar",
+        0x00,
         0x00,
         0xd2,
         7,
@@ -1911,6 +2077,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd3,
         4,
         0,
@@ -1924,6 +2091,7 @@ Opcode opcodes[] = {
     },
     {
         "shr",
+        0x00,
         0x00,
         0xd3,
         5,
@@ -1939,6 +2107,7 @@ Opcode opcodes[] = {
     {
         "shl",
         0x00,
+        0x00,
         0xd3,
         6,
         0,
@@ -1952,6 +2121,7 @@ Opcode opcodes[] = {
     },
     {
         "sar",
+        0x00,
         0x00,
         0xd3,
         7,
@@ -1966,6 +2136,7 @@ Opcode opcodes[] = {
     },
     {
         "call",
+        0x00,
         0x00,
         0xe8,
         -1,
@@ -1981,6 +2152,7 @@ Opcode opcodes[] = {
     {
         "jmp",
         0x00,
+        0x00,
         0xe9,
         -1,
         0,
@@ -1994,6 +2166,7 @@ Opcode opcodes[] = {
     },
     {
         "jmp",
+        0x00,
         0x00,
         0xeb,
         -1,
@@ -2009,6 +2182,7 @@ Opcode opcodes[] = {
     {
         "test",
         0x00,
+        0x00,
         0xf6,
         0,
         0,
@@ -2022,6 +2196,7 @@ Opcode opcodes[] = {
     },
     {
         "test",
+        0x00,
         0x00,
         0xf6,
         1,
@@ -2037,6 +2212,7 @@ Opcode opcodes[] = {
     {
         "not",
         0x00,
+        0x00,
         0xf6,
         2,
         0,
@@ -2050,6 +2226,7 @@ Opcode opcodes[] = {
     },
     {
         "imul",
+        0x00,
         0x00,
         0xf6,
         5,
@@ -2065,6 +2242,7 @@ Opcode opcodes[] = {
     {
         "div",
         0x00,
+        0x00,
         0xf6,
         6,
         0,
@@ -2078,6 +2256,7 @@ Opcode opcodes[] = {
     },
     {
         "idiv",
+        0x00,
         0x00,
         0xf6,
         7,
@@ -2093,6 +2272,7 @@ Opcode opcodes[] = {
     {
         "test",
         0x00,
+        0x00,
         0xf7,
         0,
         0,
@@ -2106,6 +2286,7 @@ Opcode opcodes[] = {
     },
     {
         "test",
+        0x00,
         0x00,
         0xf7,
         1,
@@ -2121,6 +2302,7 @@ Opcode opcodes[] = {
     {
         "not",
         0x00,
+        0x00,
         0xf7,
         2,
         0,
@@ -2134,6 +2316,7 @@ Opcode opcodes[] = {
     },
     {
         "imul",
+        0x00,
         0x00,
         0xf7,
         5,
@@ -2149,6 +2332,7 @@ Opcode opcodes[] = {
     {
         "div",
         0x00,
+        0x00,
         0xf7,
         6,
         0,
@@ -2162,6 +2346,7 @@ Opcode opcodes[] = {
     },
     {
         "idiv",
+        0x00,
         0x00,
         0xf7,
         7,
@@ -2177,6 +2362,7 @@ Opcode opcodes[] = {
     {
         "call",
         0x00,
+        0x00,
         0xff,
         2,
         0,
@@ -2191,6 +2377,7 @@ Opcode opcodes[] = {
     {
         "call",
         0x00,
+        0x00,
         0xff,
         2,
         0,
@@ -2205,6 +2392,7 @@ Opcode opcodes[] = {
     {
         "jmp",
         0x00,
+        0x00,
         0xff,
         4,
         0,
@@ -2218,6 +2406,7 @@ Opcode opcodes[] = {
     },
     {
         "jmp",
+        0x00,
         0x00,
         0xff,
         4,
@@ -2233,6 +2422,7 @@ Opcode opcodes[] = {
     {
         "push",
         0x00,
+        0x00,
         0xff,
         6,
         0,
@@ -2246,6 +2436,7 @@ Opcode opcodes[] = {
     },
     {
         "push",
+        0x00,
         0x00,
         0xff,
         6,
@@ -2259,7 +2450,68 @@ Opcode opcodes[] = {
         0
     },
     {
+        "movss",
+        0xf3,
+        0x0f,
+        0x10,
+        -1,
+        1,
+        {'W',SIZE16,0,0,0,0,"ss"},
+        {'V',SIZE16,0,0,0,0,"ss"},
+        -1,
+        -1,
+        0,
+        0,
+        0
+    },
+    {
+        "movsd",
+        0xf2,
+        0x0f,
+        0x10,
+        -1,
+        1,
+        {'W',SIZE32,0,0,0,0,"sd"},
+        {'V',SIZE32,0,0,0,0,"sd"},
+        -1,
+        -1,
+        0,
+        0,
+        0
+    },
+    {
+        "movss",
+        0xf3,
+        0x0f,
+        0x11,
+        -1,
+        1,
+        {'V',SIZE16,0,0,0,0,"ss"},
+        {'W',SIZE16,0,0,0,0,"ss"},
+        -1,
+        -1,
+        0,
+        0,
+        0
+    },
+    {
+        "movsd",
+        0xf2,
+        0x0f,
+        0x11,
+        -1,
+        1,
+        {'V',SIZE32,0,0,0,0,"sd"},
+        {'W',SIZE32,0,0,0,0,"sd"},
+        -1,
+        -1,
+        0,
+        0,
+        0
+    },
+    {
         "cmovo",
+        0x00,
         0x0f,
         0x40,
         -1,
@@ -2274,6 +2526,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovno",
+        0x00,
         0x0f,
         0x41,
         -1,
@@ -2288,6 +2541,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovb",
+        0x00,
         0x0f,
         0x42,
         -1,
@@ -2302,6 +2556,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnae",
+        0x00,
         0x0f,
         0x42,
         -1,
@@ -2316,6 +2571,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovc",
+        0x00,
         0x0f,
         0x42,
         -1,
@@ -2330,6 +2586,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnb",
+        0x00,
         0x0f,
         0x43,
         -1,
@@ -2344,6 +2601,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovae",
+        0x00,
         0x0f,
         0x43,
         -1,
@@ -2358,6 +2616,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnc",
+        0x00,
         0x0f,
         0x43,
         -1,
@@ -2372,6 +2631,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovz",
+        0x00,
         0x0f,
         0x44,
         -1,
@@ -2386,6 +2646,7 @@ Opcode opcodes[] = {
     },
     {
         "cmove",
+        0x00,
         0x0f,
         0x44,
         -1,
@@ -2400,6 +2661,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnz",
+        0x00,
         0x0f,
         0x45,
         -1,
@@ -2414,6 +2676,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovne",
+        0x00,
         0x0f,
         0x45,
         -1,
@@ -2428,6 +2691,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovbe",
+        0x00,
         0x0f,
         0x46,
         -1,
@@ -2442,6 +2706,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovna",
+        0x00,
         0x0f,
         0x46,
         -1,
@@ -2456,6 +2721,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnbe",
+        0x00,
         0x0f,
         0x47,
         -1,
@@ -2470,6 +2736,7 @@ Opcode opcodes[] = {
     },
     {
         "cmova",
+        0x00,
         0x0f,
         0x47,
         -1,
@@ -2484,6 +2751,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovs",
+        0x00,
         0x0f,
         0x48,
         -1,
@@ -2498,6 +2766,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovns",
+        0x00,
         0x0f,
         0x49,
         -1,
@@ -2512,6 +2781,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovp",
+        0x00,
         0x0f,
         0x4a,
         -1,
@@ -2526,6 +2796,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovpe",
+        0x00,
         0x0f,
         0x4a,
         -1,
@@ -2540,6 +2811,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnp",
+        0x00,
         0x0f,
         0x4b,
         -1,
@@ -2554,6 +2826,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovpo",
+        0x00,
         0x0f,
         0x4b,
         -1,
@@ -2568,6 +2841,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovl",
+        0x00,
         0x0f,
         0x4c,
         -1,
@@ -2582,6 +2856,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnge",
+        0x00,
         0x0f,
         0x4c,
         -1,
@@ -2596,6 +2871,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnl",
+        0x00,
         0x0f,
         0x4d,
         -1,
@@ -2610,6 +2886,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovge",
+        0x00,
         0x0f,
         0x4d,
         -1,
@@ -2624,6 +2901,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovle",
+        0x00,
         0x0f,
         0x4e,
         -1,
@@ -2638,6 +2916,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovng",
+        0x00,
         0x0f,
         0x4e,
         -1,
@@ -2652,6 +2931,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovnle",
+        0x00,
         0x0f,
         0x4f,
         -1,
@@ -2666,6 +2946,7 @@ Opcode opcodes[] = {
     },
     {
         "cmovg",
+        0x00,
         0x0f,
         0x4f,
         -1,
@@ -2680,6 +2961,7 @@ Opcode opcodes[] = {
     },
     {
         "jo",
+        0x00,
         0x0f,
         0x80,
         -1,
@@ -2694,6 +2976,7 @@ Opcode opcodes[] = {
     },
     {
         "jno",
+        0x00,
         0x0f,
         0x81,
         -1,
@@ -2708,6 +2991,7 @@ Opcode opcodes[] = {
     },
     {
         "jb",
+        0x00,
         0x0f,
         0x82,
         -1,
@@ -2722,6 +3006,7 @@ Opcode opcodes[] = {
     },
     {
         "jnae",
+        0x00,
         0x0f,
         0x82,
         -1,
@@ -2736,6 +3021,7 @@ Opcode opcodes[] = {
     },
     {
         "jc",
+        0x00,
         0x0f,
         0x82,
         -1,
@@ -2750,6 +3036,7 @@ Opcode opcodes[] = {
     },
     {
         "jnb",
+        0x00,
         0x0f,
         0x83,
         -1,
@@ -2764,6 +3051,7 @@ Opcode opcodes[] = {
     },
     {
         "jae",
+        0x00,
         0x0f,
         0x83,
         -1,
@@ -2778,6 +3066,7 @@ Opcode opcodes[] = {
     },
     {
         "jnc",
+        0x00,
         0x0f,
         0x83,
         -1,
@@ -2792,6 +3081,7 @@ Opcode opcodes[] = {
     },
     {
         "jz",
+        0x00,
         0x0f,
         0x84,
         -1,
@@ -2806,6 +3096,7 @@ Opcode opcodes[] = {
     },
     {
         "je",
+        0x00,
         0x0f,
         0x84,
         -1,
@@ -2820,6 +3111,7 @@ Opcode opcodes[] = {
     },
     {
         "jnz",
+        0x00,
         0x0f,
         0x85,
         -1,
@@ -2834,6 +3126,7 @@ Opcode opcodes[] = {
     },
     {
         "jne",
+        0x00,
         0x0f,
         0x85,
         -1,
@@ -2848,6 +3141,7 @@ Opcode opcodes[] = {
     },
     {
         "jbe",
+        0x00,
         0x0f,
         0x86,
         -1,
@@ -2862,6 +3156,7 @@ Opcode opcodes[] = {
     },
     {
         "jna",
+        0x00,
         0x0f,
         0x86,
         -1,
@@ -2876,6 +3171,7 @@ Opcode opcodes[] = {
     },
     {
         "jnbe",
+        0x00,
         0x0f,
         0x87,
         -1,
@@ -2890,6 +3186,7 @@ Opcode opcodes[] = {
     },
     {
         "ja",
+        0x00,
         0x0f,
         0x87,
         -1,
@@ -2904,6 +3201,7 @@ Opcode opcodes[] = {
     },
     {
         "js",
+        0x00,
         0x0f,
         0x88,
         -1,
@@ -2918,6 +3216,7 @@ Opcode opcodes[] = {
     },
     {
         "jns",
+        0x00,
         0x0f,
         0x89,
         -1,
@@ -2932,6 +3231,7 @@ Opcode opcodes[] = {
     },
     {
         "jp",
+        0x00,
         0x0f,
         0x8a,
         -1,
@@ -2946,6 +3246,7 @@ Opcode opcodes[] = {
     },
     {
         "jnp",
+        0x00,
         0x0f,
         0x8b,
         -1,
@@ -2960,6 +3261,7 @@ Opcode opcodes[] = {
     },
     {
         "jl",
+        0x00,
         0x0f,
         0x8c,
         -1,
@@ -2974,6 +3276,7 @@ Opcode opcodes[] = {
     },
     {
         "jnge",
+        0x00,
         0x0f,
         0x8c,
         -1,
@@ -2988,6 +3291,7 @@ Opcode opcodes[] = {
     },
     {
         "jnl",
+        0x00,
         0x0f,
         0x8d,
         -1,
@@ -3002,6 +3306,7 @@ Opcode opcodes[] = {
     },
     {
         "jge",
+        0x00,
         0x0f,
         0x8d,
         -1,
@@ -3016,6 +3321,7 @@ Opcode opcodes[] = {
     },
     {
         "jle",
+        0x00,
         0x0f,
         0x8e,
         -1,
@@ -3030,6 +3336,7 @@ Opcode opcodes[] = {
     },
     {
         "jng",
+        0x00,
         0x0f,
         0x8e,
         -1,
@@ -3044,6 +3351,7 @@ Opcode opcodes[] = {
     },
     {
         "jnle",
+        0x00,
         0x0f,
         0x8f,
         -1,
@@ -3058,6 +3366,7 @@ Opcode opcodes[] = {
     },
     {
         "jg",
+        0x00,
         0x0f,
         0x8f,
         -1,
@@ -3072,6 +3381,7 @@ Opcode opcodes[] = {
     },
     {
         "setb",
+        0x00,
         0x0f,
         0x92,
         0,
@@ -3086,6 +3396,7 @@ Opcode opcodes[] = {
     },
     {
         "setnae",
+        0x00,
         0x0f,
         0x92,
         0,
@@ -3100,6 +3411,7 @@ Opcode opcodes[] = {
     },
     {
         "setc",
+        0x00,
         0x0f,
         0x92,
         0,
@@ -3114,6 +3426,7 @@ Opcode opcodes[] = {
     },
     {
         "setnb",
+        0x00,
         0x0f,
         0x93,
         0,
@@ -3128,6 +3441,7 @@ Opcode opcodes[] = {
     },
     {
         "setae",
+        0x00,
         0x0f,
         0x93,
         0,
@@ -3142,6 +3456,7 @@ Opcode opcodes[] = {
     },
     {
         "setnc",
+        0x00,
         0x0f,
         0x93,
         0,
@@ -3156,6 +3471,7 @@ Opcode opcodes[] = {
     },
     {
         "setz",
+        0x00,
         0x0f,
         0x94,
         0,
@@ -3170,6 +3486,7 @@ Opcode opcodes[] = {
     },
     {
         "sete",
+        0x00,
         0x0f,
         0x94,
         0,
@@ -3184,6 +3501,7 @@ Opcode opcodes[] = {
     },
     {
         "setnz",
+        0x00,
         0x0f,
         0x95,
         0,
@@ -3198,6 +3516,7 @@ Opcode opcodes[] = {
     },
     {
         "setne",
+        0x00,
         0x0f,
         0x95,
         0,
@@ -3212,6 +3531,7 @@ Opcode opcodes[] = {
     },
     {
         "setbe",
+        0x00,
         0x0f,
         0x96,
         0,
@@ -3226,6 +3546,7 @@ Opcode opcodes[] = {
     },
     {
         "setna",
+        0x00,
         0x0f,
         0x96,
         0,
@@ -3240,6 +3561,7 @@ Opcode opcodes[] = {
     },
     {
         "setnbe",
+        0x00,
         0x0f,
         0x97,
         0,
@@ -3254,6 +3576,7 @@ Opcode opcodes[] = {
     },
     {
         "seta",
+        0x00,
         0x0f,
         0x97,
         0,
@@ -3268,6 +3591,7 @@ Opcode opcodes[] = {
     },
     {
         "sets",
+        0x00,
         0x0f,
         0x98,
         0,
@@ -3282,6 +3606,7 @@ Opcode opcodes[] = {
     },
     {
         "setns",
+        0x00,
         0x0f,
         0x99,
         0,
@@ -3296,6 +3621,7 @@ Opcode opcodes[] = {
     },
     {
         "setp",
+        0x00,
         0x0f,
         0x9a,
         0,
@@ -3310,6 +3636,7 @@ Opcode opcodes[] = {
     },
     {
         "setpe",
+        0x00,
         0x0f,
         0x9a,
         0,
@@ -3324,6 +3651,7 @@ Opcode opcodes[] = {
     },
     {
         "setnp",
+        0x00,
         0x0f,
         0x9b,
         0,
@@ -3338,6 +3666,7 @@ Opcode opcodes[] = {
     },
     {
         "setpo",
+        0x00,
         0x0f,
         0x9b,
         0,
@@ -3352,6 +3681,7 @@ Opcode opcodes[] = {
     },
     {
         "setl",
+        0x00,
         0x0f,
         0x9c,
         0,
@@ -3366,6 +3696,7 @@ Opcode opcodes[] = {
     },
     {
         "setnge",
+        0x00,
         0x0f,
         0x9c,
         0,
@@ -3380,6 +3711,7 @@ Opcode opcodes[] = {
     },
     {
         "setnl",
+        0x00,
         0x0f,
         0x9d,
         0,
@@ -3394,6 +3726,7 @@ Opcode opcodes[] = {
     },
     {
         "setge",
+        0x00,
         0x0f,
         0x9d,
         0,
@@ -3408,6 +3741,7 @@ Opcode opcodes[] = {
     },
     {
         "setle",
+        0x00,
         0x0f,
         0x9e,
         0,
@@ -3422,6 +3756,7 @@ Opcode opcodes[] = {
     },
     {
         "setng",
+        0x00,
         0x0f,
         0x9e,
         0,
@@ -3436,6 +3771,7 @@ Opcode opcodes[] = {
     },
     {
         "setnle",
+        0x00,
         0x0f,
         0x9f,
         0,
@@ -3450,6 +3786,7 @@ Opcode opcodes[] = {
     },
     {
         "setg",
+        0x00,
         0x0f,
         0x9f,
         0,
@@ -3464,6 +3801,7 @@ Opcode opcodes[] = {
     },
     {
         "push",
+        0x00,
         0x0f,
         0xa0,
         -1,
@@ -3478,6 +3816,7 @@ Opcode opcodes[] = {
     },
     {
         "pop",
+        0x00,
         0x0f,
         0xa1,
         -1,
@@ -3492,6 +3831,7 @@ Opcode opcodes[] = {
     },
     {
         "push",
+        0x00,
         0x0f,
         0xa8,
         -1,
@@ -3506,6 +3846,7 @@ Opcode opcodes[] = {
     },
     {
         "pop",
+        0x00,
         0x0f,
         0xa9,
         -1,
@@ -3520,6 +3861,7 @@ Opcode opcodes[] = {
     },
     {
         "imul",
+        0x00,
         0x0f,
         0xaf,
         -1,
@@ -3534,6 +3876,7 @@ Opcode opcodes[] = {
     },
     {
         "movzx",
+        0x00,
         0x0f,
         0xb6,
         -1,
@@ -3548,6 +3891,7 @@ Opcode opcodes[] = {
     },
     {
         "movzx",
+        0x00,
         0x0f,
         0xb7,
         -1,
@@ -3562,6 +3906,7 @@ Opcode opcodes[] = {
     },
     {
         "movsx",
+        0x00,
         0x0f,
         0xbe,
         -1,
@@ -3576,6 +3921,7 @@ Opcode opcodes[] = {
     },
     {
         "movsx",
+        0x00,
         0x0f,
         0xbf,
         -1,
@@ -3868,6 +4214,8 @@ OpcodeAlias opcode_aliases[] = {
     { "cmovgw", "cmovg", SIZE16 },
     { "cmovgl", "cmovg", SIZE32 },
     { "cmovgq", "cmovg", SIZE64 },
+    { "movss", "movss", SIZE16 },
+    { "movsd", "movsd", SIZE32 },
 };
 
 int opcode_count = sizeof(opcodes) / sizeof(Opcode);
