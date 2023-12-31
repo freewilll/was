@@ -156,7 +156,7 @@ for mnem in (
 # These aliases are needed, since in come cases, e.g. movss  (%rax), %xmm14
 # where the size of the operation must be derived from the mnemonic. The XML
 # doesn't have data to indicate the mnemonic size, other than the operand sizes.
-for mnem in ("movs", "adds", "subs", "muls", "divs"):
+for mnem in ("movs", "adds", "subs", "muls", "divs", "comis", "ucomis"):
     OPCODE_ALIASES.update(**make_sized_aliases(mnem, xmm=True))
 
 
