@@ -95,6 +95,8 @@ OPCODE_ALIASES = {
     "cltd": LongOpCode(mnem="cdq", size=Size.SIZE32),
     "cqto": LongOpCode(mnem="cqo", size=Size.SIZE64),
     "cvtsd2ss": LongOpCode(mnem="cvtsd2ss", size=Size.SIZE32),
+    **make_sized_aliases("cvttss2si", {Size.SIZE32, Size.SIZE64}),
+    **make_sized_aliases("cvttsd2si", {Size.SIZE32, Size.SIZE64}),
 }
 
 # Add all-sizes aliases
@@ -419,14 +421,14 @@ def parse_pri_opcd(one_byte, ohf_prefix):
             r = entry.get("r") == "yes"
 
             branch = False
-            for grp2 in entry.find_all("grp2"):
-                if grp2.text == "branch":
-                    branch = True
-
             conver = False
-            for grp2 in entry.find_all("grp2"):
-                if grp2.text == "conver":
-                    conver = True
+
+            for grp_name in ("grp1", "grp2", "grp3"):
+                for grp in entry.find_all(grp_name):
+                    if grp.text == "branch":
+                        branch = True
+                    elif grp.text == "conver":
+                        conver = True
 
             for syntax in entry.find_all("syntax"):
                 if syntax.mnem is None:

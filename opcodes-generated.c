@@ -7982,7 +7982,7 @@ Opcode opcodes[] = {
         -1,
         0,
         0,
-        0
+        1
     },
     {
         "cvtsi2sd",
@@ -8012,7 +8012,7 @@ Opcode opcodes[] = {
         -1,
         0,
         0,
-        0
+        1
     },
     {
         "cvttsd2si",
@@ -8042,7 +8042,7 @@ Opcode opcodes[] = {
         -1,
         0,
         0,
-        0
+        1
     },
     {
         "cvtsd2si",
@@ -10838,6 +10838,12 @@ OpcodeAlias opcode_aliases[] = {
     { "cltd", "cdq", SIZE32 },
     { "cqto", "cqo", SIZE64 },
     { "cvtsd2ss", "cvtsd2ss", SIZE32 },
+    { "cvttss2si", "cvttss2si", 0 },
+    { "cvttss2sil", "cvttss2si", SIZE32 },
+    { "cvttss2siq", "cvttss2si", SIZE64 },
+    { "cvttsd2si", "cvttsd2si", 0 },
+    { "cvttsd2sil", "cvttsd2si", SIZE32 },
+    { "cvttsd2siq", "cvttsd2si", SIZE64 },
     { "add", "add", 0 },
     { "addb", "add", SIZE08 },
     { "addw", "add", SIZE16 },
@@ -11383,9 +11389,7 @@ OpcodeAlias opcode_aliases[] = {
     { "movntps", "movntps", 0 },
     { "movntpd", "movntpd", 0 },
     { "cvttps2pi", "cvttps2pi", 0 },
-    { "cvttss2si", "cvttss2si", 0 },
     { "cvttpd2pi", "cvttpd2pi", 0 },
-    { "cvttsd2si", "cvttsd2si", 0 },
     { "cvtps2pi", "cvtps2pi", 0 },
     { "cvtss2si", "cvtss2si", 0 },
     { "cvtpd2pi", "cvtpd2pi", 0 },
