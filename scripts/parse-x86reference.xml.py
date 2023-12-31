@@ -94,6 +94,7 @@ OPCODE_ALIASES = {
     "cwtd": LongOpCode(mnem="cwd", size=Size.SIZE16),
     "cltd": LongOpCode(mnem="cdq", size=Size.SIZE32),
     "cqto": LongOpCode(mnem="cqo", size=Size.SIZE64),
+    "cvtsd2ss": LongOpCode(mnem="cvtsd2ss", size=Size.SIZE32),
 }
 
 # Add all-sizes aliases

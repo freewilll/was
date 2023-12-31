@@ -468,10 +468,13 @@ int main() {
     test_assembly("divss  %xmm14,                       %xmm15",      0xf3, 0x45, 0x0f, 0x5e, 0xfe, END);
     test_assembly("divsd  %xmm14,                       %xmm15",      0xf2, 0x45, 0x0f, 0x5e, 0xfe, END);
 
-    test_assembly("comiss  %xmm14,                       %xmm15",             0x45, 0x0f, 0x2f, 0xfe, END);
-    test_assembly("comisd  %xmm14,                       %xmm15",       0x66, 0x45, 0x0f, 0x2f, 0xfe, END);
-    test_assembly("ucomiss %xmm14,                       %xmm15",             0x45, 0x0f, 0x2e, 0xfe, END);
-    test_assembly("ucomisd %xmm14,                       %xmm15",       0x66, 0x45, 0x0f, 0x2e, 0xfe, END);
+    test_assembly("comiss  %xmm14,                      %xmm15",             0x45, 0x0f, 0x2f, 0xfe, END);
+    test_assembly("comisd  %xmm14,                      %xmm15",       0x66, 0x45, 0x0f, 0x2f, 0xfe, END);
+    test_assembly("ucomiss %xmm14,                      %xmm15",             0x45, 0x0f, 0x2e, 0xfe, END);
+    test_assembly("ucomisd %xmm14,                      %xmm15",       0x66, 0x45, 0x0f, 0x2e, 0xfe, END);
+
+    test_assembly("cvtsd2ss %xmm15,                     %xmm14", 0xf2, 0x45, 0x0f, 0x5a, 0xf7, END);
+    test_assembly("cvtsd2ss (%rax),                     %xmm15", 0xf2, 0x44, 0x0f, 0x5a, 0x38, END);
 
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);

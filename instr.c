@@ -104,7 +104,6 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
     // If the operation is an indirect, the size is the size of the entire operation,
     // determined by either another operand or the opcode alias.
     int op_size = (op->indirect || !OP_HAS_SIZE(op)) ? size : OP_TO_SIZE(op);
-    // int op_size = op->indirect ? size : OP_TO_SIZE(op);
 
     // IMM08 operands are also treated as IMM16 since some opcodes don't
     // encode IMM08 values.
@@ -112,7 +111,11 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
     int alt_op_size = op->type == IMM08 ? SIZE16 : 0;
 
     // Match sizes
-    if (opcode_op->sizes && !(opcode_op->sizes & op_size) && !(alt_op_size && opcode_op->sizes & alt_op_size)) return 0;
+    if (opcode_op->sizes
+        && !(OP_TO_SIZE(op) == SIZEXM)
+        && !(opcode_op->sizes & op_size)
+        && !(alt_op_size && opcode_op->sizes & alt_op_size)
+    ) return 0;
 
     // The instruction dst is an al, ax, eax, rax in it, aka an accumulator
     if (opcode->acc && (op->reg || op->indirect)) return 0;
