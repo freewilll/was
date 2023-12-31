@@ -53,9 +53,8 @@ enum {
 #define REG_LONG 0x20
 #define REG_QUAD 0x30
 #define REG_XMM  0x40
-#define REG_RIP  0x50
-#define REG_ST   0x51
-
+#define REG_ST   0x50
+#define REG_RIP  0x60
 
 extern char *cur_filename;      // Current filename being lexed
 extern int cur_line;            // Current line number being lexed

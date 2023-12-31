@@ -167,6 +167,7 @@ class AddressingMode(Enum):
     C = "C"  # The reg field of the ModR/M byte selects a control register
     D = "D"  # The reg field of the ModR/M byte selects a debug register
     E = "E"  # The operand is either a general-purpose register or a memory address.
+    EST = "EST"  # (Implies original E). A ModR/M byte follows the opcode and specifies the x87 FPU stack register.
     G = "G"  # The reg field of the ModR/M byte selects a general register
     I = "I"  # Immediate
     J = "J"  # RIP relative
@@ -175,10 +176,34 @@ class AddressingMode(Enum):
     O = "O"  # Offset
     R = "R"  # Not used
     S = "S"  # Not used
+    ST = "ST"  # x87 FPU stack register.
     T = "T"  # The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
     V = "V"  # The reg field of the ModR/M byte selects a 128-bit XMM register.
     W = "W"  # The operand is either a 128-bit XMM register or a memory address.
     Z = "Z"  # The three least-significant bits of the opcode byte selects a general-purpose register
+
+    def to_c_enum(self):
+        C_ENUMS = {
+            "C": 1,
+            "D": 2,
+            "E": 3,
+            "EST": 4,
+            "G": 5,
+            "I": 6,
+            "J": 7,
+            "H": 8,
+            "M": 9,
+            "O": 10,
+            "R": 11,
+            "S": 12,
+            "ST": 13,
+            "T": 14,
+            "V": 15,
+            "W": 16,
+            "Z": 17,
+        }
+
+        return C_ENUMS[self.value]
 
 
 class OperandType(Enum):
@@ -355,6 +380,11 @@ def parse_operand(entry, operand: str) -> List[WasOperand]:
                 except Exception as e:
                     raise UnsupportedOperandError(f"{am}{type_from_attr}")
 
+        if operand.text == "ST":
+            # This is not really an addressing mode, but it's convenient
+            # to treat an ST src/dst as such
+            am = AddressingMode.ST
+
         results.append(WasOperand.from_am_and_type(am, type))
 
     return results
@@ -457,6 +487,21 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                 # 16-bit segment registers not used in long mode
                 if op2.am == AddressingMode.S or op1.am == AddressingMode.S:
                     continue
+
+                # Replicate bug in GNU as reversed vs. non-reversed mnemonics for x87
+                # Non-commutative floating point instructions with register operands
+                # (like fdiv vs. fdivr) is the wrong way round.
+                # https://stackoverflow.com/questions/56210264/objdump-swapping-fsubrp-to-fsubp-on-compiled-assembly
+                # https://sourceware.org/binutils/docs/as/i386_002dBugs.html
+                if value == "de":  # Among others, subp, subrp, divp, divrp
+                    BUG_MAP = {
+                        "4": "5",
+                        "5": "4",
+                        "6": "7",
+                        "7": "6",
+                    }
+                    if opcd_ext in BUG_MAP:
+                        opcd_ext = BUG_MAP[opcd_ext]
 
                 was_opcode = WasOpcode(
                     mnem=mnem,

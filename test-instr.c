@@ -485,6 +485,20 @@ int main() {
     test_assembly("cvttsd2si %xmm14,                    %eax",   0xf2, 0x41, 0x0f, 0x2c, 0xc6, END);
     test_assembly("cvttsd2si %xmm14,                    %rax",   0xf2, 0x49, 0x0f, 0x2c, 0xc6, END);
 
+    test_assembly("faddp  %st,                          %st(1)", 0xde, 0xc1, END);
+    test_assembly("fsubp  %st,                          %st(1)", 0xde, 0xe1, END);
+    test_assembly("fmulp  %st,                          %st(1)", 0xde, 0xc9, END);
+    test_assembly("fdivp  %st,                          %st(1)", 0xde, 0xf1, END);
+    test_assembly("fsubrp %st,                          %st(1)", 0xde, 0xe9, END);
+    test_assembly("fdivrp %st,                          %st(1)", 0xde, 0xf9, END);
+
+    test_assembly("faddp  %st,                          %st(0)", 0xde, 0xc0, END);
+    test_assembly("faddp  %st(0),                       %st(0)", 0xde, 0xc0, END);
+    test_assembly("faddp  %st,                          %st(1)", 0xde, 0xc1, END);
+    test_assembly("faddp  %st(0),                       %st(1)", 0xde, 0xc1, END);
+    test_assembly("faddp  %st,                          %st(2)", 0xde, 0xc2, END);
+    test_assembly("faddp  %st(0),                       %st(2)", 0xde, 0xc2, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);

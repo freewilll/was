@@ -13,7 +13,7 @@ Opcode opcodes[] = {
         {{opcode.opcd_ext}},
         {{opcode.needs_mod_rm}},
         {
-            {{-"'"+opcode.op1.am.value+"'" if opcode.op1.am.value else 0}},
+            {{-opcode.op1.am.to_c_enum() if opcode.op1.am.value else 0}},
             {{-opcode.op1.sizes}},
             {{-opcode.op1.uses_operand_size}},
             {{-opcode.op1.can_be_imm64}},
@@ -21,7 +21,7 @@ Opcode opcodes[] = {
             {{-opcode.op1.word_or_double_word_operand}},
             {{-'"'+opcode.op1.type.value+'"' if opcode.op1.type.value else 0}}},
         {
-            {{-"'"+opcode.op2.am.value+"'" if opcode.op2.am.value else 0}},
+            {{-opcode.op2.am.to_c_enum() if opcode.op2.am.value else 0}},
             {{-opcode.op2.sizes}},
             {{-opcode.op2.uses_operand_size}},
             {{-opcode.op2.can_be_imm64}},

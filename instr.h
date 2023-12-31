@@ -17,17 +17,19 @@
 #define SIZE32 0x04
 #define SIZE64 0x08
 #define SIZEXM 0x10 // A special size that means "unknown". Used for XMM registers where the opcode determines the size
+#define SIZEST 0x20 // A special size used for fp87 stack registers
 
-#define REG 0x20
-#define IMM 0x40
-#define MEM 0x80
+#define REG 0x40
+#define IMM 0x80
+#define MEM 0x100
 
 typedef enum operand_type {
     REG08 =  SIZE08 | REG,
     REG16 =  SIZE16 | REG,
     REG32 =  SIZE32 | REG,
     REG64 =  SIZE64 | REG,
-    REGXM =  SIZEXM | REG,
+    REGXM =  SIZEXM | REG, // xmm registers
+    REGST =  SIZEST | REG, // x87 ST registers
     IMM08 =  SIZE08 | IMM,
     IMM16 =  SIZE16 | IMM,
     IMM32 =  SIZE32 | IMM,
@@ -44,6 +46,7 @@ typedef enum operand_type {
 #define OP_TO_SIZE(op) ((op)->type & ~(IMM | REG | MEM))
 #define OP_HAS_SIZE(op) (!((op)->type & (SIZEXM | MEM)))
 #define OP_IS_XMM(op) ((op)->type & SIZEXM)
+#define OP_IS_ST(op) ((op)->type & SIZEST)
 
 typedef struct operand {
     OperandType type;           // Operand type

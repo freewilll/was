@@ -10,6 +10,8 @@
 // Uncomment to enable debug output
 // #define DEBUG
 
+static char *am_strings[] = { " ", "C", "D", "E", "EST", "G", "I", "J", "H", "M", "O", "R", "S", "ST", "T", "V", "W", "Z" };
+
 StrMap *opcode_alias_map;
 
 void print_opcode(Opcode *opcode) {
@@ -36,7 +38,7 @@ void print_opcode(Opcode *opcode) {
     else
         ohf_prefix = "    ";
 
-    printf("  %s  %s %s 0x%02x %c %c %c %s %c %c%s  %c%s\n",
+    printf("  %s  %s %s 0x%02x %c %c %c %s %c %s%s  %s%s\n",
         opcode->mnem,
         prefix,
         ohf_prefix,
@@ -46,10 +48,10 @@ void print_opcode(Opcode *opcode) {
         opcd_ext,
         opcode->needs_mod_rm ? "RM" : "  ",
         opcode->acc ? 'a' : ' ',
-        opcode->op1.am ? opcode->op1.am : ' ',
-        opcode->op1.type,
-        opcode->op2.am ? opcode->op2.am : ' ',
-        opcode->op2.type
+        am_strings[opcode->op1.am],
+        opcode->op1.type ? opcode->op1.type : "",
+        am_strings[opcode->op2.am],
+        opcode->op2.type ? opcode->op2.type : ""
     );
 }
 

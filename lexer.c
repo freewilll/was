@@ -218,8 +218,22 @@ static void parse_register(void) {
     FIND_REG(regs3, REG_QUAD);
     FIND_REG(regs4, REG_XMM);
 
-    if (!strcmp(name, "rip")) { cur_register = REG_RIP; return; }
-    if (!strcmp(name, "st"))  { cur_register = REG_ST;  return; }
+    if (!strcmp(name, "rip")) {
+        cur_register = REG_RIP;
+        return;
+    }
+
+    if (!strcmp(name, "st"))  {
+        if (ip < input_end - 2 && ip[0] == '(' && ip[2] == ')' && ip[1] >= '0' && ip[1] <= '7') {
+            cur_register = REG_ST + ip[1] - '0';
+            ip += 3;
+        }
+        else {
+            cur_register = REG_ST; // %ST is a shortcut for %ST(0)
+        }
+
+        return;
+    }
 
     error("Unknown register %%%s", name);
 }

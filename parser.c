@@ -141,7 +141,7 @@ static int get_cur_register_reg(void) {
 static void parse_register(Operand *op) {
     memset(op, 0, sizeof(Operand));
 
-    // Truncate unless it's RIP or SP
+    // Truncate unless it's RIP
     op->reg = get_cur_register_reg();
 
     op->type =
@@ -149,7 +149,8 @@ static void parse_register(Operand *op) {
         : cur_register < REG_LONG ? REG16
         : cur_register < REG_QUAD ? REG32
         : cur_register < REG_XMM  ? REG64
-        : cur_register < REG_RIP  ? REGXM
+        : cur_register < REG_ST   ? REGXM
+        : cur_register < REG_RIP  ? REGST
                                   : REG64;
 
     next();
