@@ -499,6 +499,9 @@ int main() {
     test_assembly("faddp  %st,                          %st(2)", 0xde, 0xc2, END);
     test_assembly("faddp  %st(0),                       %st(2)", 0xde, 0xc2, END);
 
+    test_assembly("fxch   %st(1)", 0xd9, 0xc9, END);
+    test_assembly("fxch   %st(2)", 0xd9, 0xca, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);

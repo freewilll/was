@@ -298,10 +298,11 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     }
 
     else if (opcode_arg_count == 1) {
-             if (single_opcode->am == AM_G) enc.reg = op1->reg;
-        else if (single_opcode->am == AM_V) enc.reg = op1->reg;
-        else if (single_opcode->am == AM_E) enc.reg = op1->reg;
-        else if (single_opcode->am == AM_W) enc.reg = op1->reg;
+             if (single_opcode->am == AM_G)   enc.reg = op1->reg;
+        else if (single_opcode->am == AM_V)   enc.reg = op1->reg;
+        else if (single_opcode->am == AM_E)   enc.reg = op1->reg;
+        else if (single_opcode->am == AM_EST) enc.reg = op1->reg;
+        else if (single_opcode->am == AM_W)   enc.reg = op1->reg;
 
         if (opcode->opcd_ext != -1) {
             enc.rm = enc.reg;
