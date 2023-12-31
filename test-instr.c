@@ -459,6 +459,15 @@ int main() {
     test_assembly("movsd  foo,                          %xmm14",      0xf2, 0x44, 0x0f, 0x10, 0x34, 0x25, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("movsd  %xmm14,                       foo",         0xf2, 0x44, 0x0f, 0x11, 0x34, 0x25, 0x00, 0x00, 0x00, 0x00, END);
 
+    test_assembly("addss  %xmm14,                       %xmm15",      0xf3, 0x45, 0x0f, 0x58, 0xfe, END);
+    test_assembly("addsd  %xmm14,                       %xmm15",      0xf2, 0x45, 0x0f, 0x58, 0xfe, END);
+    test_assembly("subss  %xmm14,                       %xmm15",      0xf3, 0x45, 0x0f, 0x5c, 0xfe, END);
+    test_assembly("subsd  %xmm14,                       %xmm15",      0xf2, 0x45, 0x0f, 0x5c, 0xfe, END);
+    test_assembly("mulss  %xmm14,                       %xmm15",      0xf3, 0x45, 0x0f, 0x59, 0xfe, END);
+    test_assembly("mulsd  %xmm14,                       %xmm15",      0xf2, 0x45, 0x0f, 0x59, 0xfe, END);
+    test_assembly("divss  %xmm14,                       %xmm15",      0xf3, 0x45, 0x0f, 0x5e, 0xfe, END);
+    test_assembly("divsd  %xmm14,                       %xmm15",      0xf2, 0x45, 0x0f, 0x5e, 0xfe, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);

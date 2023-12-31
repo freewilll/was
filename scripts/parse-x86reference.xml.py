@@ -35,23 +35,38 @@ class UnsupportedOperandError(Exception):
     pass
 
 
-def make_sized_aliases(mnem: str, sizes=None, short_mnem=None):
+def make_sized_aliases(mnem: str, sizes=None, short_mnem=None, xmm=False):
     if sizes is None:
-        sizes = {Size.SIZE08, Size.SIZE16, Size.SIZE32, Size.SIZE64}
+        if xmm:
+            sizes = {Size.SIZE16, Size.SIZE32}
+        else:
+            sizes = {Size.SIZE08, Size.SIZE16, Size.SIZE32, Size.SIZE64}
 
-    if short_mnem is None:
-        short_mnem = mnem
+    if xmm:
+        # FP registers
 
-    result = {mnem: LongOpCode(mnem=short_mnem, size=None)}
+        result = {}
 
-    if Size.SIZE08 in sizes:
-        result[f"{mnem}b"] = LongOpCode(mnem=short_mnem, size=Size.SIZE08)
-    if Size.SIZE16 in sizes:
-        result[f"{mnem}w"] = LongOpCode(mnem=short_mnem, size=Size.SIZE16)
-    if Size.SIZE32 in sizes:
-        result[f"{mnem}l"] = LongOpCode(mnem=short_mnem, size=Size.SIZE32)
-    if Size.SIZE64 in sizes:
-        result[f"{mnem}q"] = LongOpCode(mnem=short_mnem, size=Size.SIZE64)
+        if Size.SIZE16 in sizes:
+            result[f"{mnem}s"] = LongOpCode(mnem=f"{mnem}s", size=Size.SIZE16)
+        if Size.SIZE32 in sizes:
+            result[f"{mnem}d"] = LongOpCode(mnem=f"{mnem}d", size=Size.SIZE32)
+    else:
+        # Integer registers
+
+        if short_mnem is None:
+            short_mnem = mnem
+
+        result = {mnem: LongOpCode(mnem=short_mnem, size=None)}
+
+        if Size.SIZE08 in sizes:
+            result[f"{mnem}b"] = LongOpCode(mnem=short_mnem, size=Size.SIZE08)
+        if Size.SIZE16 in sizes:
+            result[f"{mnem}w"] = LongOpCode(mnem=short_mnem, size=Size.SIZE16)
+        if Size.SIZE32 in sizes:
+            result[f"{mnem}l"] = LongOpCode(mnem=short_mnem, size=Size.SIZE32)
+        if Size.SIZE64 in sizes:
+            result[f"{mnem}q"] = LongOpCode(mnem=short_mnem, size=Size.SIZE64)
 
     return result
 
@@ -79,8 +94,6 @@ OPCODE_ALIASES = {
     "cwtd": LongOpCode(mnem="cwd", size=Size.SIZE16),
     "cltd": LongOpCode(mnem="cdq", size=Size.SIZE32),
     "cqto": LongOpCode(mnem="cqo", size=Size.SIZE64),
-    "movss": LongOpCode(mnem="movss", size=Size.SIZE16),
-    "movsd": LongOpCode(mnem="movsd", size=Size.SIZE32),
 }
 
 # Add all-sizes aliases
@@ -102,7 +115,7 @@ for mnem in (
     OPCODE_ALIASES.update(**make_sized_aliases(mnem))
 
 
-# Aliases for 16, 32 and 64 bits
+# Aliases for 16, 32 and 64 bit integers
 for mnem in (
     "cmovo",
     "cmovno",
@@ -138,6 +151,13 @@ for mnem in (
     OPCODE_ALIASES.update(
         **make_sized_aliases(mnem, sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64})
     )
+
+# Aliases for 16, 32 bit FP
+# These aliases are needed, since in come cases, e.g. movss  (%rax), %xmm14
+# where the size of the operation must be derived from the mnemonic. The XML
+# doesn't have data to indicate the mnemonic size, other than the operand sizes.
+for mnem in ("movs", "adds", "subs", "muls", "divs"):
+    OPCODE_ALIASES.update(**make_sized_aliases(mnem, xmm=True))
 
 
 class AddressingMode(Enum):
