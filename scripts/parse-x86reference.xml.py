@@ -7,7 +7,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pprint import pprint
-from typing import List, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 import bs4
 import jinja2
@@ -28,7 +28,11 @@ class Size(Enum):
 @dataclass
 class LongOpCode:
     mnem: str
-    size: Size
+    size: Optional[Size] = None
+
+
+class UnsupportedOperandError(Exception):
+    pass
 
 
 def make_sized_aliases(mnem: str, sizes=None, short_mnem=None):
@@ -53,136 +57,87 @@ def make_sized_aliases(mnem: str, sizes=None, short_mnem=None):
 
 
 OPCODE_ALIASES = {
-    **make_sized_aliases("add"),
-    **make_sized_aliases("and"),
-    **make_sized_aliases("cmp"),
     **make_sized_aliases("div", sizes={Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("idiv", sizes={Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("imul"),
     **make_sized_aliases("lea", sizes={Size.SIZE64}),
-    **make_sized_aliases("mov"),
-    **make_sized_aliases("not"),
-    **make_sized_aliases("or"),
     **make_sized_aliases("pop", sizes={Size.SIZE64}),
     **make_sized_aliases("push", sizes={Size.SIZE64}),
     **make_sized_aliases("ret", short_mnem="retn", sizes={Size.SIZE64}),
-    **make_sized_aliases("sar"),
-    **make_sized_aliases("shl"),
-    **make_sized_aliases("shr"),
-    **make_sized_aliases("sub"),
-    **make_sized_aliases("test"),
-    **make_sized_aliases("xor"),
-    "call": LongOpCode(mnem="call", size=None),
-    "callq": LongOpCode(mnem="call", size=None),
-    "jmp": LongOpCode(mnem="jmp", size=None),
-    "leave": LongOpCode(mnem="leave", size=None),
-    "leaveq": LongOpCode(mnem="leave", size=None),
+    "callq": LongOpCode(mnem="call"),
+    "leaveq": LongOpCode(mnem="leave"),
     "movabsq": LongOpCode(mnem="mov", size=Size.SIZE64),
-    "movsbw": LongOpCode(mnem="movsx", size=None),
-    "movsbl": LongOpCode(mnem="movsx", size=None),
-    "movsbq": LongOpCode(mnem="movsx", size=None),
-    "movslq": LongOpCode(mnem="movsxd", size=None),
-    "movswl": LongOpCode(mnem="movsx", size=None),
-    "movswq": LongOpCode(mnem="movsx", size=None),
-    "movzbl": LongOpCode(mnem="movzx", size=None),
-    "movzbq": LongOpCode(mnem="movzx", size=None),
-    "movzwl": LongOpCode(mnem="movzx", size=None),
-    "movzwq": LongOpCode(mnem="movzx", size=None),
-    "jb": LongOpCode(mnem="jb", size=None),
-    "jnae": LongOpCode(mnem="jnae", size=None),
-    "jc": LongOpCode(mnem="jc", size=None),
-    "jnb": LongOpCode(mnem="jnb", size=None),
-    "jae": LongOpCode(mnem="jae", size=None),
-    "jnc": LongOpCode(mnem="jnc", size=None),
-    "jz": LongOpCode(mnem="jz", size=None),
-    "je": LongOpCode(mnem="je", size=None),
-    "jnz": LongOpCode(mnem="jnz", size=None),
-    "jne": LongOpCode(mnem="jne", size=None),
-    "jbe": LongOpCode(mnem="jbe", size=None),
-    "jna": LongOpCode(mnem="jna", size=None),
-    "jnbe": LongOpCode(mnem="jnbe", size=None),
-    "ja": LongOpCode(mnem="ja", size=None),
-    "jo": LongOpCode(mnem="jo", size=None),
-    "jno": LongOpCode(mnem="jno", size=None),
-    "js": LongOpCode(mnem="js", size=None),
-    "jns": LongOpCode(mnem="jns", size=None),
-    "jp": LongOpCode(mnem="jp", size=None),
-    "jnp": LongOpCode(mnem="jnp", size=None),
-    "jl": LongOpCode(mnem="jl", size=None),
-    "jnge": LongOpCode(mnem="jnge", size=None),
-    "jnl": LongOpCode(mnem="jnl", size=None),
-    "jge": LongOpCode(mnem="jge", size=None),
-    "jle": LongOpCode(mnem="jle", size=None),
-    "jng": LongOpCode(mnem="jng", size=None),
-    "jnle": LongOpCode(mnem="jnle", size=None),
-    "jg": LongOpCode(mnem="jg", size=None),
-    "cwd": LongOpCode(mnem="cwd", size=Size.SIZE16),
+    "movsbw": LongOpCode(mnem="movsx"),
+    "movsbl": LongOpCode(mnem="movsx"),
+    "movsbq": LongOpCode(mnem="movsx"),
+    "movslq": LongOpCode(mnem="movsxd"),
+    "movswl": LongOpCode(mnem="movsx"),
+    "movswq": LongOpCode(mnem="movsx"),
+    "movzbl": LongOpCode(mnem="movzx"),
+    "movzbq": LongOpCode(mnem="movzx"),
+    "movzwl": LongOpCode(mnem="movzx"),
+    "movzwq": LongOpCode(mnem="movzx"),
     "cwtd": LongOpCode(mnem="cwd", size=Size.SIZE16),
-    "cdq": LongOpCode(mnem="cdq", size=Size.SIZE32),
     "cltd": LongOpCode(mnem="cdq", size=Size.SIZE32),
-    "cqo": LongOpCode(mnem="cqo", size=Size.SIZE64),
     "cqto": LongOpCode(mnem="cqo", size=Size.SIZE64),
-    "setb": LongOpCode(mnem="setb", size=None),
-    "setnae": LongOpCode(mnem="setnae", size=None),
-    "setc": LongOpCode(mnem="setc", size=None),
-    "setnb": LongOpCode(mnem="setnb", size=None),
-    "setae": LongOpCode(mnem="setae", size=None),
-    "setnc": LongOpCode(mnem="setnc", size=None),
-    "setz": LongOpCode(mnem="setz", size=None),
-    "sete": LongOpCode(mnem="sete", size=None),
-    "setnz": LongOpCode(mnem="setnz", size=None),
-    "setne": LongOpCode(mnem="setne", size=None),
-    "setbe": LongOpCode(mnem="setbe", size=None),
-    "setna": LongOpCode(mnem="setna", size=None),
-    "setnbe": LongOpCode(mnem="setnbe", size=None),
-    "seta": LongOpCode(mnem="seta", size=None),
-    "sets": LongOpCode(mnem="sets", size=None),
-    "setns": LongOpCode(mnem="setns", size=None),
-    "setp": LongOpCode(mnem="setp", size=None),
-    "setpe": LongOpCode(mnem="setpe", size=None),
-    "setnp": LongOpCode(mnem="setnp", size=None),
-    "setpo": LongOpCode(mnem="setpo", size=None),
-    "setl": LongOpCode(mnem="setl", size=None),
-    "setnge": LongOpCode(mnem="setnge", size=None),
-    "setnl": LongOpCode(mnem="setnl", size=None),
-    "setge": LongOpCode(mnem="setge", size=None),
-    "setle": LongOpCode(mnem="setle", size=None),
-    "setng": LongOpCode(mnem="setng", size=None),
-    "setnle": LongOpCode(mnem="setnle", size=None),
-    "setg": LongOpCode(mnem="setg", size=None),
-    **make_sized_aliases("cmovo", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovno", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovb", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnae", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovc", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnb", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovae", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnc", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovz", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmove", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnz", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovne", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovbe", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovna", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnbe", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmova", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovs", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovns", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovp", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovpe", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnp", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovpo", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovl", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnge", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnl", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovge", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovle", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovng", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovnle", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cmovg", sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}),
     "movss": LongOpCode(mnem="movss", size=Size.SIZE16),
     "movsd": LongOpCode(mnem="movsd", size=Size.SIZE32),
 }
+
+# Add all-sizes aliases
+for mnem in (
+    "add",
+    "and",
+    "cmp",
+    "imul",
+    "mov",
+    "not",
+    "or",
+    "sar",
+    "shl",
+    "shr",
+    "sub",
+    "test",
+    "xor",
+):
+    OPCODE_ALIASES.update(**make_sized_aliases(mnem))
+
+
+# Aliases for 16, 32 and 64 bits
+for mnem in (
+    "cmovo",
+    "cmovno",
+    "cmovb",
+    "cmovnae",
+    "cmovc",
+    "cmovnb",
+    "cmovae",
+    "cmovnc",
+    "cmovz",
+    "cmove",
+    "cmovnz",
+    "cmovne",
+    "cmovbe",
+    "cmovna",
+    "cmovnbe",
+    "cmova",
+    "cmovs",
+    "cmovns",
+    "cmovp",
+    "cmovpe",
+    "cmovnp",
+    "cmovpo",
+    "cmovl",
+    "cmovnge",
+    "cmovnl",
+    "cmovge",
+    "cmovle",
+    "cmovng",
+    "cmovnle",
+    "cmovg",
+):
+    OPCODE_ALIASES.update(
+        **make_sized_aliases(mnem, sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64})
+    )
 
 
 class AddressingMode(Enum):
@@ -327,7 +282,20 @@ class WasOpcode:
         op2_amt = f"{self.op2.am.value if self.op2.am else ''}{self.op2.type.value if self.op2.type else ''}"
 
         acc = "a" if self.acc else " "
-        return f"{self.prefix if self.prefix != '00' else '  '} {self.ohf_prefix if self.ohf_prefix != '00' else '  '} {self.value} {direction}{op_size} {'b' if self.branch else ' '}{'c' if self.conver else ' '} {opcd_ext:2s} {acc}  {self.mnem:10s} {op1_amt:5s} {op2_amt:5s} {self.note}"
+        return (
+            f"{self.prefix if self.prefix != '00' else '  '} "
+            + f"{self.ohf_prefix if self.ohf_prefix != '00' else '  '} "
+            + f"{self.value} "
+            + direction
+            + op_size
+            + f"{'b' if self.branch else ' '}"
+            + f"{'c' if self.conver else ' '} "
+            + f"{opcd_ext:2s}"
+            + f"{acc}  "
+            + f"{self.mnem:10s}"
+            + f"{op1_amt:5s} {op2_amt:5s}"
+            + f"{self.note}"
+        )
 
 
 OPCODES = {opcode.mnem for opcode in OPCODE_ALIASES.values()}
@@ -350,20 +318,26 @@ def parse_operand(entry, operand: str) -> List[WasOperand]:
         if operand.get("displayed") == "no":
             continue
 
-        am = AddressingMode(operand.a.text) if operand.a else None
-        type = OperandType(operand.t.text) if operand.t else None
+        try:
+            am = AddressingMode(operand.a.text) if operand.a else None
+            type = OperandType(operand.t.text) if operand.t else None
+        except Exception as e:
+            raise UnsupportedOperandError(f"{operand.a}{operand.t}")
 
         if type is None:
             type_from_attr = operand.get("type")
             if type_from_attr is not None:
-                type = OperandType(type_from_attr)
+                try:
+                    type = OperandType(type_from_attr)
+                except Exception as e:
+                    raise UnsupportedOperandError(f"{am}{type_from_attr}")
 
         results.append(WasOperand.from_am_and_type(am, type))
 
     return results
 
 
-def parse_operands(syntax) -> Tuple[WasOperand, WasOperand]:
+def parse_operands(mnem, syntax) -> Tuple[WasOperand, WasOperand]:
     srcs = parse_operand(syntax, "src")
     dsts = parse_operand(syntax, "dst")
 
@@ -384,7 +358,7 @@ def parse_operands(syntax) -> Tuple[WasOperand, WasOperand]:
     elif len(srcs) == 0 and len(dsts) == 0:
         pass
     else:
-        raise ValueError(
+        raise UnsupportedOperandError(
             f"Unable to interpret srcs/dsts for {mnem:10s} srcs={len(srcs)} dsts={len(dsts)}"
         )
 
@@ -434,41 +408,31 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                     conver = True
 
             for syntax in entry.find_all("syntax"):
-                if syntax.mnem is not None:
-                    mnem = syntax.mnem.text.lower()
-                    if mnem not in OPCODES:
-                        continue
-                else:
+                if syntax.mnem is None:
                     continue
 
-                op1, op2 = parse_operands(syntax)
+                mnem = syntax.mnem.text.lower()
+                if mnem not in OPCODE_ALIASES:
+                    OPCODES.add(mnem)
+                    OPCODE_ALIASES[mnem] = LongOpCode(mnem=mnem)
+
+                try:
+                    op1, op2 = parse_operands(mnem, syntax)
+                except UnsupportedOperandError:
+                    continue
 
                 # Not implemented
+                # The reg field of the ModR/M byte selects a control register (only MOV (0F20, 0F22)).
                 if op2.am == AddressingMode.C or op1.am == AddressingMode.C:
                     continue
 
                 # Not implemented
+                # The reg field of the ModR/M byte selects a debug register (only MOV (0F21, 0F23)).
                 if op2.am == AddressingMode.D or op1.am == AddressingMode.D:
-                    continue
-
-                # Not implemented
-                if op2.am == AddressingMode.H or op1.am == AddressingMode.H:
-                    continue
-
-                # GNU as ignores opcodes with a memory offset addressing mode (a0-a3) , so I will too.
-                if op2.am == AddressingMode.O or op1.am == AddressingMode.O:
                     continue
 
                 # 16-bit segment registers not used in long mode
                 if op2.am == AddressingMode.S or op1.am == AddressingMode.S:
-                    continue
-
-                # Not implemented
-                if op2.am == AddressingMode.T or op1.am == AddressingMode.T:
-                    continue
-
-                # Not implemented
-                if op1.am in (OperandType.bs, OperandType.bss):
                     continue
 
                 was_opcode = WasOpcode(
