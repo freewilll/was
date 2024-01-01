@@ -131,6 +131,9 @@ static int get_cur_register_reg(void) {
 static void parse_register(Operand *op) {
     memset(op, 0, sizeof(Operand));
 
+    // A pointer in a register is treated just like a register.
+    if (cur_token == TOK_MULTIPLY) next();
+
     // Truncate unless it's RIP
     op->reg = get_cur_register_reg();
 
@@ -233,7 +236,7 @@ static int get_integer_size(long value) {
 static void parse_operand(Operand *op) {
     memset(op, 0, sizeof(Operand));
 
-    if (cur_token == TOK_REGISTER) {
+    if (cur_token == TOK_REGISTER || cur_token == TOK_MULTIPLY) {
         parse_register(op);
     }
 
@@ -365,7 +368,7 @@ int parse(void) {
             break;
         else {
             skip();
-            panic("Don't know what do do with token %d", cur_token);
+            error("Don't know what do do with token %d", cur_token);
         }
 
         for (int i = 0; i < labels->length; i++) free(labels->elements[i]);

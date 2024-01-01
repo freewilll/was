@@ -579,5 +579,8 @@ int main() {
     test_assembly("pop      %r15", 0x41, 0x5f, END);
 
     test_assembly("callq    foo@PLT", 0xe8, 00, 00, 00, 00, END);
-    test_assembly("callq    1", 0xe8, 00, 00, 00, 00, END);
+    test_assembly("callq    1",       0xe8, 00, 00, 00, 00, END);
+
+    test_assembly("callq    *%rbx",         0xff, 0xd3, END);
+    test_assembly("callq    *%r15",   0x41, 0xff, 0xd7, END);
 }

@@ -329,7 +329,7 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
             primary_opcode += (op1->reg & 7);
         }
 
-        if (!single_opcode->word_or_double_word_operand && !opcode->x87fpu)
+        if (!single_opcode->word_or_double_word_operand && !opcode->x87fpu && !opcode->branch)
             enc.rex_w = enc.size == SIZE64;
     }
     else if (opcode_arg_count == 2) {
