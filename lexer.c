@@ -18,6 +18,7 @@ int cur_line;                   // Current line
 int cur_token;                      // Current token
 char *cur_identifier;               // Current identifier
 int cur_register;                   // Current register id
+int cur_register_alt_8bit;          // Set to 1 for spl, bpl, sil, dil 8-bit registers
 long cur_long;                      // Current integer
 StringLiteral cur_string_literal;   // Current string literal
 
@@ -190,7 +191,14 @@ static void lex_string_literal(void) {
     cur_string_literal.size = size + 1;
 }
 
-#define FIND_REG(regs, outcome) for (int i = 0; i < 16; i++) { if (!strcmp(name, regs[i])) { cur_register = outcome + i; return; } }
+#define FIND_REG(regs, outcome, alt) \
+    for (int i = 0; i < 16; i++) { \
+        if (!strcmp(name, regs[i])) { \
+            cur_register = outcome + i; \
+            cur_register_alt_8bit = alt; \
+           return; \
+        }  \
+    }
 
 static void parse_register(void) {
     char name[5];
@@ -206,17 +214,20 @@ static void parse_register(void) {
         name[j] = 0;
 
     // https://wiki.osdev.org/X86-64_Instruction_Encoding#Registers
-    char *regs0[] = {"al",   "cl",   "dl",   "bl",   "ah",   "ch",   "dh",   "bh",   "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b"};
-    char *regs1[] = {"ax",   "cx",   "dx",   "bx",   "sp",   "bp",   "si",   "di",   "r8w",  "r9w",  "r10w",  "r11w",  "r12w",  "r13w",  "r14w",  "r15w"};
-    char *regs2[] = {"eax",  "ecx",  "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",  "r8d",  "r9d",  "r10d",  "r11d",  "r12d",  "r13d",  "r14d",  "r15d"};
-    char *regs3[] = {"rax",  "rcx",  "rdx",  "rbx",  "rsp",  "rbp",  "rsi",  "rdi",  "r8",   "r9",   "r10",   "r11",   "r12",   "r13",   "r14",   "r15"  };
-    char *regs4[] = {"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"};
+    char *regs0a[16] = {"al",   "cl",   "dl",   "bl",   "ah",   "ch",   "dh",   "bh",   "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b"};
+    char *regs0b[16] = {"",      "",    "",     "",     "spl",  "bpl",  "sil",  "dil",  "",     "",     "",      "",      "",      "",      "",      ""};
+    char *regs1[16]  = {"ax",   "cx",   "dx",   "bx",   "sp",   "bp",   "si",   "di",   "r8w",  "r9w",  "r10w",  "r11w",  "r12w",  "r13w",  "r14w",  "r15w"};
+    char *regs2[16]  = {"eax",  "ecx",  "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",  "r8d",  "r9d",  "r10d",  "r11d",  "r12d",  "r13d",  "r14d",  "r15d"};
+    char *regs3[16]  = {"rax",  "rcx",  "rdx",  "rbx",  "rsp",  "rbp",  "rsi",  "rdi",  "r8",   "r9",   "r10",   "r11",   "r12",   "r13",   "r14",   "r15"  };
+    char *regs4[16]  = {"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", "xmm8", "xmm9", "xmm10", "xmm11", "xmm12", "xmm13", "xmm14", "xmm15"};
 
-    FIND_REG(regs0, REG_BYTE);
-    FIND_REG(regs1, REG_WORD);
-    FIND_REG(regs2, REG_LONG);
-    FIND_REG(regs3, REG_QUAD);
-    FIND_REG(regs4, REG_XMM);
+    FIND_REG(regs0a, REG_BYTE, 0);
+    FIND_REG(regs0b, REG_BYTE, 1);
+    FIND_REG(regs1,  REG_WORD, 0);
+    FIND_REG(regs1,  REG_WORD, 0);
+    FIND_REG(regs2,  REG_LONG, 0);
+    FIND_REG(regs3,  REG_QUAD, 0);
+    FIND_REG(regs4,  REG_XMM,  0);
 
     if (!strcmp(name, "rip")) {
         cur_register = REG_RIP;

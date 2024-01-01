@@ -62,6 +62,7 @@ extern int cur_line;            // Current line number being lexed
 extern int cur_token;                       // Current token
 extern char *cur_identifier;                // Current identifier
 extern int cur_register;                    // Current register id
+extern int cur_register_alt_8bit;           // Set to 1 for spl, bpl, sil, dil 8-bit registers
 extern long cur_long;                       // Current integer
 extern StringLiteral cur_string_literal;    // Current string literal
 

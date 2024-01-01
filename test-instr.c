@@ -78,6 +78,10 @@ int main() {
     test_assembly("add      %bl,                        %r8b", 0x41, 0x00, 0xd8, END);
     test_assembly("add      %r8b,                       %bl",  0x44, 0x00, 0xc3, END);
     test_assembly("add      %r8b,                       %r9b", 0x45, 0x00, 0xc1, END);
+    test_assembly("mov      $0x0,                       %spl", 0x40, 0xb4, 0x00, END);
+    test_assembly("mov      $0x0,                       %bpl", 0x40, 0xb5, 0x00, END);
+    test_assembly("mov      $0x0,                       %sil", 0x40, 0xb6, 0x00, END);
+    test_assembly("mov      $0x0,                       %dil", 0x40, 0xb7, 0x00, END);
     test_assembly("add      %bx,                        %cx",  0x66, 0x01, 0xd9, END);
     test_assembly("add      %bx,                        %r8w", 0x66, 0x41, 0x01, 0xd8, END);
     test_assembly("add      %r8w,                       %bx",  0x66, 0x44, 0x01, 0xc3, END);

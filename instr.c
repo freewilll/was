@@ -17,6 +17,7 @@
 // Encoding contains all the details necessary to generate the bytes for an instruction
 typedef struct encoding {
     int size;               // Size of operation
+    int need_rex;           // Set to 1 to always emit a rex. A rex can be emitted even if this is set to zero.
     int rex_w;              // Need to set REX W bit
     int need_size16;        // Need to send 16-bit size override
     char prefix;            // Optional prefix
@@ -295,6 +296,9 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
 
     int primary_opcode = opcode->primary_opcode;
 
+    // Emit a rex byte when one of the alternate spl, bpl, sil, dil 8 bit registers are used
+    if ((op1 && OP_IS_ALT_8BIT(op1)) || (op2 && OP_IS_ALT_8BIT(op2))) enc.need_rex = 1;
+
     Operand *memory_op = NULL;
 
     // Determing modrm reg and rm values
@@ -375,7 +379,7 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
 
 // Returns 0/1 if a REX prefix needs to be emitted
 static int needs_rex_prefix(Encoding *enc) {
-    return (enc->rex_w || enc->reg >= 8 || enc->rm >= 8 || enc->index >= 8);
+    return (enc->need_rex || enc->rex_w || enc->reg >= 8 || enc->rm >= 8 || enc->index >= 8);
 }
 
 // Determine the amount of bytes for an encoded instruction
