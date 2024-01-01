@@ -38,11 +38,20 @@ void print_opcode(Opcode *opcode) {
     else
         ohf_prefix = "    ";
 
-    printf("  %s  %s %s 0x%02x %c %c %c %s %c %s%s  %s%s\n",
+    char *sec_opcd;
+    if (opcode->sec_opcd) {
+        sec_opcd = malloc(5);
+        sprintf(sec_opcd, "0x%02x", opcode->sec_opcd);
+    }
+    else
+        sec_opcd = "    ";
+
+    printf("  %-10s  %s %s 0x%02x %s %c %c %c %s %c %s%s  %s%s\n",
         opcode->mnem,
         prefix,
         ohf_prefix,
         opcode->primary_opcode,
+        sec_opcd,
         direction,
         op_size,
         opcd_ext,

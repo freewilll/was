@@ -22,6 +22,7 @@ typedef struct encoding {
     char prefix;            // Optional prefix
     char ohf_prefix;        // Optional 0xf prefix. Zero if no prefix
     char primary_opcode;    // Primary opcode
+    char sec_opcd;          // Secondary opcode
     int has_mod_rm;         // Has Mod RM byte
     int mode;               // Mod RM mode
     int reg;                // Mod RM reg
@@ -354,6 +355,7 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     }
 
     enc.primary_opcode = primary_opcode;
+    enc.sec_opcd = opcode->sec_opcd;
 
     // Store immediate/memory details
     if (op1 && (OP_TYPE_IS_IMM(op1) || OP_TYPE_IS_MEM(op1)))
@@ -378,6 +380,7 @@ static int encoding_size(Encoding *enc) {
         (enc->prefix != 0) +        // Prefix
         (enc->ohf_prefix != 0) +    // 0x0f Prefix
         1 +                         // Primary opcode
+        (enc->sec_opcd != 0) +      // Secondary opcode
         enc->has_mod_rm +           // Mod RM byte
         enc->has_sib +              // SIB byte
         enc->displacement_size +    // Displacement
@@ -472,6 +475,7 @@ static void emit_instructions(Instructions *instr, Encoding *enc) {
     emit_REX_prefix(instr, enc);
     if (enc->ohf_prefix) emit_uint8(instr, enc->ohf_prefix);
     emit_uint8(instr, enc->primary_opcode);
+    if (enc->sec_opcd) emit_uint8(instr, enc->sec_opcd);
     if (enc->has_mod_rm) emit_modrm(instr, enc);
     if (enc->has_sib) emit_sib(instr, enc);
     if (enc->has_displacement) emit_displacement(instr, enc);

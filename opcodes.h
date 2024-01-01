@@ -41,6 +41,7 @@ typedef struct opcode {
     uint8_t prefix;             // Optional prefix
     uint8_t ohf_prefix;         // Optional 0xf prefix
     uint8_t primary_opcode;
+    uint8_t sec_opcd;           // Secondary opcode
     int opcd_ext;               // -1 if not used
     int needs_mod_rm;
     OpcodeOp op1;

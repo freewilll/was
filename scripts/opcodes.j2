@@ -10,6 +10,7 @@ Opcode opcodes[] = {
         0x{{opcode.prefix}},
         0x{{opcode.ohf_prefix}},
         0x{{opcode.value}},
+        0x{{opcode.sec_opcd if opcode.sec_opcd else 0}},
         {{opcode.opcd_ext}},
         {{opcode.needs_mod_rm}},
         {

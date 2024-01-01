@@ -317,6 +317,7 @@ class WasOpcode:
     prefix: int  # prefix
     ohf_prefix: int  # 0x0f prefix
     value: int
+    sec_opcd: int
     opcd_ext: int
     needs_mod_rm: int
     note: str
@@ -345,10 +346,12 @@ class WasOpcode:
             f"{self.prefix if self.prefix != '00' else '  '} "
             + f"{self.ohf_prefix if self.ohf_prefix != '00' else '  '} "
             + f"{self.value} "
+            + f"{self.sec_opcd if self.sec_opcd is not None else '  '} "
             + direction
             + op_size
             + f"{'b' if self.branch else ' '}"
             + f"{'c' if self.conver else ' '} "
+            + f"{'x' if self.x87fpu else ' '} "
             + f"{opcd_ext:2s}"
             + f"{acc}  "
             + f"{self.mnem:10s}"
@@ -458,6 +461,12 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                 continue
 
             opcd_ext = entry.opcd_ext.text if entry.opcd_ext else None
+            sec_opcd = entry.sec_opcd.text if entry.sec_opcd else None
+
+            # if sec_opcd is set, opcd_ext is ignored
+            if sec_opcd is not None:
+                sec_opcd = sec_opcd.lower()
+                opcd_ext = None
 
             r = entry.get("r") == "yes"
 
@@ -522,6 +531,7 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                     prefix=pref,
                     ohf_prefix=ohf_prefix,
                     value=value,
+                    sec_opcd=sec_opcd,
                     opcd_ext=opcd_ext if opcd_ext is not None else -1,
                     needs_mod_rm=1 if r else 0,
                     note=note,

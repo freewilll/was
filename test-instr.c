@@ -512,6 +512,8 @@ int main() {
     test_assembly("fildll (%rcx)",       0xdf, 0x29, END);
     test_assembly("fildll (%r15)", 0x41, 0xdf, 0x2f, END);
 
+    test_assembly("fldz", 0xd9, 0xee, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);
