@@ -20,6 +20,7 @@ class Size(Enum):
     SIZE16 = "SIZE16"
     SIZE32 = "SIZE32"
     SIZE64 = "SIZE64"
+    SIZEST = "SIZEST"
 
     def __lt__(self, other):
         return operator.lt(self.value, other.value)
@@ -104,7 +105,8 @@ OPCODE_ALIASES = {
     "fadds": LongOpCode(mnem="fadd", size=Size.SIZE32),
     "fld": LongOpCode(mnem="fld", size=Size.SIZE32),
     "flds": LongOpCode(mnem="fld", size=Size.SIZE32),
-    "fldt": LongOpCode(mnem="fld", size=Size.SIZE64),
+    "fldt": LongOpCode(mnem="fld", size=Size.SIZEST),
+    "fldl": LongOpCode(mnem="fld", size=Size.SIZE64),
 }
 
 # Add all-sizes aliases
@@ -222,6 +224,7 @@ class OperandType(Enum):
     bss = "bss"  # Byte, sign-extended to the size of the stack pointer (for example, PUSH (6A)).
     d = "d"  #  Doubleword
     di = "di"  #  Doubleword Integer (x87 FPU only)
+    dr = "dr"  #  Double-real. Only x87 FPU instructions
     dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
     er = "er"  # Extended-real. Only x87 FPU instructions).
     q = "q"  # Quad
@@ -245,7 +248,8 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.d: set([Size.SIZE32]),
     OperandType.di: set([Size.SIZE32]),
     OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
-    OperandType.er: set([Size.SIZE64]),
+    OperandType.dr: set([Size.SIZE64]),
+    OperandType.er: set([Size.SIZEST]),
     OperandType.sr: set([Size.SIZE32]),
     OperandType.ss: set([Size.SIZE16]),
     OperandType.sd: set([Size.SIZE32]),
