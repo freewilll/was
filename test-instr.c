@@ -502,6 +502,8 @@ int main() {
     test_assembly("fxch   %st(1)", 0xd9, 0xc9, END);
     test_assembly("fxch   %st(2)", 0xd9, 0xca, END);
 
+    test_assembly("fild   (%rcx)",       0xdf, 0x01, END);
+    test_assembly("fild   (%r15)", 0x41, 0xdf, 0x07, END);
     test_assembly("filds  (%rcx)",       0xdf, 0x01, END);
     test_assembly("filds  (%rdx)",       0xdf, 0x02, END);
     test_assembly("filds  (%r15)", 0x41, 0xdf, 0x07, END);
@@ -511,6 +513,18 @@ int main() {
     test_assembly("fildq  (%r15)", 0x41, 0xdf, 0x2f, END);
     test_assembly("fildll (%rcx)",       0xdf, 0x29, END);
     test_assembly("fildll (%r15)", 0x41, 0xdf, 0x2f, END);
+
+    test_assembly("fistp   (%rcx)",       0xdf, 0x19, END);
+    test_assembly("fistp   (%r15)", 0x41, 0xdf, 0x1f, END);
+    test_assembly("fistps  (%rcx)",       0xdf, 0x19, END);
+    test_assembly("fistps  (%rdx)",       0xdf, 0x1a, END);
+    test_assembly("fistps  (%r15)", 0x41, 0xdf, 0x1f, END);
+    test_assembly("fistpl  (%rcx)",       0xdb, 0x19, END);
+    test_assembly("fistpl  (%r15)", 0x41, 0xdb, 0x1f, END);
+    test_assembly("fistpq  (%rcx)",       0xdf, 0x39, END);
+    test_assembly("fistpq  (%r15)", 0x41, 0xdf, 0x3f, END);
+    test_assembly("fistpll (%rcx)",       0xdf, 0x39, END);
+    test_assembly("fistpll (%r15)", 0x41, 0xdf, 0x3f, END);
 
     test_assembly("fldz", 0xd9, 0xee, END);
 
