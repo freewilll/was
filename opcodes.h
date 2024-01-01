@@ -11,20 +11,21 @@
 #define AM_C      1      // The reg field of the ModR/M byte selects a control register
 #define AM_D      2      // The reg field of the ModR/M byte selects a debug register
 #define AM_E      3      // The operand is either a general-purpose register or a memory address.
-#define AM_EST    4      // (Implies original E). A ModR/M byte follows the opcode and specifies the x87 FPU stack register.
-#define AM_G      5      // The reg field of the ModR/M byte selects a general register
-#define AM_I      6      // Immediate
-#define AM_J      7      // RIP relative
-#define AM_H      8      // The r/m field of the ModR/M byte always selects a general register, regardless of the mod field
-#define AM_M      9      // The ModR/M byte may refer only to memory
-#define AM_O      10     // Offset
-#define AM_R      11     // Not used
-#define AM_S      12     // Not used
-#define AM_ST     13     // x87 FPU stack register.
-#define AM_T      14     // The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
-#define AM_V      15     // The reg field of the ModR/M byte selects a 128-bit XMM register.
-#define AM_W      16     // The operand is either a 128-bit XMM register or a memory address.
-#define AM_Z      17     // The three least-significant bits of the opcode byte selects a general-purpose register
+#define AM_ES     4      // (Implies original E).  The operand is either a x87 FPU stack register or a memory address.
+#define AM_EST    5      // (Implies original E). A ModR/M byte follows the opcode and specifies the x87 FPU stack register.
+#define AM_G      6      // The reg field of the ModR/M byte selects a general register
+#define AM_I      7      // Immediate
+#define AM_J      8      // RIP relative
+#define AM_H      9      // The r/m field of the ModR/M byte always selects a general register, regardless of the mod field
+#define AM_M      10     // The ModR/M byte may refer only to memory
+#define AM_O      11     // Offset
+#define AM_R      12     // Not used
+#define AM_S      13     // Not used
+#define AM_ST     14     // x87 FPU stack register.
+#define AM_T      15     // The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
+#define AM_V      16     // The reg field of the ModR/M byte selects a 128-bit XMM register.
+#define AM_W      17     // The operand is either a 128-bit XMM register or a memory address.
+#define AM_Z      18     // The three least-significant bits of the opcode byte selects a general-purpose register
 
 typedef struct opcode_op {
     int am;                     // Addressing mode

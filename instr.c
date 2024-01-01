@@ -126,6 +126,9 @@ static int op_matches(Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *opcod
     // Addressing mode E means register or memory
     if (opcode_op->am == AM_E && !(OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op))) return 0;
 
+    // Addressing mode ES means fp87 stack register or memory
+    if (opcode_op->am == AM_ES && !(OP_IS_ST(op) || OP_TYPE_IS_MEM(op) || op->indirect)) return 0;
+
     // Addressing mode EST means a fp87 stack register
     if (opcode_op->am == AM_EST && !OP_IS_ST(op)) return 0;
 
@@ -301,6 +304,7 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
              if (single_opcode->am == AM_G)   enc.reg = op1->reg;
         else if (single_opcode->am == AM_V)   enc.reg = op1->reg;
         else if (single_opcode->am == AM_E)   enc.reg = op1->reg;
+        else if (single_opcode->am == AM_ES)  enc.reg = op1->reg;
         else if (single_opcode->am == AM_EST) enc.reg = op1->reg;
         else if (single_opcode->am == AM_W)   enc.reg = op1->reg;
 
@@ -309,7 +313,7 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
             enc.reg = opcode->opcd_ext;
         }
 
-        if (opcode->op1.am == AM_E || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
+        if (opcode->op1.am == AM_E || opcode->op1.am == AM_ES || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
             enc.rm = op1->reg;
             if (op1->indirect || OP_TYPE_IS_MEM(op1)) memory_op = op1;
         }
@@ -329,11 +333,11 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
         else if (opcode->op2.am == AM_V) enc.reg = op2->reg;
         else if (opcode->opcd_ext != -1) enc.reg = opcode->opcd_ext;
 
-        if (opcode->op1.am == AM_E || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
+        if (opcode->op1.am == AM_E || opcode->op1.am == AM_ES || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
             enc.rm = op1->reg;
             if (op1->indirect || OP_TYPE_IS_MEM(op1)) memory_op = op1;
         }
-        else if (opcode->op2.am == AM_E || opcode->op2.am == AM_EST ||  opcode->op2.am == AM_W || opcode->op2.am == AM_M) {
+        else if (opcode->op2.am == AM_E || opcode->op2.am == AM_ES || opcode->op2.am == AM_EST ||  opcode->op2.am == AM_W || opcode->op2.am == AM_M) {
             enc.rm = op2->reg;
             if (op2->indirect || OP_TYPE_IS_MEM(op2)) memory_op = op2;
         }

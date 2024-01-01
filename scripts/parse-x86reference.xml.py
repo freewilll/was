@@ -102,6 +102,9 @@ OPCODE_ALIASES = {
     "fildq": LongOpCode(mnem="fild", size=Size.SIZE64),
     "fildll": LongOpCode(mnem="fild", size=Size.SIZE64),
     "fadds": LongOpCode(mnem="fadd", size=Size.SIZE32),
+    "fld": LongOpCode(mnem="fld", size=Size.SIZE32),
+    "flds": LongOpCode(mnem="fld", size=Size.SIZE32),
+    "fldt": LongOpCode(mnem="fld", size=Size.SIZE64),
 }
 
 # Add all-sizes aliases
@@ -172,6 +175,7 @@ class AddressingMode(Enum):
     C = "C"  # The reg field of the ModR/M byte selects a control register
     D = "D"  # The reg field of the ModR/M byte selects a debug register
     E = "E"  # The operand is either a general-purpose register or a memory address.
+    ES = "ES"  # (Implies original E).  The operand is either a x87 FPU stack register or a memory address.
     EST = "EST"  # (Implies original E). A ModR/M byte follows the opcode and specifies the x87 FPU stack register.
     G = "G"  # The reg field of the ModR/M byte selects a general register
     I = "I"  # Immediate
@@ -192,20 +196,21 @@ class AddressingMode(Enum):
             "C": 1,
             "D": 2,
             "E": 3,
-            "EST": 4,
-            "G": 5,
-            "I": 6,
-            "J": 7,
-            "H": 8,
-            "M": 9,
-            "O": 10,
-            "R": 11,
-            "S": 12,
-            "ST": 13,
-            "T": 14,
-            "V": 15,
-            "W": 16,
-            "Z": 17,
+            "ES": 4,
+            "EST": 5,
+            "G": 6,
+            "I": 7,
+            "J": 8,
+            "H": 0,
+            "M": 10,
+            "O": 11,
+            "R": 12,
+            "S": 13,
+            "ST": 14,
+            "T": 15,
+            "V": 16,
+            "W": 17,
+            "Z": 18,
         }
 
         return C_ENUMS[self.value]
@@ -218,6 +223,7 @@ class OperandType(Enum):
     d = "d"  #  Doubleword
     di = "di"  #  Doubleword Integer (x87 FPU only)
     dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
+    er = "er"  # Extended-real. Only x87 FPU instructions).
     q = "q"  # Quad
     qi = "qi"  # Quad Integer (x87 FPU only)
     sr = "sr"  # Single-real (x87 FPU only)
@@ -239,6 +245,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.d: set([Size.SIZE32]),
     OperandType.di: set([Size.SIZE32]),
     OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
+    OperandType.er: set([Size.SIZE64]),
     OperandType.sr: set([Size.SIZE32]),
     OperandType.ss: set([Size.SIZE16]),
     OperandType.sd: set([Size.SIZE32]),

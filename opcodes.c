@@ -10,7 +10,7 @@
 // Uncomment to enable debug output
 // #define DEBUG
 
-static char *am_strings[] = { " ", "C", "D", "E", "EST", "G", "I", "J", "H", "M", "O", "R", "S", "ST", "T", "V", "W", "Z" };
+static char *am_strings[] = { " ", "C", "D", "E", "ES", "EST", "G", "I", "J", "H", "M", "O", "R", "S", "ST", "T", "V", "W", "Z" };
 
 StrMap *opcode_alias_map;
 
