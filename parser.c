@@ -254,8 +254,16 @@ static void parse_operand(Operand *op) {
         next();
     }
 
-    else if (cur_token == TOK_INTEGER) {
+    else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
         // Memory
+
+        int negative = 0;
+
+        if (cur_token == TOK_MINUS) {
+            negative = 1;
+            next();
+        }
+
         op->type = MEM32; // Default memory address size
         next();
 
@@ -264,6 +272,7 @@ static void parse_operand(Operand *op) {
             long value = cur_long;
             parse_indirect_operand(op);
             op->displacement = value;
+            if (negative) op->displacement = -op->displacement;
             op->displacement_size = get_integer_size(value);
 
             // Displacements are only possible with 8 and 32 bits
@@ -300,7 +309,7 @@ static void parse_operand(Operand *op) {
     }
 
     else
-        panic("Unable to parse operand for token %d\n", cur_token);
+        error("Unable to parse operand for token %d", cur_token);
 }
 
 Instructions parse_instruction_statement(void) {
