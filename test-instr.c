@@ -534,6 +534,9 @@ int main() {
     test_assembly("fnstcw (%rax)",  0xd9, 0x38, END);
     test_assembly("fnstcw 0x0",     0xd9, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, END);
 
+    test_assembly("fcomip %st(1),%st", 0xdf, 0xf1, END);
+    test_assembly("fucomip %st(1),%st", 0xdf, 0xe9, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);
