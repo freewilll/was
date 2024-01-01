@@ -107,6 +107,9 @@ OPCODE_ALIASES = {
     "flds": LongOpCode(mnem="fld", size=Size.SIZE32),
     "fldt": LongOpCode(mnem="fld", size=Size.SIZEST),
     "fldl": LongOpCode(mnem="fld", size=Size.SIZE64),
+    "fstps": LongOpCode(mnem="fstp", size=Size.SIZE32),
+    "fstpt": LongOpCode(mnem="fstp", size=Size.SIZEST),
+    "fstpl": LongOpCode(mnem="fstp", size=Size.SIZE64),
 }
 
 # Add all-sizes aliases

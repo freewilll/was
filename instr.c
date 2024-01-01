@@ -141,6 +141,8 @@ static int op_matches(Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *opcod
     // Addressing mode I is immediate
     if (opcode_op->am == AM_J && !OP_TYPE_IS_MEM(op)) return 0;
 
+    if (opcode_op->am == AM_M && !(OP_TYPE_IS_MEM(op) || op->indirect)) return 0;
+
     // Addressing mode V is xmm register
     if (opcode_op->am == AM_V && (!OP_TYPE_IS_REG(op) || op->indirect)) return 0;
 
