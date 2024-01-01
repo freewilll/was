@@ -69,7 +69,6 @@ static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
 // Determine the size of the instruction from the opcode definition and operands
 static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand *op1, Operand *op2) {
     int size = opcode_alias->size;
-
     // Determine size from register operands
     if (!size) {
         if (op2 && opcode->conver)
@@ -98,7 +97,7 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
 }
 
 // Check if an opcode's operand matches an operand
-static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size) {
+static int op_matches(Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *opcode_op, Operand *op, int size) {
     if (!op) panic("op unexpectedly null");
 
     // If the operation is an indirect, the size is the size of the entire operation,
@@ -109,6 +108,10 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
     // encode IMM08 values.
 
     int alt_op_size = op->type == IMM08 ? SIZE16 : 0;
+
+    // If the opcode alias has a size & the addressing mode is memory, then an indirect or memory operand doesn't have
+    // a size and is matched.
+    if (!opcode_alias->size && opcode_op->am == AM_M && (OP_TYPE_IS_MEM(op) || op->indirect)) return 1;
 
     // Match sizes
     if (opcode_op->sizes
@@ -128,9 +131,6 @@ static int op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size
 
     // Addressing mode G is register
     if (opcode_op->am == AM_G && (!OP_TYPE_IS_REG(op) || op->indirect)) return 0;
-
-    // Addressing mode M is memory
-    if (opcode_op->am == AM_M && (!OP_TYPE_IS_MEM(op) && !op->indirect)) return 0;
 
     // Addressing mode I is immediate
     if (opcode_op->am == AM_I && !OP_TYPE_IS_IMM(op)) return 0;
@@ -516,11 +516,11 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         OpcodeOp *single_opcode = NULL;
         if (opcode_arg_count == 1) {
             single_opcode = opcode->op1.am ? &opcode->op1 : &opcode->op2;
-            if (!op_matches(opcode, single_opcode, op1, size)) continue;
+            if (!op_matches(opcode, opcode_alias, single_opcode, op1, size)) continue;
         }
         else if (opcode_arg_count == 2) {
-            if (!op_matches(opcode, &opcode->op1, op1, size)) continue;
-            if (!op_matches(opcode, &opcode->op2, op2, size)) continue;
+            if (!op_matches(opcode, opcode_alias, &opcode->op1, op1, size)) continue;
+            if (!op_matches(opcode, opcode_alias, &opcode->op2, op2, size)) continue;
         }
 
         // At this point, the opcode can be used to generate code

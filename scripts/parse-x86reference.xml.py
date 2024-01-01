@@ -101,6 +101,7 @@ OPCODE_ALIASES = {
     "fildl": LongOpCode(mnem="fild", size=Size.SIZE32),
     "fildq": LongOpCode(mnem="fild", size=Size.SIZE64),
     "fildll": LongOpCode(mnem="fild", size=Size.SIZE64),
+    "fadds": LongOpCode(mnem="fadd", size=Size.SIZE32),
 }
 
 # Add all-sizes aliases
@@ -219,6 +220,7 @@ class OperandType(Enum):
     dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
     q = "q"  # Quad
     qi = "qi"  # Quad Integer (x87 FPU only)
+    sr = "sr"  # Single-real (x87 FPU only)
     ss = "ss"  #  Scalar element of a 128-bit packed single-precision floating data.
     sd = "sd"  #  Scalar element of a 128-bit packed double-precision floating data.
     v = "v"  #   Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
@@ -237,6 +239,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.d: set([Size.SIZE32]),
     OperandType.di: set([Size.SIZE32]),
     OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
+    OperandType.sr: set([Size.SIZE32]),
     OperandType.ss: set([Size.SIZE16]),
     OperandType.sd: set([Size.SIZE32]),
     OperandType.q: set([Size.SIZE64]),

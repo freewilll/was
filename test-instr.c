@@ -514,6 +514,13 @@ int main() {
 
     test_assembly("fldz", 0xd9, 0xee, END);
 
+    test_assembly("fadd  (%rax)",           0xd8, 0x00, END);
+    test_assembly("fadd  (%rbx,%rcx,4)",    0xd8, 0x04, 0x8b, END);
+    test_assembly("fadd  0x0",              0xd8, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, END);
+    test_assembly("fadds  (%rax)",          0xd8, 0x00, END);
+    test_assembly("fadds  (%rbx,%rcx,4)",   0xd8, 0x04, 0x8b, END);
+    test_assembly("fadds  0x0",             0xd8, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);
