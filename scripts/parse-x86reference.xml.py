@@ -97,6 +97,10 @@ OPCODE_ALIASES = {
     "cvtsd2ss": LongOpCode(mnem="cvtsd2ss", size=Size.SIZE32),
     **make_sized_aliases("cvttss2si", {Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("cvttsd2si", {Size.SIZE32, Size.SIZE64}),
+    "filds": LongOpCode(mnem="fild", size=Size.SIZE16),
+    "fildl": LongOpCode(mnem="fild", size=Size.SIZE32),
+    "fildq": LongOpCode(mnem="fild", size=Size.SIZE64),
+    "fildll": LongOpCode(mnem="fild", size=Size.SIZE64),
 }
 
 # Add all-sizes aliases
@@ -211,8 +215,10 @@ class OperandType(Enum):
     bs = "bs"  # Byte, sign-extended to the size of the destination operand.
     bss = "bss"  # Byte, sign-extended to the size of the stack pointer (for example, PUSH (6A)).
     d = "d"  #  Doubleword
+    di = "di"  #  Doubleword Integer (x87 FPU only)
     dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
     q = "q"  # Quad
+    qi = "qi"  # Quad Integer (x87 FPU only)
     ss = "ss"  #  Scalar element of a 128-bit packed single-precision floating data.
     sd = "sd"  #  Scalar element of a 128-bit packed double-precision floating data.
     v = "v"  #   Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
@@ -221,6 +227,7 @@ class OperandType(Enum):
     vqp = "vqp"  # Word or doubleword, depending on operand-size attribute, or quadword, promoted by REX.W in 64-bit mode.
     vs = "vs"  # Word or doubleword sign extended to the size of the stack pointer (for example, PUSH (68)).
     w = "w"  #  Word
+    wi = "wi"  #  Word Integer (x87 FPU only)
 
 
 OPERAND_TYPE_TO_SIZES = {
@@ -228,16 +235,19 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.bs: set([Size.SIZE08]),
     OperandType.bss: set([Size.SIZE08]),
     OperandType.d: set([Size.SIZE32]),
+    OperandType.di: set([Size.SIZE32]),
     OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
     OperandType.ss: set([Size.SIZE16]),
     OperandType.sd: set([Size.SIZE32]),
     OperandType.q: set([Size.SIZE64]),
+    OperandType.qi: set([Size.SIZE64]),
     OperandType.v: set([Size.SIZE16, Size.SIZE32]),
     OperandType.vds: set([Size.SIZE16, Size.SIZE32]),
     OperandType.vq: set([Size.SIZE16, Size.SIZE64]),
     OperandType.vqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
     OperandType.vs: set([Size.SIZE16, Size.SIZE32]),
     OperandType.w: set([Size.SIZE16]),
+    OperandType.wi: set([Size.SIZE16]),
 }
 
 # Operand types that have the operand-size attribute set
@@ -315,6 +325,7 @@ class WasOpcode:
     acc: int
     branch: int
     conver: int
+    x87fpu: int
     op1: WasOperand
     op2: WasOperand
 
@@ -452,6 +463,7 @@ def parse_pri_opcd(one_byte, ohf_prefix):
 
             branch = False
             conver = False
+            x87fpu = False
 
             for grp_name in ("grp1", "grp2", "grp3"):
                 for grp in entry.find_all(grp_name):
@@ -459,6 +471,8 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                         branch = True
                     elif grp.text == "conver":
                         conver = True
+                    elif grp.text == "x87fpu":
+                        x87fpu = True
 
             for syntax in entry.find_all("syntax"):
                 if syntax.mnem is None:
@@ -516,6 +530,7 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                     acc=int(acc),
                     branch=int(branch),
                     conver=int(conver),
+                    x87fpu=int(x87fpu),
                     op1=op1,
                     op2=op2,
                 )

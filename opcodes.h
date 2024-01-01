@@ -50,6 +50,7 @@ typedef struct opcode {
     char acc;                   // Accumulator
     char branch;                // Is a branch instruction
     char conver;                // Is a type conversion
+    char x87fpu;                // Is a X87 FPU long double instruction
 } Opcode;
 
 typedef struct opcode_alias {

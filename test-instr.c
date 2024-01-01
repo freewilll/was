@@ -502,6 +502,16 @@ int main() {
     test_assembly("fxch   %st(1)", 0xd9, 0xc9, END);
     test_assembly("fxch   %st(2)", 0xd9, 0xca, END);
 
+    test_assembly("filds  (%rcx)",       0xdf, 0x01, END);
+    test_assembly("filds  (%rdx)",       0xdf, 0x02, END);
+    test_assembly("filds  (%r15)", 0x41, 0xdf, 0x07, END);
+    test_assembly("fildl  (%rcx)",       0xdb, 0x01, END);
+    test_assembly("fildl  (%r15)", 0x41, 0xdb, 0x07, END);
+    test_assembly("fildq  (%rcx)",       0xdf, 0x29, END);
+    test_assembly("fildq  (%r15)", 0x41, 0xdf, 0x2f, END);
+    test_assembly("fildll (%rcx)",       0xdf, 0x29, END);
+    test_assembly("fildll (%r15)", 0x41, 0xdf, 0x2f, END);
+
     test_assembly("ret", 0xc3, END);
     test_assembly("retq", 0xc3, END);
     test_assembly("leave", 0xc9, END);

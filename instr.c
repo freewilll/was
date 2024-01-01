@@ -36,7 +36,6 @@ typedef struct encoding {
     long imm_or_mem;        // Immediate or memory bytes
     int imm_or_mem_size;    // Size of immediate or memory bytes
     int branch;             // Is branch instruction
-    int is_xmm;             // Is an XMM instruction
 } Encoding;
 
 // Print hex bytes for the encoded instructions
@@ -285,8 +284,8 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     enc.branch = opcode->branch;
     enc.prefix = opcode->prefix;
     enc.ohf_prefix = opcode->ohf_prefix;
-    enc.is_xmm = (op1 && OP_IS_XMM(op1)) || (op2 && OP_IS_XMM(op2));
-    enc.need_size16 = (enc.size == SIZE16 && !enc.is_xmm);
+    int is_xmm = (op1 && OP_IS_XMM(op1)) || (op2 && OP_IS_XMM(op2));
+    enc.need_size16 = (enc.size == SIZE16 && !is_xmm && !opcode->x87fpu);
 
     int primary_opcode = opcode->primary_opcode;
 
@@ -309,12 +308,18 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
             enc.reg = opcode->opcd_ext;
         }
 
+        if (opcode->op1.am == AM_E || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
+            enc.rm = op1->reg;
+            if (op1->indirect || OP_TYPE_IS_MEM(op1)) memory_op = op1;
+        }
+
         if (single_opcode->am == AM_Z) {
             enc.rm = op1->reg;
             primary_opcode += (op1->reg & 7);
         }
 
-        if (!single_opcode->word_or_double_word_operand) enc.rex_w = enc.size == SIZE64;
+        if (!single_opcode->word_or_double_word_operand && !opcode->x87fpu)
+            enc.rex_w = enc.size == SIZE64;
     }
     else if (opcode_arg_count == 2) {
              if (opcode->op1.am == AM_G) enc.reg = op1->reg;
@@ -337,7 +342,7 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
             primary_opcode += (op2->reg & 7);
         }
 
-        enc.rex_w = enc.size == SIZE64;
+        enc.rex_w = enc.size == SIZE64 && !opcode->x87fpu;
     }
 
     // Figure out mod/RM SIB and displacement
