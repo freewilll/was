@@ -74,9 +74,9 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
     if (!size) {
         if (op2 && opcode->conver)
             size = OP_TO_SIZE(op2);
-        else if (op1 && OP_TYPE_IS_REG(op1))
+        else if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect)
             size = OP_TO_SIZE(op1);
-        else if (op2 && OP_TYPE_IS_REG(op2))
+        else if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect)
             size = OP_TO_SIZE(op2);
 
         // Check operands are the same size unless they are conversions or one of them is an indirect

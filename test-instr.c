@@ -336,6 +336,7 @@ int main() {
     test_assembly("add      %cl,                        (%rax)",                 0x00, 0x08, END);
     test_assembly("add      %cl,                        (%rbx)",                 0x00, 0x0b, END);
     test_assembly("add      %r15w,                      (%r14)",           0x66, 0x45, 0x01, 0x3e, END);
+    test_assembly("add      $0x42,                      (%rbx)",                 0x83, 0x03, 0x42, END);
     test_assembly("addq     $0x42,                      5(%rax)",          0x48, 0x83, 0x40, 0x05, 0x42, END);
     test_assembly("add      %bl,                        5(%rbx)",          0x00, 0x5b, 0x05, END);
     test_assembly("addq     $0x42,                      5(%rbx)",          0x48, 0x83, 0x43, 0x05, 0x42, END);
