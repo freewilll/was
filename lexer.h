@@ -29,8 +29,7 @@ enum {
     TOK_DIRECTIVE_SECTION,
     TOK_DIRECTIVE_SIZE,
     TOK_DIRECTIVE_STRING,
-    TOK_DIRECTIVE_RODATA,           // 20
-    TOK_DIRECTIVE_TEXT,
+    TOK_DIRECTIVE_TEXT,             // 20
     TOK_DIRECTIVE_TYPE,
     TOK_DIRECTIVE_ULEB128,
     TOK_DIRECTIVE_WORD,
@@ -39,8 +38,8 @@ enum {
     TOK_INSTRUCTION,
     TOK_REGISTER,
     TOK_RPAREN,
-    TOK_LPAREN,                     // 30
-    TOK_COMMA,
+    TOK_LPAREN,
+    TOK_COMMA,                      // 30
     TOK_PLUS,
     TOK_MINUS,
     TOK_MULTIPLY,

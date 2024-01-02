@@ -11,7 +11,7 @@
 
 #define END -1
 
-void _assert_instructions(Instructions* instr, va_list ap) {
+void assert_instructions(Instructions* instr, va_list ap) {
     if (!instr) panic("Assert instruction on a NULL");
 
     int pos = 0;
@@ -42,12 +42,6 @@ void _assert_instructions(Instructions* instr, va_list ap) {
     }
 }
 
-void assert_instructions(Instructions* instr, ...) {
-    va_list ap;
-    va_start(ap, instr);
-    _assert_instructions(instr, ap);
-}
-
 void test_assembly(char *input, ...) {
     va_list ap;
     va_start(ap, input);
@@ -55,7 +49,7 @@ void test_assembly(char *input, ...) {
     printf("%-60s", input);
     init_lexer_from_string(input);
     Instructions instr = parse_instruction_statement();
-    _assert_instructions(&instr, ap);
+    assert_instructions(&instr, ap);
 
     printf("pass\n");
 }

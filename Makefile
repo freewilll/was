@@ -44,15 +44,22 @@ was: ${OBJECTS} main.o
 	gcc -g ${OBJECTS} main.o -o was
 
 .PHONY: test
-test: was run-test-instr
+test: was run-test-instr run-test-data
 	make -C tests
 
 test-instr: ${OBJECTS} test-instr.o
 	gcc -g ${OBJECTS} test-instr.o -o test-instr
 
+test-data: ${OBJECTS} test-data.o
+	gcc -g ${OBJECTS} test-data.o -o test-data
+
 .PHONY: run-test-instr
 run-test-instr: test-instr
 	./test-instr
+
+.PHONY: run-test-data
+run-test-data: test-data
+	./test-data
 
 clean:
 	@rm -f *.o

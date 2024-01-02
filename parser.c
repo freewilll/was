@@ -17,7 +17,20 @@ static void skip() {
     while (cur_token != TOK_EOL && cur_token != TOK_EOF) next();
 }
 
-static void parse_directive_statement(void) {
+static long parse_signed_integer(void) {
+    int negative = 0;
+    if (cur_token == TOK_MINUS) {
+        negative = 1;
+        next();
+    }
+    expect(TOK_INTEGER, "integer");
+    long result = negative ? -cur_long : cur_long;
+    next();
+
+    return result;
+}
+
+void parse_directive_statement(void) {
     int directive = cur_token;
     next();
 
@@ -27,10 +40,11 @@ static void parse_directive_statement(void) {
             skip();
             break;
 
-        case TOK_DIRECTIVE_BYTE:
-            printf("TODO: .byte\n");
-            skip();
+        case TOK_DIRECTIVE_BYTE: {
+            char value = parse_signed_integer();
+            add_to_current_section(&value, 1);
             break;
+        }
 
         case TOK_DIRECTIVE_COMM:
             printf("TODO: .comm\n");
@@ -38,8 +52,7 @@ static void parse_directive_statement(void) {
             break;
 
         case TOK_DIRECTIVE_DATA:
-            printf("TODO: .data\n");
-            skip();
+            set_current_section(".data");
             break;
 
         case TOK_DIRECTIVE_FILE:
@@ -61,15 +74,17 @@ static void parse_directive_statement(void) {
             skip();
             break;
 
-        case TOK_DIRECTIVE_LONG:
-            printf("TODO: .long\n");
-            skip();
+        case TOK_DIRECTIVE_LONG: {
+            int value = parse_signed_integer();
+            add_to_current_section(&value, 4);
             break;
+        }
 
-        case TOK_DIRECTIVE_QUAD:
-            printf("TODO: .quad\n");
-            skip();
+        case TOK_DIRECTIVE_QUAD: {
+            long value = parse_signed_integer();
+            add_to_current_section(&value, 8);
             break;
+        }
 
         case TOK_DIRECTIVE_SECTION:
             expect(TOK_IDENTIFIER, "section name");
@@ -88,11 +103,6 @@ static void parse_directive_statement(void) {
             next();
             break;
 
-        case TOK_DIRECTIVE_RODATA:
-            printf("TODO: .rodata\n");
-            skip();
-            break;
-
         case TOK_DIRECTIVE_TEXT:
             set_current_section(".text");
             break;
@@ -107,14 +117,15 @@ static void parse_directive_statement(void) {
             skip();
             break;
 
-        case TOK_DIRECTIVE_WORD:
-            printf("TODO: .word\n");
-            skip();
+        case TOK_DIRECTIVE_WORD: {
+            short value = parse_signed_integer();
+            add_to_current_section(&value, 2);
             break;
+        }
 
         case TOK_DIRECTIVE_ZERO:
-            printf("TODO: .zero\n");
-            skip();
+            add_zeros_to_current_section(cur_long);
+            next();
             break;
 
         default:

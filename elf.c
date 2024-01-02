@@ -56,6 +56,11 @@ void set_current_section(char *name) {
 }
 
 // Return the size of the current section
+ElfSection *get_current_section(void) {
+    return current_section;
+}
+
+// Return the size of the current section
 int get_current_section_size(void) {
     return current_section->size;
 }
@@ -86,6 +91,18 @@ static int add_to_section(ElfSection *section, void *src, int size) {
 // Copy src to the end of the current section and return the offset
 int add_to_current_section(void *src, int size) {
     return add_to_section(current_section, src, size);
+}
+
+// Copy src to the end of a section and return the offset
+static int add_zeros_to_section(ElfSection *section, int size) {
+    char *data = allocate_in_section(section, size);
+    memset(data, 0, size);
+    return data - section->data;
+}
+
+// Copy src to the end of the current section and return the offset
+int add_zeros_to_current_section(int size) {
+    return add_zeros_to_section(current_section, size);
 }
 
 // Add a symbol to the ELF symbol table symtab

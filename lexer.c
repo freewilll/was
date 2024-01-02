@@ -347,7 +347,6 @@ void next(void) {
                 else if (!strcmp(cur_identifier, ".section" )) { cur_token = TOK_DIRECTIVE_SECTION; seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".size"    )) { cur_token = TOK_DIRECTIVE_SIZE;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".string"  )) { cur_token = TOK_DIRECTIVE_STRING;  seen_directive = 1; }
-                else if (!strcmp(cur_identifier, ".rodata"  )) { cur_token = TOK_DIRECTIVE_RODATA;  seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".text"    )) { cur_token = TOK_DIRECTIVE_TEXT;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".type"    )) { cur_token = TOK_DIRECTIVE_TYPE;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".uleb128" )) { cur_token = TOK_DIRECTIVE_ULEB128; seen_directive = 1; }

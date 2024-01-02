@@ -5,8 +5,10 @@ core
 a.out
 test
 test-instr
+test-data
 /test.c
 /test.s
 /test2.s
 /hello.c
 /hello.s
+/hello
