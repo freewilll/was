@@ -197,7 +197,6 @@ class AddressingMode(Enum):
     R = "R"  # Not used
     S = "S"  # Not used
     ST = "ST"  # x87 FPU stack register.
-    T = "T"  # The reg field of the ModR/M byte selects a test register (only MOV (0F24, 0F26)).
     V = "V"  # The reg field of the ModR/M byte selects a 128-bit XMM register.
     W = "W"  # The operand is either a 128-bit XMM register or a memory address.
     Z = "Z"  # The three least-significant bits of the opcode byte selects a general-purpose register
