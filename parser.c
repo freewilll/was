@@ -12,6 +12,13 @@
 #include "utils.h"
 #include "was.h"
 
+static List *instruction_sets;
+
+typedef struct instructions_set {
+    Instructions *primary;
+    Instructions *secondary;
+} InstructionsSet;
+
 // TODO remove skip
 static void skip() {
     while (cur_token != TOK_EOL && cur_token != TOK_EOF) next();
@@ -213,24 +220,6 @@ static void preprocess_op_relocation(Operand *op, char *identifier) {
     op->relocation_symbol = symbol;
 }
 
-// Add a relocation to the relocation section
-static void add_instruction_relocation(Instructions *instr, Operand *op1, Operand *op2, int base_offset) {
-    Operand *op;
-    if (op1 && op1->relocation_symbol)
-        op = op1;
-    else if (op2 && op2->relocation_symbol)
-        op = op2;
-    else
-        return;
-
-    if (instr->branch)
-        op->relocation_type = R_X86_64_PLT32; // This depends on the opcode
-    else
-        op->relocation_type = R_X86_64_PC32;
-
-    add_relocation(op->relocation_symbol, op->relocation_type, base_offset + instr->relocation_offset);
-}
-
 // Determine integer size
 static int get_integer_size(long value) {
     if ((unsigned long) value <= 0xff)
@@ -318,7 +307,7 @@ static void parse_operand(Operand *op) {
         error("Unable to parse operand for token %d", cur_token);
 }
 
-Instructions parse_instruction_statement(void) {
+Instructions *parse_instruction_statement(void) {
     char *mnemonic = strdup(cur_identifier);
     next();
 
@@ -342,13 +331,32 @@ Instructions parse_instruction_statement(void) {
     }
 
     Instructions instr = make_instructions(mnemonic, op1, op2);
+
+    InstructionsSet *instructions_set = malloc(sizeof(InstructionsSet));
+    append_to_list(instruction_sets, instructions_set);
+    instructions_set->primary = calloc(1, sizeof(Instructions));
+    *instructions_set->primary = instr;
+
+    if (instr.branch && op1 && op1->type == MEM32) {
+        op1->type = MEM08;
+        Instructions alt_instr = make_instructions(mnemonic, op1, op2);
+
+        instructions_set->secondary = calloc(1, sizeof(Instructions));
+        *instructions_set->secondary = alt_instr;
+    }
+
     free(mnemonic);
 
-    int base_offset = get_current_section_size();
-    add_to_current_section(instr.data, instr.size);
-    if (instr.relocation_size) add_instruction_relocation(&instr, op1, op2, base_offset);
+    Operand *relocation_op = NULL;
+    if (op1 && op1->relocation_symbol)
+        relocation_op = op1;
+    else if (op2 && op2->relocation_symbol)
+        relocation_op = op2;
 
-    return instr;
+    if (relocation_op)
+        instructions_set->primary->relocation_symbol = relocation_op->relocation_symbol;
+
+    return instructions_set->primary;
 }
 
 int parse(void) {
@@ -364,17 +372,33 @@ int parse(void) {
             while (cur_token == TOK_EOL) next(); // More labels can follow
         }
 
-        for (int i = 0; i < labels->length; i++) {
-            char *name = labels->elements[i];
-            Symbol *symbol = get_or_add_symbol(strdup(name));
-            associate_symbol_with_current_section(symbol);
+        // If we're not in .text, add symbols for the labels
+        if (get_current_section() != &section_text) {
+            for (int i = 0; i < labels->length; i++) {
+                char *name = labels->elements[i];
+                Symbol *symbol = get_or_add_symbol(strdup(name));
+                associate_symbol_with_current_section(symbol);
+            }
         }
 
         // Parse statement
         if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO)
             parse_directive_statement();
-        else if (cur_token == TOK_INSTRUCTION)
-            parse_instruction_statement();
+        else if (cur_token == TOK_INSTRUCTION) {
+            if (get_current_section() != &section_text)
+                panic("Instructions can only be added to the .text section");
+
+            Instructions *instr = parse_instruction_statement();
+
+            for (int i = 0; i < labels->length; i++) {
+                char *name = labels->elements[i];
+                Symbol *symbol = get_or_add_symbol(strdup(name));
+
+                if (!instr->symbols) instr->symbols = new_list(labels->length);
+                append_to_list(instr->symbols, symbol);
+            }
+
+        }
         else if (cur_token == TOK_EOF)
             break;
         else {
@@ -387,4 +411,53 @@ int parse(void) {
 
         while (cur_token == TOK_EOL) next();
     }
+}
+
+void emit_code(void) {
+    // Make symbol addresses
+    int offset = 0;
+    for (int i = 0; i < instruction_sets->length; i++) {
+        InstructionsSet *is = instruction_sets->elements[i];
+
+        List *symbols = is->primary->symbols;
+        if (symbols) {
+            for (int j = 0; j < symbols->length; j++) {
+                Symbol *symbol = symbols->elements[j];
+                symbol->offset = offset;
+                symbol->section_index = section_text.index;
+            }
+        }
+
+        offset += is->primary->size;
+    }
+
+    for (int i = 0; i < instruction_sets->length; i++) {
+        InstructionsSet *is = instruction_sets->elements[i];
+        Instructions *instr = is->primary;
+
+        // All branch instructions use 32 bit memory addresses for the time being,
+        // so we're only taking the primary instructions into account.
+        int base_offset = get_current_section_size();
+
+        if (instr->relocation_symbol) {
+            int relocation_type;
+            if (instr->branch) // This is set for branch opcodes
+                relocation_type = R_X86_64_PLT32;
+            else
+                relocation_type = R_X86_64_PC32;
+
+            if (instr->relocation_symbol->section_index != section_text.index)
+                add_relocation(instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset);
+            else {
+                int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4);
+                memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // Hardcoded to 32 bit
+            }
+        }
+
+        add_to_current_section(instr->data, instr->size);
+    }
+}
+
+void init_parser(void) {
+    instruction_sets = new_list(10240);
 }

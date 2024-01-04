@@ -72,7 +72,9 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
     int size = opcode_alias->size;
     // Determine size from register operands
     if (!size) {
-        if (op2 && opcode->conver)
+        if (opcode->branch && op1 && OP_TYPE_IS_MEM(op1))
+            size = OP_TO_SIZE(op1);
+        else if (op2 && opcode->conver)
             size = OP_TO_SIZE(op2);
         else if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect)
             size = OP_TO_SIZE(op1);

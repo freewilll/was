@@ -3,9 +3,11 @@
 
 #include "instr.h"
 
-Instructions parse_instruction_statement(void);
+Instructions *parse_instruction_statement(void);
 
 void parse_directive_statement(void);
 int parse(void);
+void init_parser(void);
+void emit_code(void);
 
 #endif

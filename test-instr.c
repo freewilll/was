@@ -48,8 +48,9 @@ void test_assembly(char *input, ...) {
 
     printf("%-60s", input);
     init_lexer_from_string(input);
-    Instructions instr = parse_instruction_statement();
-    assert_instructions(&instr, ap);
+    init_parser();
+    Instructions *instr = parse_instruction_statement();
+    assert_instructions(instr, ap);
 
     printf("pass\n");
 }

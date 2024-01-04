@@ -201,7 +201,7 @@ static void make_symbols_section(void) {
         if (!symbol->section_index) symbol->binding = STB_GLOBAL;
 
         if (symbol->binding != STB_GLOBAL)
-            symbol->symtab_index = add_elf_symbol(name, 0, symbol->binding, symbol->type, symbol->section_index);
+            symbol->symtab_index = add_elf_symbol(name, symbol->offset, symbol->binding, symbol->type, symbol->section_index);
     }
 
     // Add global symbols

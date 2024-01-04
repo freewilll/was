@@ -129,6 +129,8 @@ typedef struct elf_relocation {
     long r_addend;          // Addend
 } ElfRelocation;
 
+extern ElfSection section_text;
+
 ElfSection *get_current_section(void);
 int get_current_section_size(void);
 void set_current_section(char *name);

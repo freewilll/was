@@ -62,7 +62,6 @@ typedef struct operand {
     int index;                  // SIB index register
     int base;                   // SIB base register
     Symbol *relocation_symbol;
-    int relocation_type;
 } Operand;
 
 typedef struct instructions {
@@ -70,7 +69,9 @@ typedef struct instructions {
     int size;
     int relocation_offset;
     int relocation_size;
+    Symbol *relocation_symbol;
     char branch;                // Is it a branch instruction?
+    List *symbols;              // Zero or more symbols associated with the address at this instruction
 } Instructions;
 
 int dump_instructions(Instructions *instr);
