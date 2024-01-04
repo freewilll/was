@@ -14,11 +14,6 @@
 
 static List *instruction_sets;
 
-typedef struct instructions_set {
-    Instructions *primary;
-    Instructions *secondary;
-} InstructionsSet;
-
 // TODO remove skip
 static void skip() {
     while (cur_token != TOK_EOL && cur_token != TOK_EOF) next();
@@ -307,7 +302,7 @@ static void parse_operand(Operand *op) {
         error("Unable to parse operand for token %d", cur_token);
 }
 
-Instructions *parse_instruction_statement(void) {
+InstructionsSet *parse_instruction_statement(void) {
     char *mnemonic = strdup(cur_identifier);
     next();
 
@@ -336,6 +331,7 @@ Instructions *parse_instruction_statement(void) {
     append_to_list(instruction_sets, instructions_set);
     instructions_set->primary = calloc(1, sizeof(Instructions));
     *instructions_set->primary = instr;
+    instructions_set->using_primary = 1;
 
     if (instr.branch && op1 && op1->type == MEM32) {
         op1->type = MEM08;
@@ -353,10 +349,13 @@ Instructions *parse_instruction_statement(void) {
     else if (op2 && op2->relocation_symbol)
         relocation_op = op2;
 
-    if (relocation_op)
+    if (relocation_op) {
         instructions_set->primary->relocation_symbol = relocation_op->relocation_symbol;
+        if (instructions_set->secondary)
+            instructions_set->secondary->relocation_symbol = relocation_op->relocation_symbol;
+    }
 
-    return instructions_set->primary;
+    return instructions_set;
 }
 
 int parse(void) {
@@ -388,14 +387,14 @@ int parse(void) {
             if (get_current_section() != &section_text)
                 panic("Instructions can only be added to the .text section");
 
-            Instructions *instr = parse_instruction_statement();
+            InstructionsSet *instr_set = parse_instruction_statement();
 
             for (int i = 0; i < labels->length; i++) {
                 char *name = labels->elements[i];
                 Symbol *symbol = get_or_add_symbol(strdup(name));
 
-                if (!instr->symbols) instr->symbols = new_list(labels->length);
-                append_to_list(instr->symbols, symbol);
+                if (!instr_set->symbols) instr_set->symbols = new_list(labels->length);
+                append_to_list(instr_set->symbols, symbol);
             }
 
         }
@@ -413,13 +412,15 @@ int parse(void) {
     }
 }
 
-void emit_code(void) {
-    // Make symbol addresses
+// For all instructions that have symbols, update the offset of the symbol
+// based on the selection of primary/secondary instructions.
+void make_symbol_offsets(void) {
     int offset = 0;
+
     for (int i = 0; i < instruction_sets->length; i++) {
         InstructionsSet *is = instruction_sets->elements[i];
 
-        List *symbols = is->primary->symbols;
+        List *symbols = is->symbols;
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
@@ -428,12 +429,51 @@ void emit_code(void) {
             }
         }
 
-        offset += is->primary->size;
+        offset += is->using_primary ? is->primary->size : is->secondary->size;
     }
+}
+
+// Do one pass over all instructions and find branch instructions that
+// can be truncated due to proximity to its target.
+int reduce_branch_instructions(void) {
+    int offset = 0;
+
+    int changed = 0;
 
     for (int i = 0; i < instruction_sets->length; i++) {
         InstructionsSet *is = instruction_sets->elements[i];
-        Instructions *instr = is->primary;
+
+        if (is->using_primary && is->secondary && is->primary->relocation_symbol && is->primary->relocation_symbol->section_index == section_text.index) {
+            int relative_offset = is->primary->relocation_symbol->offset - (offset + is->secondary->relocation_offset + 1);
+
+            if (relative_offset >= -128 && relative_offset <= 127) {
+                is->using_primary = 0;
+                changed = 1;
+            }
+        }
+
+        offset += is->using_primary ? is->primary->size : is->secondary->size;
+    }
+
+    return changed;
+}
+
+
+void emit_code(void) {
+    // Reduce code size by looking for near branch instructions
+    // using the secondary instructions in the set
+    make_symbol_offsets();
+
+    while (1) {
+        // This is a timebomb since it runs in O(n^2). To be revisited.
+        if (!reduce_branch_instructions()) break;
+        make_symbol_offsets();
+    }
+
+    // Add the code to the .text section
+    for (int i = 0; i < instruction_sets->length; i++) {
+        InstructionsSet *is = instruction_sets->elements[i];
+        Instructions *instr = is->using_primary ? is->primary : is->secondary;
 
         // All branch instructions use 32 bit memory addresses for the time being,
         // so we're only taking the primary instructions into account.
@@ -449,12 +489,19 @@ void emit_code(void) {
             if (instr->relocation_symbol->section_index != section_text.index)
                 add_relocation(instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset);
             else {
-                int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4);
-                memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // Hardcoded to 32 bit
+                if (is->using_primary) {
+                    int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4);
+                    memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // 32 bit address
+                }
+                else {
+                    instr = is->secondary;
+                    char relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 1);
+                    memcpy(instr->data + instr->relocation_offset, &relative_offset, 1); // 8 bit address
+                }
             }
         }
 
-        add_to_current_section(instr->data, instr->size);
+        add_to_section(&section_text, instr->data, instr->size);
     }
 }
 

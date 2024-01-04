@@ -47,11 +47,14 @@ was: ${OBJECTS} main.o
 test: was run-test-instr run-test-data
 	make -C tests
 
-test-instr: ${OBJECTS} test-instr.o
-	gcc -g ${OBJECTS} test-instr.o -o test-instr
+test-utils.o: test-utils.c test-utils.h
+	gcc -g  -Wunused -c $< -o $@
 
-test-data: ${OBJECTS} test-data.o
-	gcc -g ${OBJECTS} test-data.o -o test-data
+test-instr: ${OBJECTS} test-instr.o test-utils.o
+	gcc -g ${OBJECTS} test-instr.o test-utils.o -o test-instr
+
+test-data: ${OBJECTS} test-data.o test-utils.o
+	gcc -g ${OBJECTS} test-data.o test-utils.o -o test-data
 
 .PHONY: run-test-instr
 run-test-instr: test-instr

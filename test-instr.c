@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "elf.h"
 #include "lexer.h"
 #include "instr.h"
 #include "parser.h"
 #include "relocations.h"
 #include "symbols.h"
 #include "utils.h"
+#include "test-utils.h"
 
 #define END -1
 
@@ -49,13 +51,14 @@ void test_assembly(char *input, ...) {
     printf("%-60s", input);
     init_lexer_from_string(input);
     init_parser();
-    Instructions *instr = parse_instruction_statement();
+    InstructionsSet *instr_set = parse_instruction_statement();
+    Instructions *instr = instr_set->primary;
     assert_instructions(instr, ap);
 
     printf("pass\n");
 }
 
-int main() {
+int test_parse_instruction_statement() {
     init_opcodes();
     init_symbols();
     init_relocations();
@@ -588,4 +591,47 @@ int main() {
 
     test_assembly("callq    *%rbx",         0xff, 0xd3, END);
     test_assembly("callq    *%r15",   0x41, 0xff, 0xd7, END);
+}
+
+void test_full_assembly(char *input, ...) {
+    va_list ap;
+    va_start(ap, input);
+
+    printf("%-60s", input);
+    init_lexer_from_string(input);
+    section_text.size = 0;
+    init_parser();
+    parse();
+    emit_code();
+
+    assert_section(&section_text, ap);
+
+    printf("pass\n");
+}
+
+void test_reduce_branch_instructions(void) {
+    char *input=
+        "top:\n"
+        "    jz foo\n"
+        "    jz bar\n"
+        "    jz top\n"
+        "    jz top\n"
+        "foo:\n"
+        "   nop\n"
+        "bar:\n"
+        "    nop\n";
+
+    test_full_assembly(input,
+        0x74, 0x06,     // jz foo
+        0x74, 0x05,     // jz bar
+        0x74, 0xfa,     // jz top
+        0x74, 0xf8,     // jz top
+        0x90,           // nop
+        0x90,           // nop
+        END);
+}
+
+int main() {
+    test_parse_instruction_statement();
+    test_reduce_branch_instructions();
 }

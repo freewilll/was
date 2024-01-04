@@ -82,7 +82,7 @@ static void *allocate_in_section(ElfSection *section, int size) {
 }
 
 // Copy src to the end of a section and return the offset
-static int add_to_section(ElfSection *section, void *src, int size) {
+int add_to_section(ElfSection *section, void *src, int size) {
     char *data = allocate_in_section(section, size);
     memcpy(data, src, size);
     return data - section->data;

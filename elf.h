@@ -134,6 +134,7 @@ extern ElfSection section_text;
 ElfSection *get_current_section(void);
 int get_current_section_size(void);
 void set_current_section(char *name);
+int add_to_section(ElfSection *section, void *src, int size);
 int add_to_current_section(void *src, int size);
 int add_zeros_to_current_section(int size);
 void add_file_symbol(char *filename);

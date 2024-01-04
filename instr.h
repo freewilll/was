@@ -71,8 +71,14 @@ typedef struct instructions {
     int relocation_size;
     Symbol *relocation_symbol;
     char branch;                // Is it a branch instruction?
-    List *symbols;              // Zero or more symbols associated with the address at this instruction
 } Instructions;
+
+typedef struct instructions_set {
+    int using_primary;
+    Instructions *primary;
+    Instructions *secondary;
+    List *symbols;              // Zero or more symbols associated with the address at this instruction
+} InstructionsSet;
 
 int dump_instructions(Instructions *instr);
 
