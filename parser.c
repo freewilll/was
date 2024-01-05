@@ -217,14 +217,10 @@ static void preprocess_op_relocation(Operand *op, char *identifier) {
 
 // Determine integer size
 static int get_integer_size(long value) {
-    if ((unsigned long) value <= 0xff)
-        return SIZE08;
-    else if ((unsigned long) value <= 0xffff)
-        return SIZE16;
-    else if ((unsigned long) value <= 0xffffffff)
-        return SIZE32;
-    else
-        return SIZE64;
+    if (value >= -128 && value <= 255) return SIZE08;
+    else if (value >= -65536 && value <= 65535) return SIZE16;
+    else if (value >= -2147483648L && value <= 4294967295L) return SIZE32;
+    else return SIZE64;
 }
 
 // Parse an operand
@@ -246,23 +242,13 @@ static void parse_operand(Operand *op) {
 
     else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
         // Memory
-
-        int negative = 0;
-
-        if (cur_token == TOK_MINUS) {
-            negative = 1;
-            next();
-        }
-
+        int value = parse_signed_integer();
         op->type = MEM32; // Default memory address size
-        next();
 
         if (cur_token == TOK_LPAREN) {
             // Parse 5(...)
-            long value = cur_long;
             parse_indirect_operand(op);
             op->displacement = value;
-            if (negative) op->displacement = -op->displacement;
             op->displacement_size = get_integer_size(value);
 
             // Displacements are only possible with 8 and 32 bits
@@ -273,7 +259,7 @@ static void parse_operand(Operand *op) {
         }
 
         else
-            op->imm_or_mem_value = cur_long;
+            op->imm_or_mem_value = value;
     }
 
     else if (cur_token == TOK_LPAREN) {
