@@ -11,11 +11,12 @@ void init_relocations(void) {
     relocations = new_list(128);
 }
 
-void add_relocation(Symbol *symbol, int type, long offset) {
+void add_relocation(Symbol *symbol, int type, long offset, int addend) {
     Relocation *r = malloc(sizeof(Relocation));
     r->type = type;
     r->offset = offset;
     r->symbol = symbol;
+    r->addend = addend;
 
     append_to_list(relocations, r);
 }
@@ -29,7 +30,7 @@ void add_elf_relocations(void) {
             add_elf_relocation(r->type, r->symbol->section_index, r->offset, addend);
         }
         else {
-            add_elf_relocation(r->type, r->symbol->symtab_index, r->offset, -4);
+            add_elf_relocation(r->type, r->symbol->symtab_index, r->offset, r->addend - 4);
         }
     }
 }

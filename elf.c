@@ -191,7 +191,7 @@ void make_section_headers(int *psection_headers_size, ElfSectionHeader **psectio
 }
 
 // Add non-global, then global symbols to the symtab section
-static void make_symbols_section(void) {
+void make_symbols_section(void) {
     // Add non-global symbols
     for (StrMapIterator it = strmap_iterator(symbols); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
         char *name = strmap_iterator_key(&it);

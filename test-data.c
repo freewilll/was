@@ -30,7 +30,7 @@ void test_assembly(char *input, ...) {
     section->size = 0;
 
     parse_directive_statement();
-    assert_section(section, ap);
+    vassert_section(section, ap);
 
     printf("pass\n");
 }

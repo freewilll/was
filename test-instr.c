@@ -324,6 +324,9 @@ int test_parse_instruction_statement() {
     test_assembly("movl     0x0(%rip),                  %eax",            0x8b, 0x05, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("movq     0x0(%rip),                  %rbx",      0x48, 0x8b, 0x1d, 0x00, 0x00, 0x00, 0x00, END);
 
+    test_assembly("mov      %r15,                       foo - 0x42(%rip)", 0x4c, 0x89, 0x3d, 0x00, 0x00, 0x00, 0x00, END);
+    test_assembly("mov      %r15,                       foo + 0x00(%rip)", 0x4c, 0x89, 0x3d, 0x00, 0x00, 0x00, 0x00, END);
+    test_assembly("mov      %r15,                       foo + 0x42(%rip)", 0x4c, 0x89, 0x3d, 0x00, 0x00, 0x00, 0x00, END);
 
     test_assembly("movb     $0x42,                      foo",       0xc6, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x42, END);
     test_assembly("movw     $0x42,                      foo", 0x66, 0xc7, 0x04, 0x25, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, END);
@@ -599,18 +602,22 @@ int test_parse_instruction_statement() {
     test_assembly("callq    *%r15",   0x41, 0xff, 0xd7, END);
 }
 
-void test_full_assembly(char *input, ...) {
+void test_full_assembly(char *summary, char *input, ...) {
     va_list ap;
     va_start(ap, input);
 
-    printf("%-60s", input);
+    printf("%-60s", summary);
     init_lexer_from_string(input);
     section_text.size = 0;
+    section_rela_text.size = 0;
+    init_elf();
     init_parser();
     parse();
     emit_code();
+    make_symbols_section();
+    make_rela_text_section();
 
-    assert_section(&section_text, ap);
+    vassert_section(&section_text, ap);
 
     printf("pass\n");
 }
@@ -627,7 +634,7 @@ void test_reduce_branch_instructions(void) {
         "bar:\n"
         "    nop\n";
 
-    test_full_assembly(input,
+    test_full_assembly("reduce_branch_instructions", input,
         0x74, 0x06,     // jz foo
         0x74, 0x05,     // jz bar
         0x74, 0xfa,     // jz top
@@ -637,7 +644,49 @@ void test_reduce_branch_instructions(void) {
         END);
 }
 
+// foo is not defined, so must be added to the relocation table.
+// A 32 bit RIP-relative relocation is added + different addends
+void test_relocations_with_rip_and_undefined_symbol(void) {
+    char *input=
+        "mov %r15, foo - 0x42(%rip)\n"
+        "mov %r15, foo + 0x00(%rip)\n"
+        "mov %r15, foo + 0x42(%rip)\n";
+
+    test_full_assembly("relocations_with_rip_and_undefined_symbol", input,
+        0x4c, 0x89, 0x3d, 0x00, 0x00, 0x00, 0x00,       // offset 0x00
+        0x4c, 0x89, 0x3d, 0x00, 0x00, 0x00, 0x00,       // offset 0x07
+        0x4c, 0x89, 0x3d, 0x00, 0x00, 0x00, 0x00,       // offset 0x0e
+        END);
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_PC32, 0x00 + 0x03, -0x42 - 4,
+        R_X86_64_PC32, 0x07 + 0x03,  0x00 - 4,
+        R_X86_64_PC32, 0x0e + 0x03,  0x42 - 4,
+        END
+    );
+}
+
+void test_relocations_with_rip_and_defined_symbol(void) {
+    char *input=
+        "mov %r15, foo - 1(%rip)\n"
+        "mov %r15, foo + 0(%rip)\n"
+        "mov %r15, foo + 1(%rip)\n"
+        "foo: nop\n";
+
+    test_full_assembly("relocations_with_rip_and_defined_symbol", input,
+        0x4c, 0x89, 0x3d, 0x0d, 0x00, 0x00, 0x00,       // offset 0x00
+        0x4c, 0x89, 0x3d, 0x07, 0x00, 0x00, 0x00,       // offset 0x07
+        0x4c, 0x89, 0x3d, 0x01, 0x00, 0x00, 0x00,       // offset 0x0e
+        0x90,                                           // offset 0x00
+        END);
+
+    // There should be no relocations
+    assert_relocations(&section_rela_text, END);
+}
+
 int main() {
     test_parse_instruction_statement();
     test_reduce_branch_instructions();
+    test_relocations_with_rip_and_undefined_symbol();
+    test_relocations_with_rip_and_defined_symbol();
 }

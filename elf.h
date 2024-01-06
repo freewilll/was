@@ -130,6 +130,7 @@ typedef struct elf_relocation {
 } ElfRelocation;
 
 extern ElfSection section_text;
+extern ElfSection section_rela_text;
 
 ElfSection *get_current_section(void);
 int get_current_section_size(void);
@@ -140,6 +141,8 @@ int add_zeros_to_current_section(int size);
 void add_file_symbol(char *filename);
 void associate_symbol_with_current_section(Symbol *symbol);
 void add_elf_relocation(int type, int symbol_index, long offset, long addend);
+void make_symbols_section(void);
+void make_rela_text_section(void);
 void finish_elf(char *filename);
 void init_elf();
 

@@ -262,26 +262,43 @@ static void parse_operand(Operand *op) {
             op->imm_or_mem_value = value;
     }
 
-    else if (cur_token == TOK_LPAREN) {
-        // Indirect without a displacement
-        parse_indirect_operand(op);
-    }
-
     else if (cur_token == TOK_IDENTIFIER) {
-        // Identifier with potential indirect
+        // Parse:
+        // identifier
+        // identifier+n
+        // identifier(%reg...)
+        // identifier+n(%reg...)
+
         op->type = MEM32; // Default memory address size
         char *identifier_copy = strdup(cur_identifier);
-        preprocess_op_relocation(op, cur_identifier);
         next();
 
+        // identifier+n
+        int relocation_addend = 0;
+        if (cur_token == TOK_PLUS || cur_token == TOK_MINUS) {
+            int negative = cur_token == TOK_MINUS;
+            next();
+
+            relocation_addend = parse_signed_integer();
+            if (negative) relocation_addend = - relocation_addend;
+        }
+
+        preprocess_op_relocation(op, identifier_copy);
+
         if (cur_token == TOK_LPAREN) {
-            // Parse identifier(...)
+            // (...)
             parse_indirect_operand(op);
             op->displacement_size = SIZE32;
+            op->relocation_addend = relocation_addend;
 
             preprocess_op_relocation(op, identifier_copy);
             free(identifier_copy);
         }
+    }
+
+    else if (cur_token == TOK_LPAREN) {
+        // Indirect without an identifier/displacement
+        parse_indirect_operand(op);
     }
 
     else
@@ -330,15 +347,23 @@ InstructionsSet *parse_instruction_statement(void) {
     free(mnemonic);
 
     Operand *relocation_op = NULL;
-    if (op1 && op1->relocation_symbol)
+    int relocation_addend = 0;
+    if (op1 && op1->relocation_symbol) {
         relocation_op = op1;
-    else if (op2 && op2->relocation_symbol)
+        relocation_addend = op1->relocation_addend;
+    }
+    else if (op2 && op2->relocation_symbol) {
         relocation_op = op2;
+        relocation_addend = op2->relocation_addend;
+    }
 
     if (relocation_op) {
         instructions_set->primary->relocation_symbol = relocation_op->relocation_symbol;
-        if (instructions_set->secondary)
+        instructions_set->primary->relocation_addend = relocation_addend;
+        if (instructions_set->secondary) {
             instructions_set->secondary->relocation_symbol = relocation_op->relocation_symbol;
+            instructions_set->secondary->relocation_addend = relocation_addend;
+        }
     }
 
     return instructions_set;
@@ -472,16 +497,17 @@ void emit_code(void) {
             else
                 relocation_type = R_X86_64_PC32;
 
-            if (instr->relocation_symbol->section_index != section_text.index)
-                add_relocation(instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset);
+            if (instr->relocation_symbol->section_index != section_text.index) {
+                add_relocation(instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset, instr->relocation_addend);
+            }
             else {
                 if (is->using_primary) {
-                    int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4);
+                    int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // 32 bit address
                 }
                 else {
                     instr = is->secondary;
-                    char relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 1);
+                    char relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 1); // 8 bit address
                 }
             }
