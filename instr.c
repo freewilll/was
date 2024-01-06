@@ -141,6 +141,9 @@ static int op_matches(Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *opcod
     // Addressing mode I is immediate
     if (opcode_op->am == AM_I && !OP_TYPE_IS_IMM(op)) return 0;
 
+    // Check for illegal sign extensions
+    if (opcode_op->am == AM_I && opcode_op->sign_extended && op->type == IMM32 && op->imm_or_mem_value >= 0x80000000) return 0;
+
     // Addressing mode I is immediate
     if (opcode_op->am == AM_J && !OP_TYPE_IS_MEM(op)) return 0;
 
@@ -152,8 +155,7 @@ static int op_matches(Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *opcod
     // Addressing mode W means xmm register or memory
     if (opcode_op->am == AM_W && !(OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op))) return 0;
 
-    // Check for illegal sign extensions
-    if (opcode_op->am == AM_I && opcode_op->sign_extended && op->type == IMM32 && op->imm_or_mem_value >= 0x80000000) return 0;
+    if (opcode_op->am == AM_Z && !(OP_TYPE_IS_REG(op))) return 0;
 
     return 1;
 }
