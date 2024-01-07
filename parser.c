@@ -375,7 +375,7 @@ InstructionsSet *parse_instruction_statement(void) {
 
     Instructions instr = make_instructions(mnemonic, op1, op2);
 
-    InstructionsSet *instructions_set = malloc(sizeof(InstructionsSet));
+    InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
     append_to_list(instruction_sets, instructions_set);
     instructions_set->primary = calloc(1, sizeof(Instructions));
     *instructions_set->primary = instr;
