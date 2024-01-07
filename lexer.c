@@ -13,7 +13,7 @@ static int seen_instruction;    // Currently lexing labels or instructions
 static int seen_directive;      // Currently lexing a directive
 
 char *cur_filename;
-int cur_line;                   // Current line
+int cur_line;                       // Current line
 
 int cur_token;                      // Current token
 char *cur_identifier;               // Current identifier
@@ -251,6 +251,9 @@ static void parse_register(void) {
 
 // Lexer. Lex a next token or TOK_EOF if the file is ended
 void next(void) {
+    // Increment the line number after consuming a newline
+    if (cur_token == TOK_EOL) cur_line++;
+
     while (ip < input_end) {
         skip_whitespace();
         skip_comments();
@@ -288,7 +291,6 @@ void next(void) {
             cur_token = TOK_EOL;
             seen_instruction = 0;
             seen_directive = 0;
-            cur_line++;
         }
 
         // Decimal literal

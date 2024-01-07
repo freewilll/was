@@ -506,7 +506,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
     // Look up the corresponding opcode. Translates e.g. movb to mov.
     OpcodeAlias *opcode_alias = strmap_get(opcode_alias_map, mnemonic);
 
-    if (!opcode_alias) panic("Unknown instruction %s\n", mnemonic);
+    if (!opcode_alias) error("Unknown instruction %", mnemonic);
 
     // Loop over all possible encodings, picking the one that generates
     // the smallest number of bytes.
@@ -554,7 +554,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         }
     }
 
-    if (best_enc_size == -1) panic("Unable to find encoding for instruction %s\n", mnemonic);
+    if (best_enc_size == -1) error("Unable to find encoding for instruction %s", mnemonic);
 
     // Generate the instructions
     Instructions instr;
