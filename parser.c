@@ -279,10 +279,9 @@ static void parse_operand(Operand *op) {
     else if (cur_token == TOK_DOLLAR) {
         // Immediate
         next();
-        expect(TOK_INTEGER, "integer");
-        op->type = get_integer_size(cur_long) + IMM08 -  SIZE08;
-        op->imm_or_mem_value = cur_long;
-        next();
+        long value = parse_signed_integer();
+        op->type = get_integer_size(value) + IMM08 -  SIZE08;
+        op->imm_or_mem_value = value;
     }
 
     else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
