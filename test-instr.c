@@ -59,10 +59,6 @@ void test_assembly(char *input, ...) {
 }
 
 int test_parse_instruction_statement() {
-    init_opcodes();
-    init_symbols();
-    init_relocations();
-
     test_assembly("add      %al,                        %al",  0x00, 0xc0, END);
     test_assembly("add      %al,                        %cl",  0x00, 0xc1, END);
     test_assembly("add      %al,                        %dl",  0x00, 0xc2, END);
@@ -607,15 +603,22 @@ void test_full_assembly(char *summary, char *input, ...) {
     va_start(ap, input);
 
     printf("%-60s", summary);
-    init_lexer_from_string(input);
+
     section_text.size = 0;
+    section_data.size = 0;
+    section_rodata.size = 0;
     section_rela_text.size = 0;
+    section_rela_data.size = 0;
+    section_rela_rodata.size = 0;
+    section_symtab.size = 0;
+
+    init_lexer_from_string(input);
     init_elf();
     init_parser();
     parse();
     emit_code();
     make_symbols_section();
-    make_rela_text_section();
+    make_rela_sections();
 
     vassert_section(&section_text, ap);
 
@@ -623,7 +626,7 @@ void test_full_assembly(char *summary, char *input, ...) {
 }
 
 void test_reduce_branch_instructions(void) {
-    char *input=
+    char *input =
         "top:\n"
         "    jz foo\n"
         "    jz bar\n"
@@ -647,7 +650,7 @@ void test_reduce_branch_instructions(void) {
 // foo is not defined, so must be added to the relocation table.
 // A 32 bit RIP-relative relocation is added + different addends
 void test_relocations_with_rip_and_undefined_symbol(void) {
-    char *input=
+    char *input =
         "mov %r15, foo - 0x42(%rip)\n"
         "mov %r15, foo + 0x00(%rip)\n"
         "mov %r15, foo + 0x42(%rip)\n";
@@ -659,15 +662,15 @@ void test_relocations_with_rip_and_undefined_symbol(void) {
         END);
 
     assert_relocations(&section_rela_text,
-        R_X86_64_PC32, 0x00 + 0x03, -0x42 - 4,
-        R_X86_64_PC32, 0x07 + 0x03,  0x00 - 4,
-        R_X86_64_PC32, 0x0e + 0x03,  0x42 - 4,
+        R_X86_64_PC32, first_symbol_index, 0x00 + 0x03, -0x42 - 4,
+        R_X86_64_PC32, first_symbol_index, 0x07 + 0x03,  0x00 - 4,
+        R_X86_64_PC32, first_symbol_index, 0x0e + 0x03,  0x42 - 4,
         END
     );
 }
 
 void test_relocations_with_rip_and_defined_symbol(void) {
-    char *input=
+    char *input =
         "mov %r15, foo - 1(%rip)\n"
         "mov %r15, foo + 0(%rip)\n"
         "mov %r15, foo + 1(%rip)\n"
@@ -684,9 +687,221 @@ void test_relocations_with_rip_and_defined_symbol(void) {
     assert_relocations(&section_rela_text, END);
 }
 
+// Test data referencing an undefined symbol
+// An undefined symbol is added at position first_symbol_index. The relocation
+// table points to it.
+void test_data_with_undefined_symbol(void) {
+    char *input;
+
+    // Byte
+    input = ".data\n.byte a\n.byte a + 1\n.byte a - 1\n.byte 1";
+
+    test_full_assembly("data_with_undefined_symbol byte", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_8, first_symbol_index, 0x00,  0,
+        R_X86_64_8, first_symbol_index, 0x01,  1,
+        R_X86_64_8, first_symbol_index, 0x02, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0x00, // Relocated
+        0x00, // Relocated
+        0x00, // Relocated
+        0x01, // Direct
+        END);
+
+    // Word
+    input = ".data\n.word a\n.word a + 1\n.word a - 1\n.word 1";
+
+    test_full_assembly("data_with_undefined_symbol word", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_16, first_symbol_index, 0x00,  0,
+        R_X86_64_16, first_symbol_index, 0x02,  1,
+        R_X86_64_16, first_symbol_index, 0x04, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0x00, 0x00, // Relocated
+        0x00, 0x00, // Relocated
+        0x00, 0x00, // Relocated
+        0x01, 0x00, // Direct
+        END);
+
+    // Long
+    input = ".data\n.long a\n.long a + 1\n.long a - 1\n.long 1";
+
+    test_full_assembly("data_with_undefined_symbol long", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_32, first_symbol_index, 0x00,  0,
+        R_X86_64_32, first_symbol_index, 0x04,  1,
+        R_X86_64_32, first_symbol_index, 0x08, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, // Direct
+        END);
+
+    // Quad
+    input = ".data\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
+
+    test_full_assembly("data_with_undefined_symbol quad", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_64, first_symbol_index, 0x00,  0,
+        R_X86_64_64, first_symbol_index, 0x08,  1,
+        R_X86_64_64, first_symbol_index, 0x10, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
+        END);
+
+    // Quad in rodata
+    input = ".section .rodata\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
+
+    test_full_assembly("data_with_undefined_symbol quad in rodata", input, END); // No code
+
+    assert_relocations(&section_rela_rodata,
+        R_X86_64_64, first_symbol_index, 0x00,  0,
+        R_X86_64_64, first_symbol_index, 0x08,  1,
+        R_X86_64_64, first_symbol_index, 0x10, -1,
+        END
+    );
+
+    assert_section(&section_rodata,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
+        END);
+}
+
+void test_data_with_defined_symbol(void) {
+    char *input;
+
+    // Byte
+    input = ".data\na: .byte -1\n.byte a\n.byte a + 1\n.byte a - 1\n.byte 1";
+
+    test_full_assembly("data_with_defined_symbol byte", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_8, section_data.index, 0x01,  0,
+        R_X86_64_8, section_data.index, 0x02,  1,
+        R_X86_64_8, section_data.index, 0x03, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0xff, // a
+        0x00, // Relocated
+        0x00, // Relocated
+        0x00, // Relocated
+        0x01, // Direct
+        END);
+
+    // Word
+    input = ".data\na: .word -1\n.word a\n.word a + 1\n.word a - 1\n.word 1";
+
+    test_full_assembly("data_with_defined_symbol word", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_16, section_data.index, 0x02,  0,
+        R_X86_64_16, section_data.index, 0x04,  1,
+        R_X86_64_16, section_data.index, 0x06, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0xff, 0xff, // a
+        0x00, 0x00, // Relocated
+        0x00, 0x00, // Relocated
+        0x00, 0x00, // Relocated
+        0x01, 0x00, // Direct
+        END);
+
+    // Long
+    input = ".data\na: .long -1\n.long a\n.long a + 1\n.long a - 1\n.long 1";
+
+    test_full_assembly("data_with_defined_symbol long", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_32, section_data.index, 0x04,  0,
+        R_X86_64_32, section_data.index, 0x08,  1,
+        R_X86_64_32, section_data.index, 0x0c, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0xff, 0xff, 0xff, 0xff, // a
+        0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, // Direct
+        END);
+
+    // Quad
+    input = ".data\na: .quad -1\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
+
+    test_full_assembly("data_with_defined_symbol quad", input, END); // No code
+
+    assert_relocations(&section_rela_data,
+        R_X86_64_64, section_data.index, 0x08,  0,
+        R_X86_64_64, section_data.index, 0x10,  1,
+        R_X86_64_64, section_data.index, 0x18, -1,
+        END
+    );
+
+    assert_section(&section_data,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // a
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
+        END);
+
+    // Quad in rodata
+    input = ".section .rodata\na: .quad -1\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
+
+    test_full_assembly("data_with_defined_symbol quad in rodata", input, END); // No code
+
+    assert_relocations(&section_rela_rodata,
+        R_X86_64_64, section_rodata.index, 0x08,  0,
+        R_X86_64_64, section_rodata.index, 0x10,  1,
+        R_X86_64_64, section_rodata.index, 0x18, -1,
+        END
+    );
+
+    assert_section(&section_rodata,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // a
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
+        END);
+}
+
 int main() {
+    init_opcodes();
+    init_symbols();
+    init_relocations();
+
     test_parse_instruction_statement();
     test_reduce_branch_instructions();
     test_relocations_with_rip_and_undefined_symbol();
     test_relocations_with_rip_and_defined_symbol();
+    test_data_with_undefined_symbol();
+    test_data_with_defined_symbol();
 }

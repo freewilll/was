@@ -48,6 +48,11 @@
 #define R_X86_64_PC32   2   // PC relative 32 bit signed     S + A - P
 #define R_X86_64_GOT32  3   // 32 bit GOT entry              G + A
 #define R_X86_64_PLT32  4   // 32 bit PLT address            L + A - P
+#define R_X86_64_32    10   // Direct 8 bit                  S + A
+#define R_X86_64_32S   11   // Direct 8 bit sign extended    S + A
+#define R_X86_64_16    12   // Direct 8 bit                  S + A
+#define R_X86_64_16S   13   // Direct 8 bit sign extended    S + A
+#define R_X86_64_8     14   // Direct 8 bit                  S + A
 
 #define E_MACHINE_TYPE_X86_64   0x3e
 #define ET_REL   1                         // relocatable
@@ -130,7 +135,15 @@ typedef struct elf_relocation {
 } ElfRelocation;
 
 extern ElfSection section_text;
+extern ElfSection section_data;
+extern ElfSection section_rodata;
 extern ElfSection section_rela_text;
+extern ElfSection section_rela_data;
+extern ElfSection section_rela_rodata;
+extern ElfSection section_symtab;
+
+extern const int section_count;
+#define first_symbol_index section_count // This id in the symbol table is where non-section symbols get added
 
 ElfSection *get_current_section(void);
 int get_current_section_size(void);
@@ -140,9 +153,9 @@ int add_to_current_section(void *src, int size);
 int add_zeros_to_current_section(int size);
 void add_file_symbol(char *filename);
 void associate_symbol_with_current_section(Symbol *symbol);
-void add_elf_relocation(int type, int symbol_index, long offset, long addend);
+void add_elf_relocation(ElfSection *section, int type, int symbol_index, long offset, long addend);
 void make_symbols_section(void);
-void make_rela_text_section(void);
+void make_rela_sections(void);
 void finish_elf(char *filename);
 void init_elf();
 

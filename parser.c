@@ -12,6 +12,11 @@
 #include "utils.h"
 #include "was.h"
 
+typedef struct expression {
+    Symbol *symbol; // Optional symbol
+    long value;     // Optional value. If symbol is set, it's an offset
+} Expression;
+
 static List *instruction_sets;
 
 // TODO remove skip
@@ -32,6 +37,54 @@ static long parse_signed_integer(void) {
     return result;
 }
 
+// Very basic parser that can only handle, e.g.
+// -  1
+// -  foo
+// -  foo + 1
+// -  foo - 1
+static Expression parse_expression(void) {
+    Expression result = {0};
+
+    if (cur_token == TOK_IDENTIFIER) {
+        char *identifier = strdup(cur_identifier);
+        next();
+        Symbol *symbol = get_or_add_symbol(identifier);
+        result.symbol = symbol;
+
+        if (cur_token == TOK_PLUS) next();
+        if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS)
+            result.value = parse_signed_integer();
+    }
+
+    else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
+        result.value = parse_signed_integer();
+    }
+
+    return result;
+}
+
+// Parse .byte, .word, .long and .quad
+static void parse_data_directive(int relocation_type, int size) {
+    Expression expr = parse_expression();
+
+    if (expr.symbol) {
+        ElfSection *cur = get_current_section();
+        ElfSection *rel;
+
+        if (cur == &section_data)
+            rel = &section_rela_data;
+        else if (cur == &section_rodata)
+            rel = &section_rela_rodata;
+        else
+            error("Cannot add data to sections other than .data and .rodata");
+
+        add_relocation(rel, expr.symbol, relocation_type, cur->size, expr.value);
+        add_zeros_to_current_section(size);
+    }
+    else
+        add_to_current_section(&expr.value, size);
+}
+
 void parse_directive_statement(void) {
     int directive = cur_token;
     next();
@@ -42,11 +95,21 @@ void parse_directive_statement(void) {
             skip();
             break;
 
-        case TOK_DIRECTIVE_BYTE: {
-            char value = parse_signed_integer();
-            add_to_current_section(&value, 1);
+        case TOK_DIRECTIVE_BYTE:
+            parse_data_directive(R_X86_64_8, 1);
             break;
-        }
+
+        case TOK_DIRECTIVE_WORD:
+            parse_data_directive(R_X86_64_16, 2);
+            break;
+
+        case TOK_DIRECTIVE_LONG:
+            parse_data_directive(R_X86_64_32, 4);
+            break;
+
+        case TOK_DIRECTIVE_QUAD:
+            parse_data_directive(R_X86_64_64, 8);
+            break;
 
         case TOK_DIRECTIVE_COMM:
             printf("TODO: .comm\n");
@@ -75,18 +138,6 @@ void parse_directive_statement(void) {
             printf("TODO: .local\n");
             skip();
             break;
-
-        case TOK_DIRECTIVE_LONG: {
-            int value = parse_signed_integer();
-            add_to_current_section(&value, 4);
-            break;
-        }
-
-        case TOK_DIRECTIVE_QUAD: {
-            long value = parse_signed_integer();
-            add_to_current_section(&value, 8);
-            break;
-        }
 
         case TOK_DIRECTIVE_SECTION:
             expect(TOK_IDENTIFIER, "section name");
@@ -118,12 +169,6 @@ void parse_directive_statement(void) {
             printf("TODO: .uleb128\n");
             skip();
             break;
-
-        case TOK_DIRECTIVE_WORD: {
-            short value = parse_signed_integer();
-            add_to_current_section(&value, 2);
-            break;
-        }
 
         case TOK_DIRECTIVE_ZERO:
             add_zeros_to_current_section(cur_long);
@@ -498,7 +543,9 @@ void emit_code(void) {
                 relocation_type = R_X86_64_PC32;
 
             if (instr->relocation_symbol->section_index != section_text.index) {
-                add_relocation(instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset, instr->relocation_addend);
+                // The -4 is because this is a 32 bit relocation (so 4 bytes), and the relocated value applies after the code has been read, so has
+                // to be corrected for the size of the 32 bit operand.
+                add_relocation(&section_rela_text, instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset, instr->relocation_addend - 4);
             }
             else {
                 if (is->using_primary) {

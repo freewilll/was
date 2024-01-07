@@ -4,6 +4,7 @@
 #include "lexer.h"
 #include "opcodes.h"
 #include "parser.h"
+#include "relocations.h"
 #include "was.h"
 
 void assemble(char *input_filename, char *output_filename) {

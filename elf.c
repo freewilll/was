@@ -11,24 +11,28 @@
 #include "was.h"
 
 // ELF sections
-//                               id name          type          flags                      alignment
-ElfSection section_null      = { 0, "" ,          0,            0,                         0    };
-ElfSection section_text      = { 1, ".text",      SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0x10 };
-ElfSection section_rela_text = { 2, ".rela.text", SHT_RELA,     SHF_INFO_LINK,             0x08 };
-ElfSection section_data      = { 3, ".data",      SHT_PROGBITS, SHF_ALLOC | SHF_WRITE,     0x04 };
-ElfSection section_bss       = { 4, ".bss",       SHT_NOBITS,   SHF_ALLOC | SHF_WRITE,     0x04 };
-ElfSection section_rodata    = { 5, ".rodata",    SHT_PROGBITS, SHF_ALLOC,                 0x04 };
-ElfSection section_symtab    = { 6, ".symtab",    SHT_SYMTAB,   0,                         0x08 };
-ElfSection section_strtab    = { 7, ".strtab",    SHT_STRTAB,   0,                         0x01 };
-ElfSection section_shstrtab  = { 8, ".shstrtab",  SHT_STRTAB,   0,                         0x01 };
+//                               id name               type          flags                      alignment
+ElfSection section_null        = {  0, "" ,            0,            0,                         0    };
+ElfSection section_text        = {  1, ".text",        SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0x10 };
+ElfSection section_rela_text   = {  2, ".rela.text",   SHT_RELA,     SHF_INFO_LINK,             0x08 };
+ElfSection section_data        = {  3, ".data",        SHT_PROGBITS, SHF_ALLOC | SHF_WRITE,     0x04 };
+ElfSection section_rela_data   = {  4, ".rela.data",   SHT_RELA,     SHF_INFO_LINK,             0x08 };
+ElfSection section_bss         = {  5, ".bss",         SHT_NOBITS,   SHF_ALLOC | SHF_WRITE,     0x04 };
+ElfSection section_rodata      = {  6, ".rodata",      SHT_PROGBITS, SHF_ALLOC,                 0x04 };
+ElfSection section_rela_rodata = {  7, ".rela.rodata", SHT_RELA,     SHF_INFO_LINK,             0x08 };
+ElfSection section_symtab      = {  8, ".symtab",      SHT_SYMTAB,   0,                         0x08 };
+ElfSection section_strtab      = {  9, ".strtab",      SHT_STRTAB,   0,                         0x01 };
+ElfSection section_shstrtab    = { 10, ".shstrtab",    SHT_STRTAB,   0,                         0x01 };
 
 ElfSection *sections[] = {
     &section_null,
     &section_text,
     &section_rela_text,
     &section_data,
+    &section_rela_data,
     &section_bss,
     &section_rodata,
+    &section_rela_rodata,
     &section_symtab,
     &section_strtab,
     &section_shstrtab,
@@ -137,8 +141,8 @@ void associate_symbol_with_current_section(Symbol *symbol) {
 }
 
 // Add a relocation to the ELF rela_text section.
-void add_elf_relocation(int type, int symbol_index, long offset, long addend) {
-    ElfRelocation *r = allocate_in_section(&section_rela_text, sizeof(ElfRelocation));
+void add_elf_relocation(ElfSection *section, int type, int symbol_index, long offset, long addend) {
+    ElfRelocation *r = allocate_in_section(section, sizeof(ElfRelocation));
 
     r->r_offset = offset;
     r->r_info = type + ((long) symbol_index << 32);
@@ -218,13 +222,21 @@ void make_symbols_section(void) {
     section_symtab.entsize = sizeof(ElfSymbol);
 }
 
-// Make ELF relocations section
-void make_rela_text_section(void) {
+// Make ELF relocations sections
+void make_rela_sections(void) {
     add_elf_relocations();
 
     section_rela_text.link = section_symtab.index;
     section_rela_text.info = section_text.index;
     section_rela_text.entsize = sizeof(ElfRelocation);
+
+    section_rela_data.link = section_symtab.index;
+    section_rela_data.info = section_data.index;
+    section_rela_data.entsize = sizeof(ElfRelocation);
+
+    section_rela_rodata.link = section_symtab.index;
+    section_rela_rodata.info = section_rodata.index;
+    section_rela_rodata.entsize = sizeof(ElfRelocation);
 }
 
 // Determine offsets for all the sections within the final ELF file.
@@ -274,7 +286,7 @@ void finish_elf(char *filename) {
     ElfSectionHeader *section_headers;
 
     make_symbols_section();
-    make_rela_text_section();
+    make_rela_sections();
     make_section_headers(&section_headers_size, &section_headers);
 
     int size = layout_elf_sections(section_headers);
