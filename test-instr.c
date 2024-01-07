@@ -99,6 +99,15 @@ int test_parse_instruction_statement() {
     test_assembly("add      $0x42434445,                %ebx", 0x81, 0xc3, 0x45, 0x44, 0x43, 0x42, END);
     test_assembly("add      $0x42434445,                %rbx", 0x48, 0x81, 0xc3, 0x45, 0x44, 0x43, 0x42, END);
 
+    test_assembly("add      $0x7fff,                    %ax",  0x66, 0x05, 0xff, 0x7f, END);
+    test_assembly("add      $0x8000,                    %ax",  0x66, 0x05, 0x00, 0x80, END);
+    test_assembly("add      $0xffff,                    %ax",  0x66, 0x05, 0xff, 0xff, END); // Differs with gcc, same length
+    test_assembly("add      $0xffff,                    %ax",  0x66, 0x05, 0xff, 0xff, END); // Differs with gcc, same length
+    test_assembly("add      $0x7fffffff,                %eax", 0x05, 0xff, 0xff, 0xff, 0x7f, END);
+    test_assembly("add      $0x80000000,                %eax", 0x05, 0x00, 0x00, 0x00, 0x80, END); // Differs with  gcc, can be shortened to 0x83, 0xc0, 0xff
+    test_assembly("add      $0xffffffff,                %eax", 0x05, 0xff, 0xff, 0xff, 0xff, END);
+    test_assembly("add      $-1,                        %eax", 0x83, 0xc0, 0xff, END);
+
     // Check code generation with size in the mnemnonic
     test_assembly("addb     $42,                        %al",  0x04, 0x2a, END);
     test_assembly("addw     $42,                        %ax",  0x66, 0x5, 0x2a, 0x00, END);
