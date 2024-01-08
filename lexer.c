@@ -201,17 +201,17 @@ static void lex_string_literal(void) {
     }
 
 static void parse_register(void) {
-    char name[5];
+    char name[6];
 
-    #define MAX_REGISTER_SIZE 5
-        int j = 0;
-        while (((*ip >= 'a' && *ip <= 'z') || (*ip >= '0' && *ip <= '9')) && ip < input_end) {
-            if (j == MAX_REGISTER_SIZE) panic("Exceeded maximum register size %d", MAX_REGISTER_SIZE);
-            name[j] = *ip;
-            j++;
-            ip++;
-        }
-        name[j] = 0;
+    #define MAX_REGISTER_SIZE sizeof(name) - 1
+    int j = 0;
+    while (((*ip >= 'a' && *ip <= 'z') || (*ip >= '0' && *ip <= '9')) && ip < input_end) {
+        if (j == MAX_REGISTER_SIZE) panic("Exceeded maximum register size %d", MAX_REGISTER_SIZE);
+        name[j] = *ip;
+        j++;
+        ip++;
+    }
+    name[j] = 0;
 
     // https://wiki.osdev.org/X86-64_Instruction_Encoding#Registers
     char *regs0a[16] = {"al",   "cl",   "dl",   "bl",   "ah",   "ch",   "dh",   "bh",   "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b"};
