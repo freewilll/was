@@ -41,7 +41,7 @@ typedef struct encoding {
 } Encoding;
 
 // Print hex bytes for the encoded instructions
-int dump_instructions(Instructions *instr) {
+void dump_instructions(Instructions *instr) {
     for (int i = 0; i < instr->size; i++) {
         if (i != 0) printf(", ");
         printf("%#02x", instr->data[i]);

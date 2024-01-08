@@ -413,7 +413,7 @@ InstructionsSet *parse_instruction_statement(void) {
     return instructions_set;
 }
 
-int parse(void) {
+void parse(void) {
     while (cur_token != TOK_EOF) {
         while (cur_token == TOK_EOL) next();
 

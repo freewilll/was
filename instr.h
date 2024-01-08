@@ -82,7 +82,7 @@ typedef struct instructions_set {
     List *symbols;              // Zero or more symbols associated with the address at this instruction
 } InstructionsSet;
 
-int dump_instructions(Instructions *instr);
+void dump_instructions(Instructions *instr);
 
 Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2);
 
