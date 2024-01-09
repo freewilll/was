@@ -523,17 +523,26 @@ void test_parse_instruction_statement() {
     test_assembly("ucomiss %xmm14,                      %xmm15",             0x45, 0x0f, 0x2e, 0xfe, END);
     test_assembly("ucomisd %xmm14,                      %xmm15",       0x66, 0x45, 0x0f, 0x2e, 0xfe, END);
 
-    test_assembly("cvtsd2ss %xmm15,                     %xmm14", 0xf2, 0x45, 0x0f, 0x5a, 0xf7, END);
+    test_assembly("cvtsd2ss %xmm15,                     %xmm14", 0xf2, 0x45, 0x0f, 0x5a, 0xf7, END);    // Convert Scalar Double-FP Value to Scalar Single-FP Value
     test_assembly("cvtsd2ss (%rax),                     %xmm15", 0xf2, 0x44, 0x0f, 0x5a, 0x38, END);
-    test_assembly("cvtss2si  %xmm15,                    %eax",   0xf3, 0x41, 0x0f, 0x2d, 0xc7, END);
+
+    test_assembly("cvtss2si  %xmm15,                    %eax",   0xf3, 0x41, 0x0f, 0x2d, 0xc7, END);    // Convert Scalar Single-FP Value to DW Integer
     test_assembly("cvtss2si  %xmm15,                    %rax",   0xf3, 0x49, 0x0f, 0x2d, 0xc7, END);
     test_assembly("cvtsd2si  %xmm15,                    %eax",   0xf2, 0x41, 0x0f, 0x2d, 0xc7, END);
     test_assembly("cvtsd2si  %xmm15,                    %rax",   0xf2, 0x49, 0x0f, 0x2d, 0xc7, END);
 
-    test_assembly("cvttss2si %xmm14,                    %eax",   0xf3, 0x41, 0x0f, 0x2c, 0xc6, END);
+    test_assembly("cvttss2si %xmm14,                    %eax",   0xf3, 0x41, 0x0f, 0x2c, 0xc6, END);    // Convert with Trunc. Scalar Single-FP Value to DW Integer
     test_assembly("cvttss2si %xmm14,                    %rax",   0xf3, 0x49, 0x0f, 0x2c, 0xc6, END);
     test_assembly("cvttsd2si %xmm14,                    %eax",   0xf2, 0x41, 0x0f, 0x2c, 0xc6, END);
     test_assembly("cvttsd2si %xmm14,                    %rax",   0xf2, 0x49, 0x0f, 0x2c, 0xc6, END);
+
+    test_assembly("cvtsi2ss  %ebx,                      %xmm0", 0xf3 ,0x0f ,0x2a ,0xc3, END);           // Convert DW Integer to Scalar Single-FP Value
+    test_assembly("cvtsi2ssl %ebx,                      %xmm0", 0xf3 ,0x0f ,0x2a ,0xc3, END);           // Convert DW Integer to Scalar Single-FP Value
+    test_assembly("cvtsi2ssq %rbx,                      %xmm0", 0xf3, 0x48, 0x0f, 0x2a, 0xc3, END);     // Convert DW Integer to Scalar Single-FP Value
+    test_assembly("cvtsi2sd  %eax,                      %xmm0", 0xf2, 0x0f, 0x2a, 0xc0, END);           // Convert DW Integer to Scalar Double-FP Value
+    test_assembly("cvtsi2sd  %rbx,                      %xmm0", 0xf2, 0x48, 0x0f, 0x2a, 0xc3, END);     // Convert DW Integer to Scalar Double-FP Value
+    test_assembly("cvtsi2sdl %eax,                      %xmm0", 0xf2, 0x0f, 0x2a, 0xc0, END);
+    test_assembly("cvtsi2sdq %rbx,                      %xmm0", 0xf2, 0x48, 0x0f, 0x2a, 0xc3, END);     // Convert DW Integer to Scalar Double-FP Value
 
     test_assembly("faddp  %st,                          %st(1)", 0xde, 0xc1, END);
     test_assembly("fsubp  %st,                          %st(1)", 0xde, 0xe1, END);

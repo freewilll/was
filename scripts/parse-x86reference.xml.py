@@ -44,6 +44,10 @@ def make_long_opcode(mnem, size):
     return LongOpCode(mnem=mnem, op1_size=size, op2_size=size)
 
 
+def make_long_opcode2(mnem, op1_size, op2_size):
+    return LongOpCode(mnem=mnem, op1_size=op1_size, op2_size=op2_size)
+
+
 def make_sized_aliases(mnem: str, sizes=None, short_mnem=None, xmm=False):
     if sizes is None:
         if xmm:
@@ -90,21 +94,25 @@ OPCODE_ALIASES = {
     "callq": LongOpCode(mnem="call"),
     "leaveq": LongOpCode(mnem="leave"),
     "movabsq": make_long_opcode("mov", Size.SIZE64),
-    "movsbw": LongOpCode(mnem="movsx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
-    "movsbl": LongOpCode(mnem="movsx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
-    "movsbq": LongOpCode(mnem="movsx", op1_size=Size.SIZE08, op2_size=Size.SIZE64),
-    "movswl": LongOpCode(mnem="movsx", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
-    "movswq": LongOpCode(mnem="movsx", op1_size=Size.SIZE16, op2_size=Size.SIZE64),
-    "movslq": LongOpCode(mnem="movsxd", op1_size=Size.SIZE32, op2_size=Size.SIZE64),
-    "movzbl": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
-    "movzbw": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE16),
-    "movzbq": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE64),
-    "movzwl": LongOpCode(mnem="movzx", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
-    "movzwq": LongOpCode(mnem="movzx", op1_size=Size.SIZE16, op2_size=Size.SIZE64),
-    "cwtd": LongOpCode(mnem="cwd", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
-    "cltd": LongOpCode(mnem="cdq", op1_size=Size.SIZE32, op2_size=Size.SIZE32),
-    "cqto": LongOpCode(mnem="cqo", op1_size=Size.SIZE64, op2_size=Size.SIZE64),
-    "cvtsd2ss": LongOpCode(mnem="cvtsd2ss", op1_size=Size.SIZE32, op2_size=Size.SIZE16),
+    "movsbw": make_long_opcode2("movsx", Size.SIZE08, Size.SIZE32),
+    "movsbl": make_long_opcode2("movsx", Size.SIZE08, Size.SIZE32),
+    "movsbq": make_long_opcode2("movsx", Size.SIZE08, Size.SIZE64),
+    "movswl": make_long_opcode2("movsx", Size.SIZE16, Size.SIZE32),
+    "movswq": make_long_opcode2("movsx", Size.SIZE16, Size.SIZE64),
+    "movslq": make_long_opcode2("movsxd", Size.SIZE32, Size.SIZE64),
+    "movzbl": make_long_opcode2("movzx", Size.SIZE08, Size.SIZE32),
+    "movzbw": make_long_opcode2("movzx", Size.SIZE08, Size.SIZE16),
+    "movzbq": make_long_opcode2("movzx", Size.SIZE08, Size.SIZE64),
+    "movzwl": make_long_opcode2("movzx", Size.SIZE16, Size.SIZE32),
+    "movzwq": make_long_opcode2("movzx", Size.SIZE16, Size.SIZE64),
+    "cwtd": make_long_opcode2("cwd", Size.SIZE16, Size.SIZE32),
+    "cltd": make_long_opcode2("cdq", Size.SIZE32, Size.SIZE32),
+    "cqto": make_long_opcode2("cqo", Size.SIZE64, Size.SIZE64),
+    "cvtsd2ss": make_long_opcode2("cvtsd2ss", Size.SIZE32, Size.SIZE16),
+    "cvtsi2ssl": make_long_opcode2("cvtsi2ss", Size.SIZE32, Size.SIZE16),
+    "cvtsi2ssq": make_long_opcode2("cvtsi2ss", Size.SIZE32, Size.SIZE32),
+    "cvtsi2sdl": make_long_opcode2("cvtsi2sd", Size.SIZE32, Size.SIZE32),
+    "cvtsi2sdq": make_long_opcode2("cvtsi2sd", Size.SIZE64, Size.SIZE32),
     **make_sized_aliases("cvttss2si", {Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("cvttsd2si", {Size.SIZE32, Size.SIZE64}),
     "fild": make_long_opcode("fild", Size.SIZE16),
@@ -262,7 +270,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.bss: set([Size.SIZE08]),
     OperandType.d: set([Size.SIZE32]),
     OperandType.di: set([Size.SIZE32]),
-    OperandType.dqp: set([Size.SIZE16, Size.SIZE32, Size.SIZE64]),
+    OperandType.dqp: set([Size.SIZE32, Size.SIZE64]),
     OperandType.dr: set([Size.SIZE64]),
     OperandType.er: set([Size.SIZEST]),
     OperandType.sr: set([Size.SIZE32]),
