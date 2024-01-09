@@ -58,7 +58,8 @@ typedef struct opcode {
 typedef struct opcode_alias {
     char *alias_mnem;
     char *mnem;
-    int size;
+    char op1_size;
+    char op2_size;
     List *opcodes;
 } OpcodeAlias;
 

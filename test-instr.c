@@ -58,7 +58,7 @@ void test_assembly(char *input, ...) {
     printf("pass\n");
 }
 
-int test_parse_instruction_statement() {
+void test_parse_instruction_statement() {
     test_assembly("add      %al,                        %al",  0x00, 0xc0, END);
     test_assembly("add      %al,                        %cl",  0x00, 0xc1, END);
     test_assembly("add      %al,                        %dl",  0x00, 0xc2, END);
@@ -418,6 +418,17 @@ int test_parse_instruction_statement() {
     test_assembly("movzbq   %bl,                        %rax", 0x48, 0x0f, 0xb6, 0xc3, END);
     test_assembly("movzwl   %bx,                        %eax",       0x0f, 0xb7, 0xc3, END);
     test_assembly("movzwq   %bx,                        %rax", 0x48, 0x0f, 0xb7, 0xc3, END);
+
+    test_assembly("movsbw   (%rbp),                     %ax",  0x66, 0x0f, 0xbe, 0x45, 0x00, END);
+    test_assembly("movsbl   (%rbp),                     %eax", 0x0f, 0xbe, 0x45, 0x00, END);
+    test_assembly("movsbq   (%rbp),                     %rax", 0x48, 0x0f, 0xbe, 0x45, 0x00, END);
+    test_assembly("movslq   (%rbp),                     %rax", 0x48, 0x63, 0x45, 0x00, END);
+    test_assembly("movswl   (%rbp),                     %eax", 0x0f, 0xbf, 0x45, 0x00, END);
+    test_assembly("movswq   (%rbp),                     %rax", 0x48, 0x0f, 0xbf, 0x45, 0x00, END);
+    test_assembly("movzbl   (%rbp),                     %eax", 0x0f, 0xb6, 0x45, 0x00, END);
+    test_assembly("movzbq   (%rbp),                     %rax", 0x48, 0x0f, 0xb6, 0x45, 0x00, END);
+    test_assembly("movzwl   (%rbp),                     %eax", 0x0f, 0xb7, 0x45, 0x00, END);
+    test_assembly("movzwq   (%rbp),                     %rax", 0x48, 0x0f, 0xb7, 0x45, 0x00, END);
 
     test_assembly("cmovne   %ax,                        %bx",  0x66, 0x0f, 0x45, 0xd8, END);
     test_assembly("cmovne   %cx,                        %dx",  0x66, 0x0f, 0x45, 0xd1, END);

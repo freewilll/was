@@ -29,11 +29,16 @@ class Size(Enum):
 @dataclass
 class LongOpCode:
     mnem: str
-    size: Optional[Size] = None
+    op1_size: Optional[Size] = None
+    op2_size: Optional[Size] = None
 
 
 class UnsupportedOperandError(Exception):
     pass
+
+
+def make_long_opcode(mnem, size):
+    return LongOpCode(mnem=mnem, op1_size=size, op2_size=size)
 
 
 def make_sized_aliases(mnem: str, sizes=None, short_mnem=None, xmm=False):
@@ -49,25 +54,25 @@ def make_sized_aliases(mnem: str, sizes=None, short_mnem=None, xmm=False):
         result = {}
 
         if Size.SIZE16 in sizes:
-            result[f"{mnem}s"] = LongOpCode(mnem=f"{mnem}s", size=Size.SIZE16)
+            result[f"{mnem}s"] = make_long_opcode(f"{mnem}s", Size.SIZE16)
         if Size.SIZE32 in sizes:
-            result[f"{mnem}d"] = LongOpCode(mnem=f"{mnem}d", size=Size.SIZE32)
+            result[f"{mnem}d"] = make_long_opcode(f"{mnem}d", Size.SIZE32)
     else:
         # Integer registers
 
         if short_mnem is None:
             short_mnem = mnem
 
-        result = {mnem: LongOpCode(mnem=short_mnem, size=None)}
+        result = {mnem: make_long_opcode(short_mnem, None)}
 
         if Size.SIZE08 in sizes:
-            result[f"{mnem}b"] = LongOpCode(mnem=short_mnem, size=Size.SIZE08)
+            result[f"{mnem}b"] = make_long_opcode(short_mnem, Size.SIZE08)
         if Size.SIZE16 in sizes:
-            result[f"{mnem}w"] = LongOpCode(mnem=short_mnem, size=Size.SIZE16)
+            result[f"{mnem}w"] = make_long_opcode(short_mnem, Size.SIZE16)
         if Size.SIZE32 in sizes:
-            result[f"{mnem}l"] = LongOpCode(mnem=short_mnem, size=Size.SIZE32)
+            result[f"{mnem}l"] = make_long_opcode(short_mnem, Size.SIZE32)
         if Size.SIZE64 in sizes:
-            result[f"{mnem}q"] = LongOpCode(mnem=short_mnem, size=Size.SIZE64)
+            result[f"{mnem}q"] = make_long_opcode(short_mnem, Size.SIZE64)
 
     return result
 
@@ -81,41 +86,41 @@ OPCODE_ALIASES = {
     **make_sized_aliases("ret", short_mnem="retn", sizes={Size.SIZE64}),
     "callq": LongOpCode(mnem="call"),
     "leaveq": LongOpCode(mnem="leave"),
-    "movabsq": LongOpCode(mnem="mov", size=Size.SIZE64),
-    "movsbw": LongOpCode(mnem="movsx"),
-    "movsbl": LongOpCode(mnem="movsx"),
-    "movsbq": LongOpCode(mnem="movsx"),
-    "movslq": LongOpCode(mnem="movsxd"),
-    "movswl": LongOpCode(mnem="movsx"),
-    "movswq": LongOpCode(mnem="movsx"),
-    "movzbl": LongOpCode(mnem="movzx"),
-    "movzbq": LongOpCode(mnem="movzx"),
-    "movzwl": LongOpCode(mnem="movzx"),
-    "movzwq": LongOpCode(mnem="movzx"),
-    "cwtd": LongOpCode(mnem="cwd", size=Size.SIZE16),
-    "cltd": LongOpCode(mnem="cdq", size=Size.SIZE32),
-    "cqto": LongOpCode(mnem="cqo", size=Size.SIZE64),
-    "cvtsd2ss": LongOpCode(mnem="cvtsd2ss", size=Size.SIZE32),
+    "movabsq": make_long_opcode("mov", Size.SIZE64),
+    "movsbw": LongOpCode(mnem="movsx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
+    "movsbl": LongOpCode(mnem="movsx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
+    "movsbq": LongOpCode(mnem="movsx", op1_size=Size.SIZE08, op2_size=Size.SIZE64),
+    "movswl": LongOpCode(mnem="movsx", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
+    "movswq": LongOpCode(mnem="movsx", op1_size=Size.SIZE16, op2_size=Size.SIZE64),
+    "movslq": LongOpCode(mnem="movsxd", op1_size=Size.SIZE32, op2_size=Size.SIZE64),
+    "movzbl": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
+    "movzbq": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE64),
+    "movzwl": LongOpCode(mnem="movzx", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
+    "movzwq": LongOpCode(mnem="movzx", op1_size=Size.SIZE16, op2_size=Size.SIZE64),
+    "cwtd": LongOpCode(mnem="cwd", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
+    "cltd": LongOpCode(mnem="cdq", op1_size=Size.SIZE32, op2_size=Size.SIZE32),
+    "cqto": LongOpCode(mnem="cqo", op1_size=Size.SIZE64, op2_size=Size.SIZE64),
+    "cvtsd2ss": LongOpCode(mnem="cvtsd2ss", op1_size=Size.SIZE32, op2_size=Size.SIZE16),
     **make_sized_aliases("cvttss2si", {Size.SIZE32, Size.SIZE64}),
     **make_sized_aliases("cvttsd2si", {Size.SIZE32, Size.SIZE64}),
-    "fild": LongOpCode(mnem="fild", size=Size.SIZE16),
-    "filds": LongOpCode(mnem="fild", size=Size.SIZE16),
-    "fildl": LongOpCode(mnem="fild", size=Size.SIZE32),
-    "fildq": LongOpCode(mnem="fild", size=Size.SIZE64),
-    "fildll": LongOpCode(mnem="fild", size=Size.SIZE64),
-    "fistp": LongOpCode(mnem="fistp", size=Size.SIZE16),
-    "fistps": LongOpCode(mnem="fistp", size=Size.SIZE16),
-    "fistpl": LongOpCode(mnem="fistp", size=Size.SIZE32),
-    "fistpq": LongOpCode(mnem="fistp", size=Size.SIZE64),
-    "fistpll": LongOpCode(mnem="fistp", size=Size.SIZE64),
-    "fadds": LongOpCode(mnem="fadd", size=Size.SIZE32),
-    "fld": LongOpCode(mnem="fld", size=Size.SIZE32),
-    "flds": LongOpCode(mnem="fld", size=Size.SIZE32),
-    "fldt": LongOpCode(mnem="fld", size=Size.SIZEST),
-    "fldl": LongOpCode(mnem="fld", size=Size.SIZE64),
-    "fstps": LongOpCode(mnem="fstp", size=Size.SIZE32),
-    "fstpt": LongOpCode(mnem="fstp", size=Size.SIZEST),
-    "fstpl": LongOpCode(mnem="fstp", size=Size.SIZE64),
+    "fild": make_long_opcode("fild", Size.SIZE16),
+    "filds": make_long_opcode("fild", Size.SIZE16),
+    "fildl": make_long_opcode("fild", Size.SIZE32),
+    "fildq": make_long_opcode("fild", Size.SIZE64),
+    "fildll": make_long_opcode("fild", Size.SIZE64),
+    "fistp": make_long_opcode("fistp", Size.SIZE16),
+    "fistps": make_long_opcode("fistp", Size.SIZE16),
+    "fistpl": make_long_opcode("fistp", Size.SIZE32),
+    "fistpq": make_long_opcode("fistp", Size.SIZE64),
+    "fistpll": make_long_opcode("fistp", Size.SIZE64),
+    "fadds": make_long_opcode("fadd", Size.SIZE32),
+    "fld": make_long_opcode("fld", Size.SIZE32),
+    "flds": make_long_opcode("fld", Size.SIZE32),
+    "fldt": make_long_opcode("fld", Size.SIZEST),
+    "fldl": make_long_opcode("fld", Size.SIZE64),
+    "fstps": make_long_opcode("fstp", Size.SIZE32),
+    "fstpt": make_long_opcode("fstp", Size.SIZEST),
+    "fstpl": make_long_opcode("fstp", Size.SIZE64),
 }
 
 # Add all-sizes aliases

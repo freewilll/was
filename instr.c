@@ -69,13 +69,17 @@ static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
 
 // Determine the size of the instruction from the opcode definition and operands
 static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand *op1, Operand *op2) {
-    int size = opcode_alias->size;
+    int size = opcode_alias->op1_size; // Except for conversions, op1_size == op2_size
+
+    if (opcode->conver) {
+        if (op1 && OP_HAS_SIZE(op1)) size = OP_TO_SIZE(op1);
+        if (op2 && OP_HAS_SIZE(op2)) size = OP_TO_SIZE(op2);
+    }
+
     // Determine size from register operands
     if (!size) {
         if (opcode->branch && op1 && OP_TYPE_IS_MEM(op1))
             size = OP_TO_SIZE(op1);
-        else if (op2 && opcode->conver)
-            size = OP_TO_SIZE(op2);
         else if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect)
             size = OP_TO_SIZE(op1);
         else if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect)
@@ -91,30 +95,32 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
     }
 
     // Check for size mismatches when the size is specified in the mnemonic
-    if (opcode_alias->size) {
-        if (op1 && OP_TYPE_IS_REG(op1) && !op1->indirect && OP_HAS_SIZE(op1) && OP_TO_SIZE(op1) != opcode_alias->size) error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op1), opcode_alias->size);
-        if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect && OP_HAS_SIZE(op2) && OP_TO_SIZE(op2) != opcode_alias->size) error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op2), opcode_alias->size);
+    if (!opcode->conver) {
+        if (op1 && OP_TYPE_IS_REG(op1) && opcode_alias->op1_size && OP_HAS_SIZE(op1) && OP_TO_SIZE(op1) != opcode_alias->op1_size)
+            error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op1), opcode_alias->op1_size);
+        if (op2 && OP_TYPE_IS_REG(op2) && opcode_alias->op2_size && OP_HAS_SIZE(op2) && OP_TO_SIZE(op2) != opcode_alias->op2_size)
+            error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op2), opcode_alias->op2_size);
     }
 
     return size;
 }
 
 // Check if an opcode's operand matches an operand
-static int op_matches(Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *opcode_op, Operand *op, int size) {
+static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op, Operand *op, int size) {
     if (!op) panic("op unexpectedly null");
 
-    // If the operation is an indirect, the size is the size of the entire operation,
-    // determined by either another operand or the opcode alias.
-    int op_size = (op->indirect || !OP_HAS_SIZE(op)) ? size : OP_TO_SIZE(op);
+    // If the operation size can be determined by the operand, use that, otherwise fall back too the
+    // passed-in size, which is determined by the opcode or opcode alias.
+    int op_size = OP_HAS_SIZE(op) ? OP_TO_SIZE(op): size;
 
     // IMM08 operands are also treated as IMM16 since some opcodes don't
     // encode IMM08 values.
 
     int alt_op_size = op->type == IMM08 ? SIZE16 : 0;
 
-    // If the opcode alias has a size & the addressing mode is memory, then an indirect or memory operand doesn't have
+    // If the opcode alias has a size & the addressing mode is memory, then the  operand doesn't have
     // a size and is matched.
-    if (!opcode_alias->size && opcode_op->am == AM_M && (OP_TYPE_IS_MEM(op) || op->indirect)) return 1;
+    if (!opcode_alias_size && opcode_op->am == AM_M && !OP_HAS_SIZE(op)) return 1;
 
     // Match sizes
     if (opcode_op->sizes
@@ -517,7 +523,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         Opcode *opcode = opcode_alias->opcodes->elements[i];
 
         #ifdef DEBUG
-        printf("Checking: ");
+        printf("Checking: %s ", opcode_alias->alias_mnem);
         print_opcode(opcode);
         #endif
 
@@ -526,15 +532,23 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
 
         int size = get_operation_size(opcode, opcode_alias, op1, op2);
 
+        int op1_size = size;
+        int op2_size = size;
+
+        if (opcode->conver) {
+            if (op1 && !OP_HAS_SIZE(op1)) op1_size = opcode_alias->op1_size;
+            if (op2 && !OP_HAS_SIZE(op2)) op2_size = opcode_alias->op2_size;
+        }
+
         // Check for match
         OpcodeOp *single_opcode = NULL;
         if (opcode_arg_count == 1) {
             single_opcode = opcode->op1.am ? &opcode->op1 : &opcode->op2;
-            if (!op_matches(opcode, opcode_alias, single_opcode, op1, size)) continue;
+            if (!op_matches(opcode, opcode_alias->op1_size, single_opcode, op1, size)) continue;
         }
         else if (opcode_arg_count == 2) {
-            if (!op_matches(opcode, opcode_alias, &opcode->op1, op1, size)) continue;
-            if (!op_matches(opcode, opcode_alias, &opcode->op2, op2, size)) continue;
+            if (!op_matches(opcode, opcode_alias->op1_size, &opcode->op1, op1, op1_size)) continue;
+            if (!op_matches(opcode, opcode_alias->op2_size, &opcode->op2, op2, op2_size)) continue;
         }
 
         // At this point, the opcode can be used to generate code
