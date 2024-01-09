@@ -20,6 +20,8 @@ Opcode opcodes[] = {
             {{-opcode.op1.can_be_imm64}},
             {{-opcode.op1.sign_extended}},
             {{-opcode.op1.word_or_double_word_operand}},
+            {{-1 if opcode.op1.is_gen_reg else 0}},
+            {{-opcode.op1.gen_reg_nr}},
             {{-'"'+opcode.op1.type.value+'"' if opcode.op1.type.value else 0}}},
         {
             {{-opcode.op2.am.to_c_enum() if opcode.op2.am.value else 0}},
@@ -28,6 +30,8 @@ Opcode opcodes[] = {
             {{-opcode.op2.can_be_imm64}},
             {{-opcode.op2.sign_extended}},
             {{-opcode.op2.word_or_double_word_operand}},
+            {{-1 if opcode.op2.is_gen_reg else 0}},
+            {{-opcode.op2.gen_reg_nr}},
             {{-'"'+opcode.op2.type.value+'"' if opcode.op2.type.value else 0}}},
         {{opcode.op_size}},
         {{opcode.direction}},

@@ -54,9 +54,8 @@ void dump_instructions(Instructions *instr) {
 static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
     // Check the number of arguments match
     int opcode_arg_count = 0;
-    if (opcode->op1.am) opcode_arg_count++;
-    if (opcode->op2.am) opcode_arg_count++;
-    if (opcode->acc) opcode_arg_count++;
+    if (opcode->op1.am || opcode->op1.is_gen_reg) opcode_arg_count++;
+    if (opcode->op2.am || opcode->op2.is_gen_reg) opcode_arg_count++;
 
     int arg_count = 0;
     if (op1) arg_count++;
@@ -94,14 +93,6 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
         if (!size) size = SIZE32; // In long mode, the default instruction size is 32 bits;
     }
 
-    // Check for size mismatches when the size is specified in the mnemonic
-    if (!opcode->conver) {
-        if (op1 && OP_TYPE_IS_REG(op1) && opcode_alias->op1_size && OP_HAS_SIZE(op1) && OP_TO_SIZE(op1) != opcode_alias->op1_size)
-            error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op1), opcode_alias->op1_size);
-        if (op2 && OP_TYPE_IS_REG(op2) && opcode_alias->op2_size && OP_HAS_SIZE(op2) && OP_TO_SIZE(op2) != opcode_alias->op2_size)
-            error("Size mismatch with opcode: %d vs %d", OP_TO_SIZE(op2), opcode_alias->op2_size);
-    }
-
     return size;
 }
 
@@ -128,6 +119,9 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
         && !(opcode_op->sizes & op_size)
         && !(alt_op_size && opcode_op->sizes & alt_op_size)
     ) return 0;
+
+    // Operand is a general register. Check it matches.
+    if (opcode_op->is_gen_reg && OP_TYPE_IS_REG(op) && opcode_op->gen_reg_nr != op->reg) return 0;
 
     // The instruction dst is an al, ax, eax, rax in it, aka an accumulator
     if (opcode->acc && (op->reg || op->indirect)) return 0;

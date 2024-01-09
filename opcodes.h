@@ -34,6 +34,8 @@ typedef struct opcode_op {
     int can_be_imm64;
     int sign_extended;
     int word_or_double_word_operand;
+    char is_gen_reg;
+    char gen_reg_nr;
     char *type;
 } OpcodeOp;
 

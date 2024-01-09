@@ -215,7 +215,7 @@ static void parse_register(void) {
 
     // https://wiki.osdev.org/X86-64_Instruction_Encoding#Registers
     char *regs0a[16] = {"al",   "cl",   "dl",   "bl",   "ah",   "ch",   "dh",   "bh",   "r8b",  "r9b",  "r10b",  "r11b",  "r12b",  "r13b",  "r14b",  "r15b"};
-    char *regs0b[16] = {"",      "",    "",     "",     "spl",  "bpl",  "sil",  "dil",  "",     "",     "",      "",      "",      "",      "",      ""};
+    char *regs0b[16] = {"",      "",    "",     "",     "spl",  "bpl",  "sil",  "dil",   "",    "",     "",      "",      "",      "",      "",      ""};
     char *regs1[16]  = {"ax",   "cx",   "dx",   "bx",   "sp",   "bp",   "si",   "di",   "r8w",  "r9w",  "r10w",  "r11w",  "r12w",  "r13w",  "r14w",  "r15w"};
     char *regs2[16]  = {"eax",  "ecx",  "edx",  "ebx",  "esp",  "ebp",  "esi",  "edi",  "r8d",  "r9d",  "r10d",  "r11d",  "r12d",  "r13d",  "r14d",  "r15d"};
     char *regs3[16]  = {"rax",  "rcx",  "rdx",  "rbx",  "rsp",  "rbp",  "rsi",  "rdi",  "r8",   "r9",   "r10",   "r11",   "r12",   "r13",   "r14",   "r15"  };

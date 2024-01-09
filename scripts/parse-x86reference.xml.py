@@ -25,6 +25,9 @@ class Size(Enum):
     def __lt__(self, other):
         return operator.lt(self.value, other.value)
 
+    def to_short(self):
+        return self.value[4:6]
+
 
 @dataclass
 class LongOpCode:
@@ -198,8 +201,6 @@ class AddressingMode(Enum):
     J = "J"  # RIP relative
     H = "H"  # The r/m field of the ModR/M byte always selects a general register, regardless of the mod field
     M = "M"  # The ModR/M byte may refer only to memory
-    O = "O"  # Offset
-    R = "R"  # Not used
     S = "S"  # Not used
     ST = "ST"  # x87 FPU stack register.
     V = "V"  # The reg field of the ModR/M byte selects a 128-bit XMM register.
@@ -313,6 +314,8 @@ class WasOperand:
     sign_extended: int
     word_or_double_word_operand: int
     type: int
+    is_gen_reg: bool = False
+    gen_reg_nr: int = 0  # General register number. Only usable if is_is_gen_reg is True
 
     @staticmethod
     def type_to_str(operand_type: OperandType):
@@ -367,6 +370,12 @@ class WasOpcode:
 
         op1_amt = f"{self.op1.am.value if self.op1.am else ''}{self.op1.type.value if self.op1.type else ''}"
         op2_amt = f"{self.op2.am.value if self.op2.am else ''}{self.op2.type.value if self.op2.type else ''}"
+
+        # General registers
+        if self.op1.is_gen_reg:
+            op1_amt = f"ge{self.op1.gen_reg_nr}{op1_amt}"
+        if self.op2.is_gen_reg:
+            op2_amt = f"ge{self.op2.gen_reg_nr}{op2_amt}"
 
         acc = "a" if self.acc else " "
         return (
@@ -426,7 +435,28 @@ def parse_operand(entry, operand: str) -> List[WasOperand]:
             # to treat an ST src/dst as such
             am = AddressingMode.ST
 
-        results.append(WasOperand.from_am_and_type(am, type))
+        was_operand = WasOperand.from_am_and_type(am, type)
+        results.append(was_operand)
+
+        group = operand.get("group")
+        displayed = operand.get("displayed")
+        if group is not None and group == "gen" and displayed is None:
+            nr = operand.get("nr")
+            type_ = operand.get("type")
+            size = {
+                # Bizarrely, in practice v and vqp are respectively 32 and 64 bit registers.
+                # Not sure why l and q could not have been used for those.
+                "b": Size.SIZE08,
+                "w": Size.SIZE16,
+                "l": Size.SIZE32,
+                "q": Size.SIZE64,
+                "v": Size.SIZE32,
+                "vqp": Size.SIZE64,
+            }[type_]
+
+            if size is not None:
+                was_operand.is_gen_reg = True
+                was_operand.gen_reg_nr = nr
 
     return results
 
