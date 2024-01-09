@@ -13818,6 +13818,7 @@ OpcodeAlias opcode_aliases[] = {
     { "movswq","movsx",SIZE16,SIZE64 },
     { "movslq","movsxd",SIZE32,SIZE64 },
     { "movzbl","movzx",SIZE08,SIZE32 },
+    { "movzbw","movzx",SIZE08,SIZE16 },
     { "movzbq","movzx",SIZE08,SIZE64 },
     { "movzwl","movzx",SIZE16,SIZE32 },
     { "movzwq","movzx",SIZE16,SIZE64 },

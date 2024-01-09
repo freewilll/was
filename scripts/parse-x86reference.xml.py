@@ -97,6 +97,7 @@ OPCODE_ALIASES = {
     "movswq": LongOpCode(mnem="movsx", op1_size=Size.SIZE16, op2_size=Size.SIZE64),
     "movslq": LongOpCode(mnem="movsxd", op1_size=Size.SIZE32, op2_size=Size.SIZE64),
     "movzbl": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE32),
+    "movzbw": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE16),
     "movzbq": LongOpCode(mnem="movzx", op1_size=Size.SIZE08, op2_size=Size.SIZE64),
     "movzwl": LongOpCode(mnem="movzx", op1_size=Size.SIZE16, op2_size=Size.SIZE32),
     "movzwq": LongOpCode(mnem="movzx", op1_size=Size.SIZE16, op2_size=Size.SIZE64),
