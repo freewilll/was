@@ -39,9 +39,12 @@ static long parse_signed_integer(void) {
 
 // Very basic parser that can only handle, e.g.
 // -  1
+// -  1 + 2
+// -  1 - 2
+// -  1 + 2 - 3 ...
 // -  foo
-// -  foo + 1
-// -  foo - 1
+// -  foo + 1 ...
+// -  foo - 1 ...
 static Expression parse_expression(void) {
     Expression result = {0};
 
@@ -50,14 +53,16 @@ static Expression parse_expression(void) {
         next();
         Symbol *symbol = get_or_add_symbol(identifier);
         result.symbol = symbol;
-
-        if (cur_token == TOK_PLUS) next();
-        if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS)
-            result.value = parse_signed_integer();
     }
 
-    else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
-        result.value = parse_signed_integer();
+
+    while (cur_token == TOK_INTEGER || cur_token == TOK_PLUS | cur_token == TOK_MINUS) {
+        if (cur_token == TOK_PLUS) next();
+        if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS)
+            result.value += parse_signed_integer();
+
+        else
+            error("Unable to parse expression");
     }
 
     return result;
@@ -286,7 +291,10 @@ static void parse_operand(Operand *op) {
 
     else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
         // Memory
-        int value = parse_signed_integer();
+        Expression expr = parse_expression();
+        if (expr.symbol) error("Unexpected symbol in expression"); // Not implemented
+
+        int value = expr.value;
         op->type = MEM32; // Default memory address size
 
         if (cur_token == TOK_LPAREN) {
