@@ -380,7 +380,7 @@ void next(void) {
         }
 
         else
-            error("Unknown token %c", *ip);
+            error("Unknown token %c (%d)", *ip, *ip);
 
         return;
     }

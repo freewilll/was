@@ -20,8 +20,8 @@ void test_assembly(char *input, ...) {
 
     printf("%-60s", input);
 
-    char *lexer_str = malloc(strlen(input) + 5);
-    sprintf(lexer_str, ".data\n%s", input);
+    char *lexer_str = malloc(strlen(input) + 8);
+    sprintf(lexer_str, ".data; %s", input);
     init_lexer_from_string(lexer_str);
 
     parse_directive_statement();
@@ -29,7 +29,11 @@ void test_assembly(char *input, ...) {
     ElfSection *section = get_current_section();
     section->size = 0;
 
-    parse_directive_statement();
+    while (cur_token != TOK_EOF) {
+        parse_directive_statement();
+        while (cur_token == TOK_EOL) next();
+    }
+
     vassert_section(section, ap);
 
     printf("pass\n");
@@ -90,4 +94,13 @@ int main() {
     test_assembly(".string \"abc\"",  0x61, 0x62, 0x63, 0x00, END);
     test_assembly(".string \"\\\"\"", 0x22, 0x00, END);
     test_assembly(".string \"'\"",    0x27, 0x00, END);
+
+    test_assembly(".align 1; .byte 2", 0x02, END);
+    test_assembly(".byte 1; .align 1; .byte 2", 0x01, 0x02, END);
+    test_assembly(".byte 1; .byte 2; .align 2; .byte 3", 0x01, 0x02, 0x03, END);
+
+    test_assembly(".byte 1; .align 1; .byte 2", 0x01, 0x02, END);
+    test_assembly(".byte 1; .align 2; .byte 2", 0x01, 0x00, 0x02, END);
+    test_assembly(".byte 1; .align 4; .byte 2", 0x01, 0x00, 0x00, 0x00, 0x02, END);
+    test_assembly(".byte 1; .align 8; .byte 2", 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, END);
 }

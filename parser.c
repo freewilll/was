@@ -95,10 +95,21 @@ void parse_directive_statement(void) {
     next();
 
     switch (directive) {
-        case TOK_DIRECTIVE_ALIGN:
-            printf("TODO: .align\n");
-            skip();
+        case TOK_DIRECTIVE_ALIGN: {
+            long value = parse_signed_integer();
+            ElfSection *current_section = get_current_section();
+            if (current_section != &section_data && current_section != &section_rodata)
+                panic("Can only use .align in .data and .rodata sections");
+
+            if (value & (value - 1) != 0) panic(".align is not a power of 2");
+
+            int new_size = (current_section->size + value - 1) & ~(value - 1);
+            int needed_zeros =  new_size - current_section->size;
+            if (needed_zeros)
+                add_zeros_to_current_section(needed_zeros);
+
             break;
+        }
 
         case TOK_DIRECTIVE_BYTE:
             parse_data_directive(R_X86_64_8, 1);
