@@ -216,7 +216,7 @@ void make_symbols_section(void) {
         Symbol *symbol = strmap_get(symbols, name);
 
         if (symbol->binding == STB_GLOBAL)
-            symbol->symtab_index = add_elf_symbol(name, 0, symbol->binding, symbol->type, symbol->section_index);
+            symbol->symtab_index = add_elf_symbol(name, symbol->offset, symbol->binding, symbol->type, symbol->section_index);
     }
 
     section_symtab.link = section_strtab.index;

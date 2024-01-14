@@ -177,18 +177,20 @@ void assert_symbols(int first, ...) {
     int pos = first_symbol_index * sizeof(ElfSymbol); // Skip section symbols
 
     while (1) {
-        int expected_type;
-        if (processed_first)
-            expected_type = va_arg(ap, int);
+        int expected_value;
+        if (processed_first) {
+            expected_value = va_arg(ap, int);
+        }
         else {
-            expected_type = first;
+            expected_value = first;
             processed_first = 1;
         }
 
+        int expected_type = va_arg(ap, int);
         int expected_binding = va_arg(ap, int);
         char *expected_name = va_arg(ap, char *);
 
-        if (expected_type == END) {
+        if (expected_value == END) {
             if (pos != section->size) {
                 dump_symbols();
                 panic("Unexpected data at position %d", (pos - 1) / sizeof(ElfSymbol));
@@ -199,7 +201,8 @@ void assert_symbols(int first, ...) {
 
         ElfSymbol *symbol = (ElfSymbol *) &section->data[pos];
 
-        int got_type   = symbol->st_info & 0xf;
+        int got_value = symbol->st_value;
+        int got_type = symbol->st_info & 0xf;
         char got_binding = (symbol->st_info >> 4) & 0xf;
         char *got_name = symbol->st_name ? &section_strtab.data[symbol->st_name] : 0;
 
@@ -210,13 +213,15 @@ void assert_symbols(int first, ...) {
 
         int name_matches = ((!got_name && !expected_name) || (expected_name && !strcmp(expected_name, got_name)));
 
-        if (expected_type != got_type || expected_binding != got_binding || !name_matches) {
+        if (expected_value != got_value || expected_type != got_type || expected_binding != got_binding || !name_matches) {
             dump_symbols();
-            panic("Symbols mismatch at position %d: expected %d, %d, %s, got %d, %d, %s",
+            panic("Symbols mismatch at position %d: expected %ld, %d, %d, %s, got %ld, %d, %d, %s",
                 (pos - 1) / sizeof(ElfSymbol),
+                expected_value,
                 expected_type,
                 expected_binding,
                 expected_name ? expected_name : "null",
+                got_value,
                 got_type,
                 got_binding,
                 got_name ? got_name : "null"
