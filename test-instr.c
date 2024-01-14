@@ -972,15 +972,30 @@ void test_data_with_defined_symbol(void) {
     );
 }
 
-void test_symbol_types(void) {
+void test_symbol_types_and_binding(void) {
     test_full_assembly("default symbol type is NOTYPE", "foo: nop", 0x90, END);
-    assert_symbols(STT_NOTYPE, "foo", END);
+    assert_symbols(STT_NOTYPE, STB_LOCAL, "foo", END);
+
+    test_full_assembly("default symbol with .L type is not in the symbol table", ".Lfoo: nop", 0x90, END);
+    assert_symbols(END);
 
     test_full_assembly("declaring symbol as @object", ".data; .type data_sym, @object", END);
-    assert_symbols(STT_OBJECT, "data_sym", END);
+    assert_symbols(STT_OBJECT, STB_GLOBAL, "data_sym", END);
 
     test_full_assembly("declaring symbol as @function", ".data; .type func_sym, @function", END);
-    assert_symbols(STT_FUNC, "func_sym", END);
+    assert_symbols(STT_FUNC, STB_GLOBAL, "func_sym", END);
+
+    test_full_assembly("an undefined symbol is global", ".data; .quad undef", END);
+    assert_symbols(STT_NOTYPE, STB_GLOBAL, "undef", END);
+
+    test_full_assembly("a defined symbol is local", ".data; .quad undef; undef: .byte 1", END);
+    assert_symbols(STT_NOTYPE, STB_LOCAL, "undef", END);
+
+    test_full_assembly("defined and declared .globl", ".data; .quad def; def: .byte 1; .globl def", END);
+    assert_symbols(STT_NOTYPE, STB_GLOBAL, "def", END);
+
+    test_full_assembly("an undefined symbol even with with .local is still global", ".data; .quad undef; .local undef", END);
+    assert_symbols(STT_NOTYPE, STB_GLOBAL, "undef", END);
 }
 
 int main() {
@@ -994,5 +1009,5 @@ int main() {
     test_relocations_with_rip_and_defined_symbol();
     test_data_with_undefined_symbol();
     test_data_with_defined_symbol();
-    test_symbol_types();
+    test_symbol_types_and_binding();
 }

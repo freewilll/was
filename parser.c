@@ -193,10 +193,13 @@ InstructionsSet *parse_directive_statement(void) {
             break;
         }
 
-        case TOK_DIRECTIVE_LOCAL:
-            printf("TODO: .local\n");
-            skip();
+        case TOK_DIRECTIVE_LOCAL: {
+            expect(TOK_IDENTIFIER, "symbol");
+            Symbol *symbol = get_or_add_symbol(strdup(cur_identifier));
+            symbol->binding = STB_LOCAL;
+            next();
             break;
+        }
 
         case TOK_DIRECTIVE_SECTION:
             expect(TOK_IDENTIFIER, "section name");

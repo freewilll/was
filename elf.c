@@ -204,7 +204,9 @@ void make_symbols_section(void) {
         // All undefined symbols must be global.
         if (!symbol->section_index) symbol->binding = STB_GLOBAL;
 
-        if (symbol->binding != STB_GLOBAL)
+        // Any local symbols starting with .L aren't included in the ELF.
+        int dot_local = strlen(name) >= 2 && name[0] == '.' && name[1] == 'L';
+        if (symbol->binding != STB_GLOBAL && !dot_local)
             symbol->symtab_index = add_elf_symbol(name, symbol->offset, symbol->binding, symbol->type, symbol->section_index);
     }
 
