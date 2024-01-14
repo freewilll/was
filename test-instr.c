@@ -11,8 +11,6 @@
 #include "utils.h"
 #include "test-utils.h"
 
-#define END -1
-
 void assert_instructions(Instructions* instr, va_list ap) {
     if (!instr) panic("Assert instruction on a NULL");
 
@@ -974,6 +972,17 @@ void test_data_with_defined_symbol(void) {
     );
 }
 
+void test_symbol_types(void) {
+    test_full_assembly("default symbol type is NOTYPE", "foo: nop", 0x90, END);
+    assert_symbols(STT_NOTYPE, "foo", END);
+
+    test_full_assembly("declaring symbol as @object", ".data; .type data_sym, @object", END);
+    assert_symbols(STT_OBJECT, "data_sym", END);
+
+    test_full_assembly("declaring symbol as @function", ".data; .type func_sym, @function", END);
+    assert_symbols(STT_FUNC, "func_sym", END);
+}
+
 int main() {
     init_opcodes();
     init_symbols();
@@ -985,4 +994,5 @@ int main() {
     test_relocations_with_rip_and_defined_symbol();
     test_data_with_undefined_symbol();
     test_data_with_defined_symbol();
+    test_symbol_types();
 }

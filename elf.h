@@ -141,6 +141,7 @@ extern ElfSection section_rela_text;
 extern ElfSection section_rela_data;
 extern ElfSection section_rela_rodata;
 extern ElfSection section_symtab;
+extern ElfSection section_strtab;
 
 extern const int section_count;
 #define first_symbol_index section_count // This id in the symbol table is where non-section symbols get added

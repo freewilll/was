@@ -220,8 +220,21 @@ InstructionsSet *parse_directive_statement(void) {
             break;
 
         case TOK_DIRECTIVE_TYPE:
-            printf("TODO: .type\n");
-            skip();
+            expect(TOK_IDENTIFIER, "identifier");
+            Symbol *symbol = get_or_add_symbol(strdup(cur_identifier));
+            next();
+            consume(TOK_COMMA, ",");
+            expect(TOK_IDENTIFIER, "symbol type");
+
+            if (!strcmp(cur_identifier, "@function"))
+                symbol->type = STT_FUNC;
+            else if (!strcmp(cur_identifier, "@object"))
+                symbol->type = STT_OBJECT;
+            else
+                error("Unknown symbol type %s", cur_identifier);
+
+            next();
+
             break;
 
         case TOK_DIRECTIVE_ULEB128:

@@ -1,9 +1,22 @@
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "elf.h"
 #include "utils.h"
+#include "test-utils.h"
+
+const char *symbol_type_names[] = {
+    "NOTYPE", "OBJECT", "FUNC", "SECTION", "FILE", "COMMON", "?", "?",
+    "?", "?", "?", "?", "?", "?", "?", "?"
+};
+
+const char *symbol_binding_names[] = {
+    "LOCAL", "GLOBAL", "WEAK", "?", "?", "?", "?", "?",
+    "?", "?", "?", "?", "?", "?", "?", "?",
+};
+
 
 // Print hex bytes for the encoded instructions
 int dump_section(ElfSection *section) {
@@ -23,7 +36,7 @@ void vassert_section(ElfSection* section, va_list ap) {
     while (1) {
         unsigned int expected = va_arg(ap, unsigned int);
 
-        if (expected == -1) {
+        if (expected == END) {
             if (pos != section->size) {
                 dump_section(section);
                 panic("Unexpected data at position %d", pos);
@@ -81,10 +94,10 @@ void assert_relocations(ElfSection* section, ...) {
         int expected_offset         = va_arg(ap, int);
         int expected_addend         = va_arg(ap, int);
 
-        if (expected_type == -1) {
+        if (expected_type == END) {
             if (pos != section->size) {
                 dump_relocations(section);
-                panic("Unexpected data at position %d", pos);
+                panic("Unexpected data at position %d", pos / sizeof(ElfRelocation));
             }
 
             return; // Success
@@ -123,5 +136,89 @@ void assert_relocations(ElfSection* section, ...) {
         }
 
         pos += sizeof(ElfRelocation);
+    }
+}
+
+// Readelf compatible symbol table output
+void dump_symbols(void) {
+    printf("Symbol Table:\n");
+    printf("   Num:     Value         Size Type    Bind   Vis      Ndx Name\n");
+    ElfSymbol *symbols = (ElfSymbol *) section_symtab.data;
+
+    int count = section_symtab.size / sizeof(ElfSymbol);
+    for (int i = 0; i < count; i++) {
+        ElfSymbol *symbol = &symbols[i];
+        char binding = (symbol->st_info >> 4) & 0xf;
+        char type = symbol->st_info & 0xf;
+        const char *type_name = symbol_type_names[type];
+        const char *binding_name = symbol_binding_names[binding];
+
+        printf("%6d: %016ld  %4ld %-8s%-7sDEFAULT  ", i, symbol->st_value, symbol->st_size, type_name, binding_name);
+        if (symbol->st_shndx)
+            printf("%3d", symbol->st_shndx);
+        else
+            printf("UND");
+
+        int strtab_offset = symbol->st_name;
+        if (strtab_offset)
+            printf(" %s\n",  &section_strtab.data[strtab_offset]);
+        else
+            printf("\n");
+    }
+}
+
+void assert_symbols(int first, ...) {
+    ElfSection *section = &section_symtab;
+
+    va_list ap;
+    va_start(ap, first);
+
+    int processed_first = 0;
+    int pos = first_symbol_index * sizeof(ElfSymbol); // Skip section symbols
+
+    while (1) {
+        int expected_type;
+        if (processed_first)
+            expected_type = va_arg(ap, int);
+        else {
+            expected_type = first;
+            processed_first = 1;
+        }
+
+        char *expected_name = va_arg(ap, char *);
+
+        if (expected_type == END) {
+            if (pos != section->size) {
+                dump_symbols();
+                panic("Unexpected data at position %d", (pos - 1) / sizeof(ElfSymbol));
+            }
+
+            return; // Success
+        }
+
+        ElfSymbol *symbol = (ElfSymbol *) &section->data[pos];
+
+        int got_type   = symbol->st_info & 0xf;
+        char *got_name = symbol->st_name ? &section_strtab.data[symbol->st_name] : 0;
+
+        if (pos == section->size) {
+            dump_symbols();
+            panic("Expected extra data at position %d", (pos - 1) / sizeof(ElfSymbol));
+        }
+
+        int name_matches = ((!got_name && !expected_name) || (expected_name && !strcmp(expected_name, got_name)));
+
+        if (expected_type != got_type || !name_matches) {
+            dump_symbols();
+            panic("Symbols mismatch at position %d: expected %d, %s",
+                (pos - 1) / sizeof(ElfSymbol),
+                expected_type,
+                expected_name ? expected_name : "null",
+                got_type,
+                got_name ? got_name : "null"
+            );
+        }
+
+        pos += sizeof(ElfSymbol);
     }
 }
