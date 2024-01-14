@@ -70,8 +70,38 @@ static Expression parse_expression(void) {
     return result;
 }
 
-// Parse .byte, .word, .long and .quad
-static void parse_data_directive(int relocation_type, int size) {
+// Parse .byte, .word, .long and .quad in .text section
+// Data in the .text segment is processed in a second phase in emit_code(), like
+// instructions.
+static InstructionsSet *parse_data_directive_text(int relocation_type, int size) {
+    Expression expr = parse_expression();
+
+    Instructions instr = {0};
+    instr.size = size;
+
+    if (expr.symbol) {
+        instr.relocation_symbol = expr.symbol;
+        instr.relocation_type = relocation_type;
+        instr.relocation_addend = expr.value;
+    }
+    else
+        memcpy(instr.data, &expr.value, size);
+
+    InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
+    append_to_list(instruction_sets, instructions_set);
+    instructions_set->primary = malloc(sizeof(Instructions));
+    *instructions_set->primary = instr;
+    instructions_set->using_primary = 1;
+
+    return instructions_set;
+}
+
+// Parse .byte, .word, .long and .quad in .data and .rodata section
+// Data in these sections are added to the section immediately. Also, relocations
+// can be added straight away since the offsets in the segment are known at his point.
+static InstructionsSet *parse_data_directive_data(int relocation_type, int size) {
+    if (get_current_section() == &section_text) return parse_data_directive_text(relocation_type, size);
+
     Expression expr = parse_expression();
 
     if (expr.symbol) {
@@ -90,9 +120,20 @@ static void parse_data_directive(int relocation_type, int size) {
     }
     else
         add_to_current_section(&expr.value, size);
+
+    return NULL;
 }
 
-void parse_directive_statement(void) {
+// Parse .byte, .word, .long and .quad
+static InstructionsSet *parse_data_directive(int relocation_type, int size) {
+    if (get_current_section() == &section_text)
+        return parse_data_directive_text(relocation_type, size);
+    else
+        return parse_data_directive_data(relocation_type, size);
+}
+
+InstructionsSet *parse_directive_statement(void) {
+    InstructionsSet *result = NULL;
     int directive = cur_token;
     next();
 
@@ -114,19 +155,19 @@ void parse_directive_statement(void) {
         }
 
         case TOK_DIRECTIVE_BYTE:
-            parse_data_directive(R_X86_64_8, 1);
+            result = parse_data_directive(R_X86_64_8, 1);
             break;
 
         case TOK_DIRECTIVE_WORD:
-            parse_data_directive(R_X86_64_16, 2);
+            result = parse_data_directive(R_X86_64_16, 2);
             break;
 
         case TOK_DIRECTIVE_LONG:
-            parse_data_directive(R_X86_64_32, 4);
+            result = parse_data_directive(R_X86_64_32, 4);
             break;
 
         case TOK_DIRECTIVE_QUAD:
-            parse_data_directive(R_X86_64_64, 8);
+            result = parse_data_directive(R_X86_64_64, 8);
             break;
 
         case TOK_DIRECTIVE_COMM:
@@ -196,6 +237,8 @@ void parse_directive_statement(void) {
         default:
             error("Unknown token %d", directive);
     }
+
+    return result;
 }
 
 // Truncate the register to a range 0-15 if it's one of the common registers.
@@ -397,9 +440,10 @@ InstructionsSet *parse_instruction_statement(void) {
 
     InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
     append_to_list(instruction_sets, instructions_set);
-    instructions_set->primary = calloc(1, sizeof(Instructions));
+    instructions_set->primary = malloc(sizeof(Instructions));
     *instructions_set->primary = instr;
     instructions_set->using_primary = 1;
+    instructions_set->is_code = 1;
 
     if (instr.branch && op1 && op1->type == MEM32) {
         op1->type = MEM08;
@@ -423,15 +467,34 @@ InstructionsSet *parse_instruction_statement(void) {
     }
 
     if (relocation_op) {
+        int relocation_type;
+        if (instructions_set->primary->branch) // This is set for branch opcodes
+            relocation_type = R_X86_64_PLT32;
+        else
+            relocation_type = R_X86_64_PC32;
+
+        instructions_set->primary->relocation_type = relocation_type;
         instructions_set->primary->relocation_symbol = relocation_op->relocation_symbol;
         instructions_set->primary->relocation_addend = relocation_addend;
+
         if (instructions_set->secondary) {
+            instructions_set->secondary->relocation_type = relocation_type;
             instructions_set->secondary->relocation_symbol = relocation_op->relocation_symbol;
             instructions_set->secondary->relocation_addend = relocation_addend;
         }
     }
 
     return instructions_set;
+}
+
+static void add_labels_to_instruction_set(InstructionsSet *instr_set, List *labels) {
+    for (int i = 0; i < labels->length; i++) {
+        char *name = labels->elements[i];
+        Symbol *symbol = get_or_add_symbol(strdup(name));
+
+        if (!instr_set->symbols) instr_set->symbols = new_list(labels->length);
+        append_to_list(instr_set->symbols, symbol);
+    }
 }
 
 void parse(void) {
@@ -457,22 +520,18 @@ void parse(void) {
         }
 
         // Parse statement
-        if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO)
-            parse_directive_statement();
+        if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO) {
+            InstructionsSet *instr_set = parse_directive_statement();
+
+            if (instr_set) add_labels_to_instruction_set(instr_set, labels);
+        }
         else if (cur_token == TOK_INSTRUCTION) {
             if (get_current_section() != &section_text)
                 panic("Instructions can only be added to the .text section");
 
             InstructionsSet *instr_set = parse_instruction_statement();
 
-            for (int i = 0; i < labels->length; i++) {
-                char *name = labels->elements[i];
-                Symbol *symbol = get_or_add_symbol(strdup(name));
-
-                if (!instr_set->symbols) instr_set->symbols = new_list(labels->length);
-                append_to_list(instr_set->symbols, symbol);
-            }
-
+            add_labels_to_instruction_set(instr_set, labels);
         }
         else if (cur_token == TOK_EOF)
             break;
@@ -557,16 +616,23 @@ void emit_code(void) {
 
         if (instr->relocation_symbol) {
             int relocation_type;
-            if (instr->branch) // This is set for branch opcodes
+            if (instr->relocation_type)
+                relocation_type = instr->relocation_type; // Set by data handling code
+            else if (instr->branch) // This is set for branch opcodes
                 relocation_type = R_X86_64_PLT32;
             else
                 relocation_type = R_X86_64_PC32;
 
-            if (instr->relocation_symbol->section_index != section_text.index) {
+            // Data instructions in the .txt section always need a relocation
+            if (instr->relocation_symbol->section_index != section_text.index || !is->is_code) {
                 // The -4 is because this is a 32 bit relocation (so 4 bytes), and the relocated value applies after the code has been read, so has
                 // to be corrected for the size of the 32 bit operand.
-                add_relocation(&section_rela_text, instr->relocation_symbol, relocation_type, base_offset + instr->relocation_offset, instr->relocation_addend - 4);
+                int relocation_addend_offset = is->is_code ? -4 : 0;
+                add_relocation(
+                    &section_rela_text, instr->relocation_symbol, relocation_type,
+                    base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);
             }
+
             else {
                 if (is->using_primary) {
                     int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;

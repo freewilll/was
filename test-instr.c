@@ -815,10 +815,10 @@ void test_data_with_undefined_symbol(void) {
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
         END);
 
-    // Quad in rodata
+    // Quad in .rodata
     input = ".section .rodata\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
 
-    test_full_assembly("data_with_undefined_symbol quad in rodata", input, END); // No code
+    test_full_assembly("data_with_undefined_symbol quad in .rodata", input, END); // No code
 
     assert_relocations(&section_rela_rodata,
         R_X86_64_64, first_symbol_index, 0x00,  0,
@@ -833,6 +833,23 @@ void test_data_with_undefined_symbol(void) {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
         END);
+
+    // Quad in .text
+    input = ".text\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
+
+    test_full_assembly("data_with_undefined_symbol quad in .text", input,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
+        END); // No code
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_64, first_symbol_index, 0x00,  0,
+        R_X86_64_64, first_symbol_index, 0x08,  1,
+        R_X86_64_64, first_symbol_index, 0x10, -1,
+        END
+    );
 }
 
 void test_data_with_defined_symbol(void) {
@@ -918,10 +935,10 @@ void test_data_with_defined_symbol(void) {
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
         END);
 
-    // Quad in rodata
+    // Quad in .rodata
     input = ".section .rodata\na: .quad -1\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
 
-    test_full_assembly("data_with_defined_symbol quad in rodata", input, END); // No code
+    test_full_assembly("data_with_defined_symbol quad in .rodata", input, END); // No code
 
     assert_relocations(&section_rela_rodata,
         R_X86_64_64, section_rodata.index, 0x08,  0,
@@ -937,6 +954,24 @@ void test_data_with_defined_symbol(void) {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
         END);
+
+    // Quad in .text
+    input = ".text\na: .quad -1\n.quad a\n.quad a + 1\n.quad a - 1\n.quad 1";
+
+    test_full_assembly("data_with_defined_symbol quad in .text", input,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // a
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Relocated
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Direct
+        END);
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_64, section_text.index, 0x08,  0,
+        R_X86_64_64, section_text.index, 0x10,  1,
+        R_X86_64_64, section_text.index, 0x18, -1,
+        END
+    );
 }
 
 int main() {

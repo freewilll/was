@@ -65,14 +65,17 @@ typedef struct operand {
     int relocation_addend;      // Addend in the relocation table
 } Operand;
 
+// A chunk of data in the .text segment. This could be a single instruction or data.
+// The naming is dubious.
 typedef struct instructions {
     uint8_t data[16];
     int size;
+    int relocation_type;
     int relocation_offset;
     int relocation_size;
     Symbol *relocation_symbol;
     int relocation_addend;      // Addend in the relocation table
-    char branch;                // Is it a branch instruction?
+    int branch;                 // Is it a branch instruction?
 } Instructions;
 
 typedef struct instructions_set {
@@ -80,6 +83,7 @@ typedef struct instructions_set {
     Instructions *primary;
     Instructions *secondary;
     List *symbols;              // Zero or more symbols associated with the address at this instruction
+    int is_code;                // Is this code or data?
 } InstructionsSet;
 
 void dump_instructions(Instructions *instr);
