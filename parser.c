@@ -12,6 +12,8 @@
 #include "utils.h"
 #include "was.h"
 
+#define MAX_BRANCH_REDUCTIONS 8
+
 typedef struct expression {
     Symbol *symbol; // Optional symbol
     long value;     // Optional value. If symbol is set, it's an offset
@@ -538,7 +540,7 @@ void emit_code(void) {
     // using the secondary instructions in the set
     make_symbol_offsets();
 
-    while (1) {
+    for (int i = 0; i < MAX_BRANCH_REDUCTIONS; i++) {
         // This is a timebomb since it runs in O(n^2). To be revisited.
         if (!reduce_branch_instructions()) break;
         make_symbol_offsets();
