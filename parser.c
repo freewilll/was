@@ -476,7 +476,7 @@ void parse(void) {
             break;
         else {
             skip();
-            error("Don't know what do do with token %d", cur_token);
+            error("Syntax error at token %d", cur_token);
         }
 
         for (int i = 0; i < labels->length; i++) free(labels->elements[i]);
