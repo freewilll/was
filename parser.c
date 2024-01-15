@@ -640,7 +640,7 @@ void emit_code(void) {
                 relocation_type = R_X86_64_PC32;
 
             // Data instructions in the .txt section always need a relocation
-            if (instr->relocation_symbol->section_index != section_text.index || !is->is_code) {
+            if (instr->relocation_symbol->section_index != section_text.index || !is->is_code || instr->relocation_symbol->binding == STB_GLOBAL) {
                 // The -4 is because this is a 32 bit relocation (so 4 bytes), and the relocated value applies after the code has been read, so has
                 // to be corrected for the size of the 32 bit operand.
                 int relocation_addend_offset = is->is_code ? -4 : 0;

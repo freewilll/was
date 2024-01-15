@@ -731,6 +731,44 @@ void test_relocations_with_rip_and_defined_symbol(void) {
     assert_relocations(&section_rela_text, END);
 }
 
+// Symbols that are defined and local get resolved without a relocation
+void test_local_defined_symbol_relocation(void) {
+    char *input =
+        ".text\n"
+        "callq bar\n"
+        "callq bar\n"
+        "bar: nop";
+
+    test_full_assembly("test_local_defined_symbol_relocation", input,
+        0xe8, 0x05, 0x00, 0x00, 0x00, // callq bar
+        0xe8, 0x00, 0x00, 0x00, 0x00, // callq bar
+        0x90,                         // nop
+        END
+    );
+
+    assert_relocations(&section_rela_text, END); // No relocations
+}
+
+// Symbols that are defined and global get a relocation pointing at the symbol.
+void test_global_defined_symbol_relocation(void) {
+    char *input =
+        ".text\n"
+        ".globl bar\n"
+        "callq bar\n"
+        "bar: nop";
+
+    test_full_assembly("test_global_defined_symbol_relocation", input,
+        0xe8, 0x00, 0x00, 0x00, 0x00, // callq bar
+        0x90,                         // nop
+        END
+    );
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_PLT32, first_symbol_index, 0x01, -4,
+        END
+    );
+}
+
 // Test data referencing an undefined symbol
 // An undefined symbol is added at position first_symbol_index. The relocation
 // table points to it.
@@ -1019,6 +1057,8 @@ int main() {
     test_reduce_branch_instructions();
     test_relocations_with_rip_and_undefined_symbol();
     test_relocations_with_rip_and_defined_symbol();
+    test_local_defined_symbol_relocation();
+    test_global_defined_symbol_relocation();
     test_data_with_undefined_symbol();
     test_data_with_defined_symbol();
     test_symbol_types_and_binding();

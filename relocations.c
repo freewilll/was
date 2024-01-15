@@ -25,8 +25,10 @@ void add_relocation(ElfSection *section, Symbol *symbol, int type, long offset, 
 void add_elf_relocations(void) {
     for (int i = 0; i < relocations->length; i++) {
         Relocation *r = relocations->elements[i];
-        if (r->symbol->section_index) {
-            // By convention, the section indexes correspond with the symbol table indexes
+
+        // Global symbols that have been declared don't get rewritten to a section offset.
+        if (r->symbol->section_index && !r->symbol->binding == STB_GLOBAL) {
+            // By convention, the section indexes correspond with the symbol table indexes..
             add_elf_relocation(r->section, r->type, r->symbol->section_index, r->offset, r->symbol->offset + r->addend);
         }
         else {
