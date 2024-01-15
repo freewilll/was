@@ -5,11 +5,12 @@
 
 typedef struct symbol {
     char *name;         // Name
+    int size;           // Size
     int binding;        // Binding, e.g. local or global
     int type;           // Type, e.g. function or object
     int symtab_index;   // Index in the ELF symbol table
     int section_index;  // Section the symbol was defined in. Zero if not in a section (e.g. an undefined symbol)
-    int offset;         // Offset in the section (if applicable)
+    int value;          // Offset or alignment
 } Symbol;
 
 extern StrMap *symbols;

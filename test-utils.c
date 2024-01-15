@@ -154,10 +154,14 @@ void dump_symbols(void) {
         const char *binding_name = symbol_binding_names[binding];
 
         printf("%6d: %016ld  %4ld %-8s%-7sDEFAULT  ", i, symbol->st_value, symbol->st_size, type_name, binding_name);
-        if (symbol->st_shndx)
-            printf("%3d", symbol->st_shndx);
-        else
+        if ((unsigned short) symbol->st_shndx == SHN_UNDEF)
             printf("UND");
+        else if ((unsigned short) symbol->st_shndx == SHN_ABS)
+            printf("ABS");
+        else if ((unsigned short) symbol->st_shndx == SHN_COMMON)
+            printf("COM");
+        else
+            printf("%3d", symbol->st_shndx);
 
         int strtab_offset = symbol->st_name;
         if (strtab_offset)
@@ -186,8 +190,10 @@ void assert_symbols(int first, ...) {
             processed_first = 1;
         }
 
+        int expected_size = va_arg(ap, int);
         int expected_type = va_arg(ap, int);
         int expected_binding = va_arg(ap, int);
+        unsigned int expected_index = va_arg(ap, unsigned int);
         char *expected_name = va_arg(ap, char *);
 
         if (expected_value == END) {
@@ -202,8 +208,10 @@ void assert_symbols(int first, ...) {
         ElfSymbol *symbol = (ElfSymbol *) &section->data[pos];
 
         int got_value = symbol->st_value;
+        int got_size = symbol->st_size;
         int got_type = symbol->st_info & 0xf;
         char got_binding = (symbol->st_info >> 4) & 0xf;
+        unsigned short got_index = symbol->st_shndx;
         char *got_name = symbol->st_name ? &section_strtab.data[symbol->st_name] : 0;
 
         if (pos == section->size) {
@@ -213,17 +221,27 @@ void assert_symbols(int first, ...) {
 
         int name_matches = ((!got_name && !expected_name) || (expected_name && !strcmp(expected_name, got_name)));
 
-        if (expected_value != got_value || expected_type != got_type || expected_binding != got_binding || !name_matches) {
+        if (
+                expected_value != got_value ||
+                expected_size != got_size ||
+                expected_type != got_type ||
+                expected_binding != got_binding ||
+                expected_index != got_index ||
+                !name_matches) {
             dump_symbols();
-            panic("Symbols mismatch at position %d: expected %ld, %d, %d, %s, got %ld, %d, %d, %s",
+            panic("Symbols mismatch at position %d: expected %ld, %ld, %d, %d, %d, %s, got %ld, %ld, %d, %d, %d, %s",
                 (pos - 1) / sizeof(ElfSymbol),
                 expected_value,
+                expected_size,
                 expected_type,
                 expected_binding,
+                expected_index,
                 expected_name ? expected_name : "null",
                 got_value,
+                got_size,
                 got_type,
                 got_binding,
+                got_index,
                 got_name ? got_name : "null"
             );
         }

@@ -27,7 +27,7 @@ Symbol *get_or_add_symbol(char *name) {
     symbol->type    = STT_NOTYPE;
     symbol->binding = STB_LOCAL;
     symbol->section_index = 0;
-    symbol->offset = 0;
+    symbol->value = 0;
 
     strmap_put(symbols, name, symbol);
 

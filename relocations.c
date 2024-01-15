@@ -29,7 +29,7 @@ void add_elf_relocations(void) {
         // Global symbols that have been declared don't get rewritten to a section offset.
         if (r->symbol->section_index && !r->symbol->binding == STB_GLOBAL) {
             // By convention, the section indexes correspond with the symbol table indexes..
-            add_elf_relocation(r->section, r->type, r->symbol->section_index, r->offset, r->symbol->offset + r->addend);
+            add_elf_relocation(r->section, r->type, r->symbol->section_index, r->offset, r->symbol->value + r->addend);
         }
         else {
             add_elf_relocation(r->section, r->type, r->symbol->symtab_index, r->offset, r->addend);

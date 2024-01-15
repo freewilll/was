@@ -8,6 +8,7 @@
 // https://android.googlesource.com/platform/bionic/+/master/libc/include/elf.h
 #define SHN_UNDEF         0        // This section table index means the symbol is undefined. When the link editor combines this object file with another that defines the indicated symbol, this file's references to the symbol will be linked to the actual definition.
 #define SHN_ABS           65521    // The symbol has an absolute value that will not change because of relocation.#define
+#define SHN_COMMON        65522    // This symbol labels a common block that has not yet been allocate
 #define SHF_WRITE         1
 #define SHF_ALLOC         2
 #define SHF_EXECINSTR     4

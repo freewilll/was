@@ -170,10 +170,23 @@ InstructionsSet *parse_directive_statement(void) {
             result = parse_data_directive(R_X86_64_64, 8);
             break;
 
-        case TOK_DIRECTIVE_COMM:
-            printf("TODO: .comm\n");
-            skip();
+        case TOK_DIRECTIVE_COMM: {
+            expect(TOK_IDENTIFIER, "symbol");
+            Symbol *symbol = get_or_add_symbol(strdup(cur_identifier));
+            next();
+            consume(TOK_COMMA, ",");
+            long size = parse_signed_integer();
+            consume(TOK_COMMA, ",");
+            long alignment = parse_signed_integer();
+
+            symbol->type = STT_OBJECT;
+            symbol->binding = STB_GLOBAL;
+            symbol->size = size;
+            symbol->value = alignment;
+            symbol->section_index = SHN_COMMON;
+
             break;
+        }
 
         case TOK_DIRECTIVE_DATA:
             set_current_section(".data");
@@ -575,7 +588,7 @@ void make_symbol_offsets(void) {
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
-                symbol->offset = offset;
+                symbol->value = offset;
                 symbol->section_index = section_text.index;
             }
         }
@@ -595,7 +608,7 @@ int reduce_branch_instructions(void) {
         InstructionsSet *is = instruction_sets->elements[i];
 
         if (is->using_primary && is->secondary && is->primary->relocation_symbol && is->primary->relocation_symbol->section_index == section_text.index) {
-            int relative_offset = is->primary->relocation_symbol->offset - (offset + is->secondary->relocation_offset + 1);
+            int relative_offset = is->primary->relocation_symbol->value - (offset + is->secondary->relocation_offset + 1);
 
             if (relative_offset >= -128 && relative_offset <= 127) {
                 is->using_primary = 0;
@@ -651,12 +664,12 @@ void emit_code(void) {
 
             else {
                 if (is->using_primary) {
-                    int relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;
+                    int relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // 32 bit address
                 }
                 else {
                     instr = is->secondary;
-                    char relative_offset = instr->relocation_symbol->offset - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
+                    char relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 1); // 8 bit address
                 }
             }

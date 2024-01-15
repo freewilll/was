@@ -110,7 +110,7 @@ int add_zeros_to_current_section(int size) {
 }
 
 // Add a symbol to the ELF symbol table symtab
-static int add_elf_symbol(char *name, long value, int binding, int type, int section_index) {
+static int add_elf_symbol(char *name, long value, long size, int binding, int type, int section_index) {
     // Add a string to the strtab unless name is "".
     // Empty names are all mapped to the first entry in the string table.
     int strtab_offset = *name ? add_to_section(&section_strtab, name, strlen(name) + 1) : 0;
@@ -119,6 +119,7 @@ static int add_elf_symbol(char *name, long value, int binding, int type, int sec
     memset(symbol, 0, sizeof(ElfSymbol));
     symbol->st_name = strtab_offset;
     symbol->st_value = value;
+    symbol->st_size = size;
     symbol->st_info = (binding << 4) + type;
     symbol->st_shndx = section_index;
 
@@ -131,12 +132,12 @@ static int add_elf_symbol(char *name, long value, int binding, int type, int sec
 
 // Add a special symbol with the source filename
 void add_file_symbol(char *filename) {
-    add_elf_symbol(filename, 0, STB_LOCAL, STT_FILE, SHN_ABS);
+    add_elf_symbol(filename, 0, 0, STB_LOCAL, STT_FILE, SHN_ABS);
 }
 
 // Point the symbol offset and section_index to the current section & offset in it
 void associate_symbol_with_current_section(Symbol *symbol) {
-    symbol->offset = current_section->size;
+    symbol->value = current_section->size;
     symbol->section_index = current_section->index;
 }
 
@@ -207,7 +208,7 @@ void make_symbols_section(void) {
         // Any local symbols starting with .L aren't included in the ELF.
         int dot_local = strlen(name) >= 2 && name[0] == '.' && name[1] == 'L';
         if (symbol->binding != STB_GLOBAL && !dot_local)
-            symbol->symtab_index = add_elf_symbol(name, symbol->offset, symbol->binding, symbol->type, symbol->section_index);
+            symbol->symtab_index = add_elf_symbol(name, symbol->value, symbol->size, symbol->binding, symbol->type, symbol->section_index);
     }
 
     // Add global symbols
@@ -216,7 +217,7 @@ void make_symbols_section(void) {
         Symbol *symbol = strmap_get(symbols, name);
 
         if (symbol->binding == STB_GLOBAL)
-            symbol->symtab_index = add_elf_symbol(name, symbol->offset, symbol->binding, symbol->type, symbol->section_index);
+            symbol->symtab_index = add_elf_symbol(name, symbol->value, symbol->size, symbol->binding, symbol->type, symbol->section_index);
     }
 
     section_symtab.link = section_strtab.index;
@@ -308,9 +309,9 @@ void init_elf() {
     // Start string table entries at 1, so that the zero value goes to an empty string
     add_to_section(&section_strtab, "", 1);
 
-    add_elf_symbol("", 0, STB_LOCAL, STT_NOTYPE,  SHN_UNDEF); // Null symbol
+    add_elf_symbol("", 0, 0, STB_LOCAL, STT_NOTYPE,  SHN_UNDEF); // Null symbol
 
     // By convention, the section indexes correspond with the symbol table indexes
     for (int i = 1; i < section_count; i++)
-        add_elf_symbol("", 0, STB_LOCAL, STT_SECTION, sections[i]->index);
+        add_elf_symbol("", 0, 0, STB_LOCAL, STT_SECTION, sections[i]->index);
 }

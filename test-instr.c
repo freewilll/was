@@ -1011,29 +1011,32 @@ void test_data_with_defined_symbol(void) {
 }
 
 void test_symbol_types_and_binding(void) {
+    int text_index = section_text.index;
+    int data_index = section_data.index;
+
     test_full_assembly("default symbol type is NOTYPE", "foo: nop", 0x90, END);
-    assert_symbols(0, STT_NOTYPE, STB_LOCAL, "foo", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_LOCAL, text_index, "foo", END);
 
     test_full_assembly("default symbol with .L type is not in the symbol table", ".Lfoo: nop", 0x90, END);
     assert_symbols(END);
 
     test_full_assembly("declaring symbol as @object", ".data; .type data_sym, @object", END);
-    assert_symbols(0, STT_OBJECT, STB_GLOBAL, "data_sym", END);
+    assert_symbols(0, 0, STT_OBJECT, STB_GLOBAL, 0, "data_sym", END);
 
     test_full_assembly("declaring symbol as @function", ".data; .type func_sym, @function", END);
-    assert_symbols(0, STT_FUNC, STB_GLOBAL, "func_sym", END);
+    assert_symbols(0, 0, STT_FUNC, STB_GLOBAL, 0, "func_sym", END);
 
     test_full_assembly("an undefined symbol is global", ".data; .quad undef", END);
-    assert_symbols(0, STT_NOTYPE, STB_GLOBAL, "undef", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, 0, "undef", END);
 
     test_full_assembly("a defined symbol is local", ".data; .quad undef; undef: .byte 1", END);
-    assert_symbols(8, STT_NOTYPE, STB_LOCAL, "undef", END);
+    assert_symbols(8, 0, STT_NOTYPE, STB_LOCAL, data_index, "undef", END);
 
     test_full_assembly("defined and declared .globl", ".data; .quad def; def: .byte 1; .globl def", END);
-    assert_symbols(8, STT_NOTYPE, STB_GLOBAL, "def", END);
+    assert_symbols(8, 0, STT_NOTYPE, STB_GLOBAL, data_index, "def", END);
 
     test_full_assembly("an undefined symbol even with with .local is still global", ".data; .quad undef; .local undef", END);
-    assert_symbols(0, STT_NOTYPE, STB_GLOBAL, "undef", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, 0, "undef", END);
 
     test_full_assembly("global symbols offset are ok",
         ".text\n"
@@ -1043,9 +1046,12 @@ void test_symbol_types_and_binding(void) {
         "bar: nop\n",
         0x90, 0x90, END);
     assert_symbols(
-        0, STT_NOTYPE, STB_GLOBAL, "foo",
-        1, STT_NOTYPE, STB_GLOBAL, "bar",
+        0, 0, STT_NOTYPE, STB_GLOBAL, text_index, "foo",
+        1, 0, STT_NOTYPE, STB_GLOBAL, text_index, "bar",
         END);
+
+    test_full_assembly("a .comm symbol", ".comm foo, 8, 16", END);
+    assert_symbols(16, 8, STT_OBJECT, STB_GLOBAL, SHN_COMMON, "foo", END);
 }
 
 int main() {
