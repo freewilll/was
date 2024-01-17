@@ -2,6 +2,7 @@ all: was
 
 HEADERS = \
 	elf.h \
+	expr.h \
 	instr.h \
 	lexer.h \
 	list.h \
@@ -15,6 +16,7 @@ HEADERS = \
 
 OBJECTS = \
 	elf.o \
+	expr.o \
 	instr.o \
 	lexer.o \
 	list.o \
@@ -44,7 +46,7 @@ was: ${OBJECTS} main.o
 	gcc -g ${OBJECTS} main.o -o was
 
 .PHONY: test
-test: was run-test-instr run-test-data
+test: was run-test-instr run-test-data run-test-expr
 	make -C tests
 
 test-utils.o: test-utils.c test-utils.h
@@ -56,6 +58,9 @@ test-instr: ${OBJECTS} test-instr.o test-utils.o
 test-data: ${OBJECTS} test-data.o test-utils.o
 	gcc -g ${OBJECTS} test-data.o test-utils.o -o test-data
 
+test-expr: ${OBJECTS} test-expr.o test-utils.o
+	gcc -g ${OBJECTS} test-expr.o test-utils.o -o test-expr
+
 .PHONY: run-test-instr
 run-test-instr: test-instr
 	./test-instr
@@ -63,6 +68,10 @@ run-test-instr: test-instr
 .PHONY: run-test-data
 run-test-data: test-data
 	./test-data
+
+.PHONY: run-test-expr
+run-test-expr: test-expr
+	./test-expr
 
 clean:
 	@rm -f *.o

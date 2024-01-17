@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "elf.h"
+#include "expr.h"
 #include "instr.h"
 #include "lexer.h"
 #include "list.h"
@@ -14,10 +15,10 @@
 
 #define MAX_BRANCH_REDUCTIONS 8
 
-typedef struct expression {
+typedef struct simple_expression {
     Symbol *symbol; // Optional symbol
     long value;     // Optional value. If symbol is set, it's an offset
-} Expression;
+} SimpleExpression;
 
 static List *instruction_sets;
 
@@ -39,33 +40,17 @@ static long parse_signed_integer(void) {
     return result;
 }
 
-// Very basic parser that can only handle, e.g.
-// -  1
-// -  1 + 2
-// -  1 - 2
-// -  1 + 2 - 3 ...
-// -  foo
-// -  foo + 1 ...
-// -  foo - 1 ...
-static Expression parse_expression(void) {
-    Expression result = {0};
+// Parse an expression that does not need a second pass to be evaluated.
+// Suitable for anything that requires either a number or a symbol + offset
+// that can be used to create a relocation.
+static SimpleExpression parse_simple_expression(void) {
+    Node *root = parse_expression();
 
-    if (cur_token == TOK_IDENTIFIER) {
-        char *identifier = strdup(cur_identifier);
-        next();
-        Symbol *symbol = get_or_add_symbol(identifier);
-        result.symbol = symbol;
-    }
+    if (!root->value) error("Expected an expression not requiring symbol resolution");
 
-
-    while (cur_token == TOK_INTEGER || cur_token == TOK_PLUS | cur_token == TOK_MINUS) {
-        if (cur_token == TOK_PLUS) next();
-        if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS)
-            result.value += parse_signed_integer();
-
-        else
-            error("Unable to parse expression");
-    }
+    SimpleExpression result;
+    result.symbol = root->value->symbol;
+    result.value = root->value->number;
 
     return result;
 }
@@ -74,7 +59,7 @@ static Expression parse_expression(void) {
 // Data in the .text segment is processed in a second phase in emit_code(), like
 // instructions.
 static InstructionsSet *parse_data_directive_text(int relocation_type, int size) {
-    Expression expr = parse_expression();
+    SimpleExpression expr = parse_simple_expression();
 
     Instructions instr = {0};
     instr.size = size;
@@ -102,7 +87,7 @@ static InstructionsSet *parse_data_directive_text(int relocation_type, int size)
 static InstructionsSet *parse_data_directive_data(int relocation_type, int size) {
     if (get_current_section() == &section_text) return parse_data_directive_text(relocation_type, size);
 
-    Expression expr = parse_expression();
+    SimpleExpression expr = parse_simple_expression();
 
     if (expr.symbol) {
         ElfSection *cur = get_current_section();
@@ -220,10 +205,26 @@ InstructionsSet *parse_directive_statement(void) {
             next();
             break;
 
-        case TOK_DIRECTIVE_SIZE:
-            printf("TODO: .size\n");
-            skip();
+        case TOK_DIRECTIVE_SIZE: {
+            expect(TOK_IDENTIFIER, "identifier");
+            Symbol *symbol = get_or_add_symbol(strdup(cur_identifier));
+            next();
+            consume(TOK_COMMA, ",");
+            Node *root = parse_expression();
+
+            if (root->value) {
+                if (root->value->symbol) panic("Cannot handle a size for a symbol + offset");
+                symbol->size = root->value->number;
+            }
+            else {
+                InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
+                instructions_set->size_expr = root;
+                instructions_set->size_symbol = symbol;
+                append_to_list(instruction_sets, instructions_set);
+            }
+
             break;
+        }
 
         case TOK_DIRECTIVE_STRING:
             expect(TOK_STRING_LITERAL, "string literal");
@@ -376,7 +377,7 @@ static void parse_operand(Operand *op) {
 
     else if (cur_token == TOK_INTEGER || cur_token == TOK_MINUS) {
         // Memory
-        Expression expr = parse_expression();
+        SimpleExpression expr = parse_simple_expression();
         if (expr.symbol) error("Unexpected symbol in expression"); // Not implemented
 
         int value = expr.value;
@@ -593,7 +594,7 @@ void make_symbol_offsets(void) {
             }
         }
 
-        offset += is->using_primary ? is->primary->size : is->secondary->size;
+        if (!is->size_expr) offset += is->using_primary ? is->primary->size : is->secondary->size;
     }
 }
 
@@ -616,7 +617,7 @@ int reduce_branch_instructions(void) {
             }
         }
 
-        offset += is->using_primary ? is->primary->size : is->secondary->size;
+        if (!is->size_expr) offset += is->using_primary ? is->primary->size : is->secondary->size;
     }
 
     return changed;
@@ -643,7 +644,13 @@ void emit_code(void) {
         // so we're only taking the primary instructions into account.
         int base_offset = get_current_section_size();
 
-        if (instr->relocation_symbol) {
+        if (is->size_expr) {
+            Value value = evaluate_node(is->size_expr, base_offset);
+            if (value.symbol) panic("Unexpectedly got a symbol when evaluating .size");
+            is->size_symbol->size = value.number;
+        }
+
+        else if (instr->relocation_symbol) {
             int relocation_type;
             if (instr->relocation_type)
                 relocation_type = instr->relocation_type; // Set by data handling code
@@ -675,7 +682,7 @@ void emit_code(void) {
             }
         }
 
-        add_to_section(&section_text, instr->data, instr->size);
+        if (!is->size_expr) add_to_section(&section_text, instr->data, instr->size);
     }
 }
 

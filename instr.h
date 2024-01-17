@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include "expr.h"
 #include "opcodes.h"
 #include "symbols.h"
 
@@ -84,6 +85,8 @@ typedef struct instructions_set {
     Instructions *secondary;
     List *symbols;              // Zero or more symbols associated with the address at this instruction
     int is_code;                // Is this code or data?
+    Node *size_expr;            // Expression to be evaluated in a .size statement
+    Symbol *size_symbol;        // Symbol in a .size statement
 } InstructionsSet;
 
 void dump_instructions(Instructions *instr);

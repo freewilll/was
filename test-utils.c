@@ -17,6 +17,38 @@ const char *symbol_binding_names[] = {
     "?", "?", "?", "?", "?", "?", "?", "?",
 };
 
+void init_tests(void) {
+    init_opcodes();
+    init_symbols();
+    init_relocations();
+}
+
+void test_full_assembly(char *summary, char *input, ...) {
+    va_list ap;
+    va_start(ap, input);
+
+    printf("%-60s", summary);
+
+    section_text.size = 0;
+    section_data.size = 0;
+    section_rodata.size = 0;
+    section_rela_text.size = 0;
+    section_rela_data.size = 0;
+    section_rela_rodata.size = 0;
+    section_symtab.size = 0;
+
+    init_lexer_from_string(input);
+    init_elf();
+    init_parser();
+    parse();
+    emit_code();
+    make_symbols_section();
+    make_rela_sections();
+
+    vassert_section(&section_text, ap);
+
+    printf("pass\n");
+}
 
 // Print hex bytes for the encoded instructions
 int dump_section(ElfSection *section) {

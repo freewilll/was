@@ -275,6 +275,7 @@ void next(void) {
         else if (c1 == '+'  )  { ip += 1;  cur_token = TOK_PLUS;     }
         else if (c1 == '-'  )  { ip += 1;  cur_token = TOK_MINUS;    }
         else if (c1 == '*'  )  { ip += 1;  cur_token = TOK_MULTIPLY; }
+        else if (c1 == '/'  )  { ip += 1;  cur_token = TOK_DIVIDE;   }
         else if (c1 == '$'  )  { ip += 1;  cur_token = TOK_DOLLAR;   }
 
         // Instruction separator

@@ -6,6 +6,7 @@ a.out
 test
 test-instr
 test-data
+test-expr
 /test.c
 /test.s
 /test2.s

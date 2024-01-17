@@ -642,33 +642,6 @@ void test_parse_instruction_statement() {
     test_assembly("callq    *%r15",   0x41, 0xff, 0xd7, END);
 }
 
-void test_full_assembly(char *summary, char *input, ...) {
-    va_list ap;
-    va_start(ap, input);
-
-    printf("%-60s", summary);
-
-    section_text.size = 0;
-    section_data.size = 0;
-    section_rodata.size = 0;
-    section_rela_text.size = 0;
-    section_rela_data.size = 0;
-    section_rela_rodata.size = 0;
-    section_symtab.size = 0;
-
-    init_lexer_from_string(input);
-    init_elf();
-    init_parser();
-    parse();
-    emit_code();
-    make_symbols_section();
-    make_rela_sections();
-
-    vassert_section(&section_text, ap);
-
-    printf("pass\n");
-}
-
 void test_reduce_branch_instructions(void) {
     char *input =
         "top:\n"
@@ -1021,13 +994,13 @@ void test_symbol_types_and_binding(void) {
     assert_symbols(END);
 
     test_full_assembly("declaring symbol as @object", ".data; .type data_sym, @object", END);
-    assert_symbols(0, 0, STT_OBJECT, STB_GLOBAL, 0, "data_sym", END);
+    assert_symbols(0, 0, STT_OBJECT, STB_GLOBAL, SHN_UNDEF, "data_sym", END);
 
     test_full_assembly("declaring symbol as @function", ".data; .type func_sym, @function", END);
-    assert_symbols(0, 0, STT_FUNC, STB_GLOBAL, 0, "func_sym", END);
+    assert_symbols(0, 0, STT_FUNC, STB_GLOBAL, SHN_UNDEF, "func_sym", END);
 
     test_full_assembly("an undefined symbol is global", ".data; .quad undef", END);
-    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, 0, "undef", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF, "undef", END);
 
     test_full_assembly("a defined symbol is local", ".data; .quad undef; undef: .byte 1", END);
     assert_symbols(8, 0, STT_NOTYPE, STB_LOCAL, data_index, "undef", END);
@@ -1036,7 +1009,7 @@ void test_symbol_types_and_binding(void) {
     assert_symbols(8, 0, STT_NOTYPE, STB_GLOBAL, data_index, "def", END);
 
     test_full_assembly("an undefined symbol even with with .local is still global", ".data; .quad undef; .local undef", END);
-    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, 0, "undef", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF, "undef", END);
 
     test_full_assembly("global symbols offset are ok",
         ".text\n"
@@ -1054,10 +1027,30 @@ void test_symbol_types_and_binding(void) {
     assert_symbols(16, 8, STT_OBJECT, STB_GLOBAL, SHN_COMMON, "foo", END);
 }
 
+static void test_size_with_number(void) {
+    test_full_assembly(".size 10", ".size foo, 10\n", END);
+    assert_symbols(0, 10, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF, "foo", END);
+}
+
+static void test_size_difference(void) {
+    int text_index = section_text.index;
+
+    test_full_assembly(".size obj, bar - foo",
+        ".size obj, bar - foo\n"
+        ".text\n"
+        "foo: nop\n"
+        "bar: nop\n",
+        0x90, 0x90, END);
+
+    assert_symbols(
+        0, 0, STT_NOTYPE, STB_LOCAL,  text_index, "foo",
+        1, 0, STT_NOTYPE, STB_LOCAL,  text_index, "bar",
+        0, 1, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF,  "obj", // Size of nop instruction
+        END);
+}
+
 int main() {
-    init_opcodes();
-    init_symbols();
-    init_relocations();
+    init_tests();
 
     test_parse_instruction_statement();
     test_reduce_branch_instructions();
@@ -1068,4 +1061,6 @@ int main() {
     test_data_with_undefined_symbol();
     test_data_with_defined_symbol();
     test_symbol_types_and_binding();
+    test_size_with_number();
+    test_size_difference();
 }

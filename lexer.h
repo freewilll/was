@@ -43,6 +43,7 @@ enum {
     TOK_PLUS,
     TOK_MINUS,
     TOK_MULTIPLY,
+    TOK_DIVIDE,
     TOK_DOLLAR,
 };
 

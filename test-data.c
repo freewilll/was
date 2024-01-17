@@ -40,9 +40,7 @@ void test_assembly(char *input, ...) {
 }
 
 int main() {
-    init_opcodes();
-    init_symbols();
-    init_relocations();
+    init_tests();
 
     test_assembly(".byte 1", 0x01, END);
     test_assembly(".word 1", 0x01, 0x00, END);
