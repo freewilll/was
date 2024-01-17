@@ -246,6 +246,17 @@ void test_parse_instruction_statement() {
     test_assembly("mov      %r15,                       0x42434546(%r14)",  0x4d, 0x89, 0xbe,       0x46, 0x45, 0x43, 0x42, END);
     test_assembly("mov      %r15,                       0x42434546(%r15)",  0x4d, 0x89, 0xbf,       0x46, 0x45, 0x43, 0x42, END);
 
+    test_assembly("mov      %r15,                       -0x80       (%rax)", 0x4c, 0x89, 0x78, 0x80,                   END);
+    test_assembly("mov      %r15,                       -0x7f       (%rax)", 0x4c, 0x89, 0x78, 0x81,                   END);
+    test_assembly("mov      %r15,                       -0x1(       %rax)",  0x4c, 0x89, 0x78, 0xff,                   END);
+    test_assembly("mov      %r15,                        0x7f       (%rax)", 0x4c, 0x89, 0x78, 0x7f,                   END);
+    test_assembly("mov      %r15,                       -0x80000000 (%rax)", 0x4c, 0x89, 0xb8, 0x00, 0x00, 0x00, 0x80, END);
+    test_assembly("mov      %r15,                       -0x7fffffff (%rax)", 0x4c, 0x89, 0xb8, 0x01, 0x00, 0x00, 0x80, END);
+    test_assembly("mov      %r15,                       -0x81       (%rax)", 0x4c, 0x89, 0xb8, 0x7f, 0xff, 0xff, 0xff, END);
+    test_assembly("mov      %r15,                        0x80       (%rax)", 0x4c, 0x89, 0xb8, 0x80, 0x00, 0x00, 0x00, END);
+    test_assembly("mov      %r15,                        0xff       (%rax)", 0x4c, 0x89, 0xb8, 0xff, 0x00, 0x00, 0x00, END);
+    test_assembly("mov      %r15,                        0x7fffffff (%rax)", 0x4c, 0x89, 0xb8, 0xff, 0xff, 0xff, 0x7f, END);
+
     test_assembly("mov      (%rax,%rbx,1),              %rcx", 0x48, 0x8b, 0x0c, 0x18, END);
     test_assembly("mov      (%r15,%rbx,1),              %rcx", 0x49, 0x8b, 0x0c, 0x1f, END);
     test_assembly("mov      (%rax,%r15,1),              %rcx", 0x4a, 0x8b, 0x0c, 0x38, END);
@@ -343,7 +354,6 @@ void test_parse_instruction_statement() {
     test_assembly("movq     2 + 8(%rax),                %rbx",           0x48, 0x8b, 0x58, 0x0a, END);
     test_assembly("movq     %rbx,                       2 + 8(%rax)",    0x48, 0x89, 0x58, 0x0a, END);
     test_assembly("movq     %rbx,                       2 + 8 +2(%rax)", 0x48, 0x89, 0x58, 0x0c, END);
-
 
     test_assembly("leaq     0(%rip),                    %r15", 0x4c, 0x8d, 0x3d, 0x00, 0x00, 0x00, 0x00, END);
     test_assembly("leaq     5(%rip),                    %r15", 0x4c, 0x8d, 0x3d, 0x05, 0x00, 0x00, 0x00, END);

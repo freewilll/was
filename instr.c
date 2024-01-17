@@ -167,6 +167,11 @@ static void encode_mod_rm_register(Encoding *enc) {
 
 // Add displacement data to the encoding. Determine if it's 8 or 32 bytes
 static int encode_displacement(Encoding *enc, Operand *op) {
+    // Displacement is signed. If there is an overflow on 8-bit displacement,
+    // convert it to 32 bit.
+    if (op->displacement_size == 1 && op->displacement >= 0x80)
+        op->displacement_size = SIZE32;
+
     if (op->displacement_size) {
         enc->has_displacement = 1;
         enc->displacement = op->displacement;
