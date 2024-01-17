@@ -155,7 +155,7 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
     // Addressing mode W means xmm register or memory
     if (opcode_op->am == AM_W && !(OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op))) return 0;
 
-    if (opcode_op->am == AM_Z && !(OP_TYPE_IS_REG(op))) return 0;
+    if (opcode_op->am == AM_Z && !(OP_TYPE_IS_REG(op) && !op->indirect)) return 0;
 
     return 1;
 }
