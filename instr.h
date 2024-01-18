@@ -91,6 +91,6 @@ typedef struct instructions_set {
 
 void dump_instructions(Instructions *instr);
 
-Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2);
+Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Operand *op3);
 
 #endif

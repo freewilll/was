@@ -51,15 +51,17 @@ void dump_instructions(Instructions *instr) {
 
 // Checks the amoung of argumenst matches the opcode.
 // Returns the amount of arguments or -1 if there is no match
-static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
+static int check_args(Opcode *opcode, Operand *op1, Operand *op2, Operand *op3) {
     // Check the number of arguments match
     int opcode_arg_count = 0;
     if (opcode->op1.am || opcode->op1.is_gen_reg) opcode_arg_count++;
     if (opcode->op2.am || opcode->op2.is_gen_reg) opcode_arg_count++;
+    if (opcode->op3.am || opcode->op3.is_gen_reg) opcode_arg_count++;
 
     int arg_count = 0;
     if (op1) arg_count++;
     if (op2) arg_count++;
+    if (op3) arg_count++;
 
     if (opcode_arg_count != arg_count) return -1;
 
@@ -67,7 +69,7 @@ static int check_args(Opcode *opcode, Operand *op1, Operand *op2) {
 }
 
 // Determine the size of the instruction from the opcode definition and operands
-static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand *op1, Operand *op2) {
+static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand *op1, Operand *op2, Operand *op3) {
     int size = opcode_alias->op1_size; // Except for conversions, op1_size == op2_size
 
     if (opcode->conver) {
@@ -83,10 +85,14 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
             size = OP_TO_SIZE(op1);
         else if (op2 && OP_TYPE_IS_REG(op2) && !op2->indirect)
             size = OP_TO_SIZE(op2);
+        else if (op3 && OP_TYPE_IS_REG(op3) && !op3->indirect)
+            size = OP_TO_SIZE(op3);
 
         // Check operands are the same size unless they are conversions or one of them is an indirect
         if (!opcode->conver && op1 && op2 && !op1->indirect && !op2->indirect) {
             if (op1 && op2 && OP_TYPE_IS_REG(op1) && OP_TYPE_IS_REG(op2) && OP_TO_SIZE(op1) != OP_TO_SIZE(op2))
+                error("Size mismatch within oparands");
+            if (op1 && op3 && OP_TYPE_IS_REG(op1) && OP_TYPE_IS_REG(op3) && OP_TO_SIZE(op1) != OP_TO_SIZE(op3))
                 error("Size mismatch within oparands");
         }
 
@@ -94,6 +100,30 @@ static int get_operation_size(Opcode *opcode, OpcodeAlias *opcode_alias, Operand
     }
 
     return size;
+}
+
+// Check if an immediate operand matches the opcode operand
+static int imm_op_matches(Opcode *opcode, OpcodeOp *opcode_op, Operand *op, int size) {
+    // If the imm value is negative then there is no need to check for operands that
+    // would sign extend.
+    if (op->imm_or_mem_value < 0) return 1;
+
+    // Check for illegal sign extensions in immediates
+    // bs and bss is a byte sign extended
+    // vds is an int32 sign extended to int64
+    int imm08_would_byte_sign_extend = op->imm_or_mem_value <= -0x80 || op->imm_or_mem_value >= 0x80;
+    int imm32_would_byte_sign_extend = op->imm_or_mem_value <= -0x80000000L || op->imm_or_mem_value >= 0x80000000L;
+
+    // Will the opcode sign extend?
+    int ext08 = opcode_op->type == AT_BS || opcode_op->type == AT_BSS;
+    int ext32 = opcode_op->type == AT_VDS;
+
+    if (ext08 && op->type == IMM08 && size == SIZE16 && imm08_would_byte_sign_extend) return 0;
+    if (ext08 && op->type == IMM08 && size == SIZE32 && imm08_would_byte_sign_extend) return 0;
+    if (ext08 && op->type == IMM08 && size == SIZE64 && imm08_would_byte_sign_extend) return 0;
+    if (ext32 && op->type == IMM32 && size == SIZE64 && imm32_would_byte_sign_extend) return 0;
+
+    return 1;
 }
 
 // Check if an opcode's operand matches an operand
@@ -104,11 +134,6 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
     // passed-in size, which is determined by the opcode or opcode alias.
     int op_size = OP_HAS_SIZE(op) ? OP_TO_SIZE(op): size;
 
-    // IMM08 operands are also treated as IMM16 since some opcodes don't
-    // encode IMM08 values.
-
-    int alt_op_size = op->type == IMM08 ? SIZE16 : 0;
-
     // If the opcode alias has a size & the addressing mode is memory, then the  operand doesn't have
     // a size and is matched.
     if (!opcode_alias_size && opcode_op->am == AM_M && !OP_HAS_SIZE(op)) return 1;
@@ -117,7 +142,7 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
     if (opcode_op->sizes
         && !(OP_TO_SIZE(op) == SIZEXM)
         && !(opcode_op->sizes & op_size)
-        && !(alt_op_size && opcode_op->sizes & alt_op_size)
+        && !OP_TYPE_IS_IMM(op)              // Immediate sizes are handled in AM_I code
     ) return 0;
 
     // Operand is a general register. Check it matches.
@@ -126,38 +151,77 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
     // The instruction dst is an al, ax, eax, rax in it, aka an accumulator
     if (opcode->acc && (op->reg || op->indirect)) return 0;
 
-    // Addressing mode E means register or memory
-    if (opcode_op->am == AM_E && !(OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op))) return 0;
+    // Match addressing mode
+    switch (opcode_op->am) {
+        case 0:
+            // No addressing mode is restricted in another way, e.g. with acc or is_gen_reg.
+            return 1;
 
-    // Addressing mode ES means fp87 stack register or memory
-    if (opcode_op->am == AM_ES && !(OP_IS_ST(op) || OP_TYPE_IS_MEM(op) || op->indirect)) return 0;
+        case AM_E:
+            // Register or memory
+            return OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op);
 
-    // Addressing mode EST means a fp87 stack register
-    if (opcode_op->am == AM_EST && !OP_IS_ST(op)) return 0;
+         case AM_ES:
+            // fp87 stack register or memory
+            return OP_IS_ST(op) || OP_TYPE_IS_MEM(op) || op->indirect;
 
-    // Addressing mode G is register
-    if (opcode_op->am == AM_G && (!OP_TYPE_IS_REG(op) || op->indirect)) return 0;
+        case AM_EST:
+            // fp87 stack register
+            return OP_IS_ST(op);
 
-    // Addressing mode I is immediate
-    if (opcode_op->am == AM_I && !OP_TYPE_IS_IMM(op)) return 0;
+        case AM_G:
+            // Register
+            return OP_TYPE_IS_REG(op) && !op->indirect;
 
-    // Check for illegal sign extensions
-    if (opcode_op->am == AM_I && opcode_op->sign_extended && size == SIZE64 && op->type == IMM32 && op->imm_or_mem_value & 0x80000000) return 0;
+        case AM_I: {
+            // Immediate
 
-    // Addressing mode I is immediate
-    if (opcode_op->am == AM_J && !OP_TYPE_IS_MEM(op)) return 0;
+            if (!OP_TYPE_IS_IMM(op)) return 0;
 
-    if (opcode_op->am == AM_M && !(OP_TYPE_IS_MEM(op) || op->indirect)) return 0;
+            int org_size = OP_TO_SIZE(op);
 
-    // Addressing mode V is xmm register
-    if (opcode_op->am == AM_V && (!OP_TYPE_IS_REG(op) || op->indirect)) return 0;
+            if (org_size & (IMM08)                         && (opcode_op->sizes & SIZE08) && imm_op_matches(opcode, opcode_op, op, size)) return 1;
+            if (org_size & (IMM08 | IMM16)                 && (opcode_op->sizes & SIZE16) && imm_op_matches(opcode, opcode_op, op, size)) return 1;
+            if (org_size & (IMM08 | IMM16 | IMM32)         && (opcode_op->sizes & SIZE32) && imm_op_matches(opcode, opcode_op, op, size)) return 1;
+            if (org_size & (IMM08 | IMM16 | IMM32 | IMM64) && (opcode_op->sizes & SIZE64) && imm_op_matches(opcode, opcode_op, op, size)) return 1;
 
-    // Addressing mode W means xmm register or memory
-    if (opcode_op->am == AM_W && !(OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op))) return 0;
+            return 0;
 
-    if (opcode_op->am == AM_Z && !(OP_TYPE_IS_REG(op) && !op->indirect)) return 0;
+        }
 
-    return 1;
+        case AM_J:
+            // RIP relative
+            return OP_TYPE_IS_MEM(op);
+
+        case AM_M:
+            // Memory
+            return OP_TYPE_IS_MEM(op) || op->indirect;
+
+        case AM_S:
+            // Not implemented
+            return 0;
+
+        case AM_ST:
+            // x87 FPU stack register
+            return OP_IS_ST(op);
+
+        case AM_V:
+            // xmm register
+            return OP_TYPE_IS_REG(op) && !op->indirect;
+
+        case AM_W:
+            // xmm register or memory
+            return OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op);
+
+        case AM_Z:
+            // Register
+            return OP_TYPE_IS_REG(op) && !op->indirect;
+
+        default:
+            panic("Internal error: unhandled addressing mode %d", opcode_op->am);
+    }
+
+    panic("Should not get here");
 }
 
 // Encode non-indirect operand
@@ -289,9 +353,33 @@ static void make_imm_or_memory_size(Encoding *enc, OpcodeOp *opcode_op, Operand 
     enc->imm_or_mem_size = value_size;
 }
 
+// Encode mod/rm byte from operand and addressing mode
+static void encode_mod_rm(Operand *op, int am, Encoding *enc, int *pprimary_opcode, Operand **pmemory_op) {
+    switch (am) {
+        case AM_G:
+        case AM_V:
+            enc->reg = op->reg;
+            break;
+
+        case AM_E:
+        case AM_ES:
+        case AM_EST:
+        case AM_M:
+        case AM_W:
+            enc->rm = op->reg;
+            if (OP_TYPE_IS_MEM(op) || op->indirect) *pmemory_op = op;
+            break;
+
+        case AM_Z:
+            enc->rm = op->reg;
+            *pprimary_opcode += (op->reg & 7);
+            break;
+    }
+}
+
 // Using the opcode and operands, figure out all that is needed to be able to generate
 // bytes for an instruction.
-static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, OpcodeAlias *opcode_alias, OpcodeOp *single_opcode, int opcode_arg_count, int size) {
+static Encoding make_encoding(Operand *op1, Operand *op2, Operand *op3, Opcode *opcode, OpcodeAlias *opcode_alias, int opcode_arg_count, int size) {
     Encoding enc = {0};
 
     // Some oddballs stored in enc.
@@ -300,70 +388,24 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     enc.branch = opcode->branch;
     enc.prefix = opcode->prefix;
     enc.ohf_prefix = opcode->ohf_prefix;
-    int is_xmm = (op1 && OP_IS_XMM(op1)) || (op2 && OP_IS_XMM(op2));
+    int is_xmm = ((op1 && OP_IS_XMM(op1)) || (op2 && OP_IS_XMM(op2)) || (op3 && OP_IS_XMM(op3)));
     enc.need_size16 = (enc.size == SIZE16 && !is_xmm && !opcode->x87fpu);
 
     int primary_opcode = opcode->primary_opcode;
 
     // Emit a rex byte when one of the alternate spl, bpl, sil, dil 8 bit registers are used
-    if ((op1 && OP_IS_ALT_8BIT(op1)) || (op2 && OP_IS_ALT_8BIT(op2))) enc.need_rex = 1;
+    if ((op1 && OP_IS_ALT_8BIT(op1)) || (op2 && OP_IS_ALT_8BIT(op2)) || (op3 && OP_IS_ALT_8BIT(op3))) enc.need_rex = 1;
 
     Operand *memory_op = NULL;
 
-    // Determing modrm reg and rm values
-    if (opcode_arg_count == 0) {
-        if (opcode->conver) enc.rex_w = enc.size == SIZE64;
-    }
+    if (opcode->opcd_ext != -1) enc.reg = opcode->opcd_ext;
 
-    else if (opcode_arg_count == 1) {
-             if (single_opcode->am == AM_G)   enc.reg = op1->reg;
-        else if (single_opcode->am == AM_V)   enc.reg = op1->reg;
-        else if (single_opcode->am == AM_E)   enc.reg = op1->reg;
-        else if (single_opcode->am == AM_ES)  enc.reg = op1->reg;
-        else if (single_opcode->am == AM_EST) enc.reg = op1->reg;
-        else if (single_opcode->am == AM_W)   enc.reg = op1->reg;
+    if (op1) encode_mod_rm(op1, opcode->op1.am, &enc, &primary_opcode, &memory_op);
+    if (op2) encode_mod_rm(op2, opcode->op2.am, &enc, &primary_opcode, &memory_op);
+    if (op3) encode_mod_rm(op3, opcode->op3.am, &enc, &primary_opcode, &memory_op);
 
-        if (opcode->opcd_ext != -1) {
-            enc.rm = enc.reg;
-            enc.reg = opcode->opcd_ext;
-        }
-
-        if (opcode->op1.am == AM_E || opcode->op1.am == AM_ES || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
-            enc.rm = op1->reg;
-            if (op1->indirect || OP_TYPE_IS_MEM(op1)) memory_op = op1;
-        }
-
-        if (single_opcode->am == AM_Z) {
-            enc.rm = op1->reg;
-            primary_opcode += (op1->reg & 7);
-        }
-
-        if (!single_opcode->word_or_double_word_operand && !opcode->x87fpu && !opcode->branch)
-            enc.rex_w = enc.size == SIZE64;
-    }
-    else if (opcode_arg_count == 2) {
-             if (opcode->op1.am == AM_G) enc.reg = op1->reg;
-        else if (opcode->op1.am == AM_V) enc.reg = op1->reg;
-        else if (opcode->op2.am == AM_G) enc.reg = op2->reg;
-        else if (opcode->op2.am == AM_V) enc.reg = op2->reg;
-        else if (opcode->opcd_ext != -1) enc.reg = opcode->opcd_ext;
-
-        if (opcode->op1.am == AM_E || opcode->op1.am == AM_ES || opcode->op1.am == AM_EST || opcode->op1.am == AM_W || opcode->op1.am == AM_M) {
-            enc.rm = op1->reg;
-            if (op1->indirect || OP_TYPE_IS_MEM(op1)) memory_op = op1;
-        }
-        else if (opcode->op2.am == AM_E || opcode->op2.am == AM_ES || opcode->op2.am == AM_EST ||  opcode->op2.am == AM_W || opcode->op2.am == AM_M) {
-            enc.rm = op2->reg;
-            if (op2->indirect || OP_TYPE_IS_MEM(op2)) memory_op = op2;
-        }
-
-        if (op2 && opcode->op2.am == AM_Z) {
-            enc.rm = op2->reg;
-            primary_opcode += (op2->reg & 7);
-        }
-
-        enc.rex_w = enc.size == SIZE64 && !opcode->x87fpu;
-    }
+    if (!opcode->op1.word_or_double_word_operand && !opcode->op2.word_or_double_word_operand && !opcode->x87fpu && !opcode->branch)
+        enc.rex_w = enc.size == SIZE64;
 
     // Figure out mod/RM SIB and displacement
     if (opcode->needs_mod_rm || opcode->opcd_ext != -1) {
@@ -377,11 +419,9 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Opcode *opcode, Opcode
     enc.sec_opcd = opcode->sec_opcd;
 
     // Store immediate/memory details
-    if (op1 && (OP_TYPE_IS_IMM(op1) || OP_TYPE_IS_MEM(op1)))
-        make_imm_or_memory_size(&enc, &opcode->op1, op1);
-
-    if (op2 && (OP_TYPE_IS_IMM(op2) || OP_TYPE_IS_MEM(op2)))
-        make_imm_or_memory_size(&enc, &opcode->op2, op2);
+    if (op1 && (OP_TYPE_IS_IMM(op1) || OP_TYPE_IS_MEM(op1))) make_imm_or_memory_size(&enc, &opcode->op1, op1);
+    if (op2 && (OP_TYPE_IS_IMM(op2) || OP_TYPE_IS_MEM(op2))) make_imm_or_memory_size(&enc, &opcode->op2, op2);
+    if (op3 && (OP_TYPE_IS_IMM(op3) || OP_TYPE_IS_MEM(op3))) make_imm_or_memory_size(&enc, &opcode->op3, op3);
 
     return enc;
 }
@@ -503,12 +543,20 @@ static void emit_instructions(Instructions *instr, Encoding *enc) {
     instr->branch = enc->branch;
 }
 
-Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
+Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Operand *op3) {
     #ifdef DEBUG
-    printf("Assembling %s %#x %#x\n", mnemonic, op1 ? op1->type : 0, op2 ? op2->type: 0);
+    printf("Assembling %s %#x %#x %#x\n", mnemonic, op1 ? op1->type : 0, op2 ? op2->type: 0, op3 ? op3->type: 0);
     #endif
 
-    // Look up the corresponding opcode. Translates e.g. movb to mov.
+    // Deal with GAS special case for imul
+    // https://ftp.gnu.org/old-gnu/Manuals/gas-2.9.1/html_node/as_204.html
+    // We have added a two operand form of `imul' when the first operand is an immediate
+    // mode expression and the second operand is a register. This is just a shorthand,
+    // so that, multiplying `%eax' by 69, for example, can be done with `imul
+    // $69, %eax' rather than `imul $69, %eax, %eax'.
+    if (!strncmp("imul", mnemonic, 4) && OP_TYPE_IS_IMM(op1) && OP_TYPE_IS_REG(op2) && !op2->indirect && !op3)
+        op3 = op2;
+
     OpcodeAlias *opcode_alias = strmap_get(opcode_alias_map, mnemonic);
 
     if (!opcode_alias) error("Unknown instruction %", mnemonic);
@@ -526,13 +574,14 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         print_opcode(opcode);
         #endif
 
-        int opcode_arg_count = check_args(opcode, op1, op2);
+        int opcode_arg_count = check_args(opcode, op1, op2, op3);
         if (opcode_arg_count == -1) continue; // The number of args mismatch
 
-        int size = get_operation_size(opcode, opcode_alias, op1, op2);
+        int size = get_operation_size(opcode, opcode_alias, op1, op2, op3);
 
         int op1_size = size;
         int op2_size = size;
+        int op3_size = size;
 
         if (opcode->conver) {
             if (op1 && !OP_HAS_SIZE(op1)) op1_size = opcode_alias->op1_size;
@@ -540,15 +589,9 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         }
 
         // Check for match
-        OpcodeOp *single_opcode = NULL;
-        if (opcode_arg_count == 1) {
-            single_opcode = opcode->op1.am ? &opcode->op1 : &opcode->op2;
-            if (!op_matches(opcode, opcode_alias->op1_size, single_opcode, op1, size)) continue;
-        }
-        else if (opcode_arg_count == 2) {
-            if (!op_matches(opcode, opcode_alias->op1_size, &opcode->op1, op1, op1_size)) continue;
-            if (!op_matches(opcode, opcode_alias->op2_size, &opcode->op2, op2, op2_size)) continue;
-        }
+        if (op1 && !op_matches(opcode, opcode_alias->op1_size, &opcode->op1, op1, op1_size)) continue;
+        if (op2 && !op_matches(opcode, opcode_alias->op2_size, &opcode->op2, op2, op2_size)) continue;
+        if (op3 && !op_matches(opcode, opcode_alias->op3_size, &opcode->op3, op3, op3_size)) continue;
 
         // At this point, the opcode can be used to generate code
         #ifdef DEBUG
@@ -556,7 +599,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2) {
         #endif
 
         // Encode instruction
-        Encoding enc = make_encoding(op1, op2, opcode, opcode_alias, single_opcode, opcode_arg_count, size);
+        Encoding enc = make_encoding(op1, op2, op3, opcode, opcode_alias, opcode_arg_count, size);
 
         int enc_size = encoding_size(&enc);
 

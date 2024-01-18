@@ -108,7 +108,7 @@ void test_parse_instruction_statement() {
 
     // Check code generation with size in the mnemnonic
     test_assembly("addb     $42,                        %al",  0x04, 0x2a, END);
-    test_assembly("addw     $42,                        %ax",  0x66, 0x5, 0x2a, 0x00, END);
+    test_assembly("addw     $42,                        %ax",  0x66, 0x05, 0x2a, 0x00, END);
     test_assembly("addl     $42,                        %eax", 0x83, 0xc0, 0x2a, END);
     test_assembly("addq     $42,                        %rax", 0x48, 0x83, 0xc0, 0x2a, END);
 
@@ -378,6 +378,52 @@ void test_parse_instruction_statement() {
     test_assembly("addq     $0x4243,                    5(%rbx)",          0x48, 0x81, 0x43, 0x05,       0x43, 0x42, 0x00, 0x00, END);
     test_assembly("addq     $0x4243,                    5(%rbx,%rcx,1)"  , 0x48, 0x81, 0x44, 0x0b, 0x05, 0x43, 0x42, 0x00, 0x00, END);
     test_assembly("addq     $0x4243,                    (%rbx,%rcx,1)",    0x48, 0x81, 0x04, 0x0b,       0x43, 0x42, 0x00, 0x00, END);
+
+    // Testing of 2 and 3 operand imulw with lots of signed edge cases
+    test_assembly("imulw     $-0x80,                     %bx, %bx",                 0x66, 0x6b, 0xdb, 0x80,                               END);
+    test_assembly("imulw     $-0x7f,                     %bx, %bx",                 0x66, 0x6b, 0xdb, 0x81,                               END);
+    test_assembly("imulw     $0x7f,                      %bx, %bx",                 0x66, 0x6b, 0xdb, 0x7f,                               END);
+    test_assembly("imulw     $0x80,                      %bx, %bx",                 0x66, 0x69, 0xdb, 0x80, 0x00,                         END);
+    test_assembly("imulw     $0xff,                      %bx, %bx",                 0x66, 0x69, 0xdb, 0xff, 0x00,                         END);
+    test_assembly("imull     $-0x80,                     %ebx, %ebx",               0x6b, 0xdb, 0x80,                                     END);
+    test_assembly("imull     $-0x7f,                     %ebx, %ebx",               0x6b, 0xdb, 0x81,                                     END);
+    test_assembly("imull     $0x7f,                      %ebx, %ebx",               0x6b, 0xdb, 0x7f,                                     END);
+    test_assembly("imull     $0x80,                      %ebx, %ebx",               0x69, 0xdb, 0x80, 0x00, 0x00, 0x00,                   END);
+    test_assembly("imull     $0xff,                      %ebx, %ebx",               0x69, 0xdb, 0xff, 0x00, 0x00, 0x00,                   END);
+    test_assembly("imulq     $-0x80,                     %rbx, %rbx",               0x48, 0x6b, 0xdb, 0x80,                               END);
+    test_assembly("imulq     $-0x7f,                     %rbx, %rbx",               0x48, 0x6b, 0xdb, 0x81,                               END);
+    test_assembly("imulq     $0x7f,                      %rbx, %rbx",               0x48, 0x6b, 0xdb, 0x7f,                               END);
+    test_assembly("imulq     $0x80,                      %rbx, %rbx",               0x48, 0x69, 0xdb, 0x80, 0x00, 0x00, 0x00,             END);
+    test_assembly("imulq     $0xff,                      %rbx, %rbx",               0x48, 0x69, 0xdb, 0xff, 0x00, 0x00, 0x00,             END);
+    test_assembly("imulw     $-0x8000,                   %bx, %bx",                 0x66, 0x69, 0xdb, 0x00, 0x80,                         END);
+    test_assembly("imulw     $-0x7fff,                   %bx, %bx",                 0x66, 0x69, 0xdb, 0x01, 0x80,                         END);
+    test_assembly("imulw     $0x7fff,                    %bx, %bx",                 0x66, 0x69, 0xdb, 0xff, 0x7f,                         END);
+    test_assembly("imulw     $0x8000,                    %bx, %bx",                 0x66, 0x69, 0xdb, 0x00, 0x80,                         END);
+    test_assembly("imulw     $0xffff,                    %bx, %bx",                 0x66, 0x69, 0xdb, 0xff, 0xff,                         END);
+    test_assembly("imull     $-0x8000,                   %ebx, %ebx",               0x69, 0xdb, 0x00, 0x80, 0xff, 0xff,                   END);
+    test_assembly("imull     $-0x7fff,                   %ebx, %ebx",               0x69, 0xdb, 0x01, 0x80, 0xff, 0xff,                   END);
+    test_assembly("imull     $0x7fff,                    %ebx, %ebx",               0x69, 0xdb, 0xff, 0x7f, 0x00, 0x00,                   END);
+    test_assembly("imull     $0x8000,                    %ebx, %ebx",               0x69, 0xdb, 0x00, 0x80, 0x00, 0x00,                   END);
+    test_assembly("imull     $0xffff,                    %ebx, %ebx",               0x69, 0xdb, 0xff, 0xff, 0x00, 0x00,                   END);
+    test_assembly("imulq     $-0x8000,                   %rbx, %rbx",               0x48, 0x69, 0xdb, 0x00, 0x80, 0xff, 0xff,             END);
+    test_assembly("imulq     $-0x7fff,                   %rbx, %rbx",               0x48, 0x69, 0xdb, 0x01, 0x80, 0xff, 0xff,             END);
+    test_assembly("imulq     $0x7fff,                    %rbx, %rbx",               0x48, 0x69, 0xdb, 0xff, 0x7f, 0x00, 0x00,             END);
+    test_assembly("imulq     $0x8000,                    %rbx, %rbx",               0x48, 0x69, 0xdb, 0x00, 0x80, 0x00, 0x00,             END);
+    test_assembly("imulq     $0xffff,                    %rbx, %rbx",               0x48, 0x69, 0xdb, 0xff, 0xff, 0x00, 0x00,             END);
+    test_assembly("imull     $-0x80000000,               %ebx, %ebx",               0x69, 0xdb, 0x00, 0x00, 0x00, 0x80,                   END);
+    test_assembly("imull     $-0x7fffffff,               %ebx, %ebx",               0x69, 0xdb, 0x01, 0x00, 0x00, 0x80,                   END);
+    test_assembly("imull     $0x7fffffff,                %ebx, %ebx",               0x69, 0xdb, 0xff, 0xff, 0xff, 0x7f,                   END);
+    test_assembly("imull     $0x80000000,                %ebx, %ebx",               0x69, 0xdb, 0x00, 0x00, 0x00, 0x80,                   END);
+    test_assembly("imull     $0xffffffff,                %ebx, %ebx",               0x69, 0xdb, 0xff, 0xff, 0xff, 0xff,                   END);
+    test_assembly("imulq     $-0x80000000,               %rbx, %rbx",               0x48, 0x69, 0xdb, 0x00, 0x00, 0x00, 0x80,             END);
+    test_assembly("imulq     $-0x7fffffff,               %rbx, %rbx",               0x48, 0x69, 0xdb, 0x01, 0x00, 0x00, 0x80,             END);
+    test_assembly("imulq     $0x7fffffff,                %rbx, %rbx",               0x48, 0x69, 0xdb, 0xff, 0xff, 0xff, 0x7f,             END);
+    test_assembly("imulq     $0x7fffffff,                %rbx, %rcx",               0x48, 0x69, 0xcb, 0xff, 0xff, 0xff, 0x7f,             END);
+    test_assembly("imulq     $0x7fffffff,                2(%rbx), %rcx",            0x48, 0x69, 0x4b, 0x02, 0xff, 0xff, 0xff, 0x7f,       END);
+    test_assembly("imulq     $0x7fffffff,                2(%rbx,%rdx,4), %rcx",     0x48, 0x69, 0x4c, 0x93, 0x02, 0xff, 0xff, 0xff, 0x7f, END);
+    test_assembly("imulq     $0x7fffffff,                %rbx, %rcx",               0x48, 0x69, 0xcb, 0xff, 0xff, 0xff, 0x7f,             END);
+    test_assembly("imulq     $0x7fffffff,                %rbx, %rbx",               0x48, 0x69, 0xdb, 0xff, 0xff, 0xff, 0x7f,             END);
+
 
     test_assembly("test     %al,                        %bl",        0x84, 0xc3, END);
     test_assembly("test     %bl,                        %al",        0x84, 0xd8, END);

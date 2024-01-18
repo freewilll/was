@@ -27,16 +27,37 @@
 #define AM_W      17     // The operand is either a 128-bit XMM register or a memory address.
 #define AM_Z      18     // The three least-significant bits of the opcode byte selects a general-purpose register
 
+// Types
+#define AT_B    1    // # Byte
+#define AT_BS   2    // # Byte, sign-extended to the size of the destination operand.
+#define AT_BSS  3    // # Byte, sign-extended to the size of the stack pointer (for example, PUSH (6A)).
+#define AT_D    4    // #  Doubleword
+#define AT_DI   5    // #  Doubleword Integer (x87 FPU only)
+#define AT_DR   6    // #  Double-real. Only x87 FPU instructions
+#define AT_DQP  7    // # Doubleword, or quadword, promoted by REX.W in 64-bit mode
+#define AT_ER   8    // # Extended-real. Only x87 FPU instructions).
+#define AT_Q    9    // # Quad
+#define AT_QI   10   // # Quad Integer (x87 FPU only)
+#define AT_SR   11   // # Single-real (x87 FPU only)
+#define AT_SS   12   // #  Scalar element of a 128-bit packed single-precision floating data.
+#define AT_SD   13   // #  Scalar element of a 128-bit packed double-precision floating data.
+#define AT_V    14   // #   Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
+#define AT_VDS  15   // # Word or doubleword, depending on operand-size attribute, or doubleword, sign-extended to 64 bits for 64-bit operand size.
+#define AT_VQ   16   // # Quadword (default) or word if operand-size prefix is used (for example, PUSH (50)).
+#define AT_VQP  17   // # Word or doubleword, depending on operand-size attribute, or quadword, promoted by REX.W in 64-bit mode.
+#define AT_VS   18   // # Word or doubleword sign extended to the size of the stack pointer (for example, PUSH (68)).
+#define AT_W    19   // #  Word
+#define AT_WI   20   // #  Word Integer (x87 FPU only)
+
 typedef struct opcode_op {
     int am;                     // Addressing mode
+    int type;                   // Type
     int sizes;
     char uses_op_size;
     int can_be_imm64;
-    int sign_extended;
     int word_or_double_word_operand;
     char is_gen_reg;
     char gen_reg_nr;
-    char *type;
 } OpcodeOp;
 
 typedef struct opcode {
@@ -49,6 +70,7 @@ typedef struct opcode {
     int needs_mod_rm;
     OpcodeOp op1;
     OpcodeOp op2;
+    OpcodeOp op3;
     char op_size;
     char direction;
     char acc;                   // Accumulator
@@ -62,6 +84,7 @@ typedef struct opcode_alias {
     char *mnem;
     char op1_size;
     char op2_size;
+    char op3_size;
     List *opcodes;
 } OpcodeAlias;
 

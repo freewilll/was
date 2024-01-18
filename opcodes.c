@@ -12,6 +12,8 @@
 
 static char *am_strings[] = { " ", "C", "D", "E", "ES", "EST", "G", "I", "J", "H", "M", "O", "R", "S", "ST", "T", "V", "W", "Z" };
 
+static char *type_strings[] = { "  ", "b", "bs", "bss", "d", "di", "dr", "dqp", "er", "q", "qi", "sr", "ss", "sd", "v", "vds", "vq", "vqp", "vs", "w", "wi"};
+
 StrMap *opcode_alias_map;
 
 void print_opcode(Opcode *opcode) {
@@ -46,7 +48,7 @@ void print_opcode(Opcode *opcode) {
     else
         sec_opcd = "    ";
 
-    printf("  %-10s  %s %s 0x%02x %s %c %c %c %s %c %s%s  %s%s\n",
+    printf("  %-10s  %s %s 0x%02x %s %c %c %c %s %c %s%s  %s%s  %s%s\n",
         opcode->mnem,
         prefix,
         ohf_prefix,
@@ -57,10 +59,13 @@ void print_opcode(Opcode *opcode) {
         opcd_ext,
         opcode->needs_mod_rm ? "RM" : "  ",
         opcode->acc ? 'a' : ' ',
+
         am_strings[opcode->op1.am],
-        opcode->op1.type ? opcode->op1.type : "",
+        type_strings[opcode->op1.type],
         am_strings[opcode->op2.am],
-        opcode->op2.type ? opcode->op2.type : ""
+        type_strings[opcode->op2.type],
+        am_strings[opcode->op3.am],
+        type_strings[opcode->op3.type]
     );
 }
 

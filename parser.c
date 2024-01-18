@@ -353,9 +353,9 @@ static void preprocess_op_relocation(Operand *op, char *identifier) {
 
 // Determine integer size
 static int get_integer_size(long value) {
-    if (value >= -128 && value <= 255) return SIZE08;
-    else if (value >= -65536 && value <= 65535) return SIZE16;
-    else if (value >= -2147483648L && value <= 4294967295L) return SIZE32;
+    if (value >= -0x80 && value <= 0xff) return SIZE08;
+    else if (value >= -0x10000 && value <= 0xffff) return SIZE16;
+    else if (value >= -0x80000000L && value <= 0xffffffff) return SIZE32;
     else return SIZE64;
 }
 
@@ -451,9 +451,11 @@ InstructionsSet *parse_instruction_statement(void) {
     // use static memory for the operands.
     static Operand static_op1;
     static Operand static_op2;
+    static Operand static_op3;
 
     Operand *op1 = NULL;
     Operand *op2 = NULL;
+    Operand *op3 = NULL;
 
     if (cur_token != TOK_EOL && cur_token != TOK_EOF) {
         parse_operand(&static_op1);
@@ -466,7 +468,13 @@ InstructionsSet *parse_instruction_statement(void) {
         op2 = &static_op2;
     }
 
-    Instructions instr = make_instructions(mnemonic, op1, op2);
+    if (cur_token == TOK_COMMA) {
+        next();
+        parse_operand(&static_op3);
+        op3 = &static_op3;
+    }
+
+    Instructions instr = make_instructions(mnemonic, op1, op2, op3);
 
     InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
     append_to_list(instruction_sets, instructions_set);
@@ -477,7 +485,7 @@ InstructionsSet *parse_instruction_statement(void) {
 
     if (instr.branch && op1 && op1->type == MEM32) {
         op1->type = MEM08;
-        Instructions alt_instr = make_instructions(mnemonic, op1, op2);
+        Instructions alt_instr = make_instructions(mnemonic, op1, op2, op3);
 
         instructions_set->secondary = calloc(1, sizeof(Instructions));
         *instructions_set->secondary = alt_instr;
@@ -494,6 +502,10 @@ InstructionsSet *parse_instruction_statement(void) {
     else if (op2 && op2->relocation_symbol) {
         relocation_op = op2;
         relocation_addend = op2->relocation_addend;
+    }
+    else if (op3 && op3->relocation_symbol) {
+        relocation_op = op3;
+        relocation_addend = op3->relocation_addend;
     }
 
     if (relocation_op) {

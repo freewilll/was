@@ -34,6 +34,7 @@ class LongOpCode:
     mnem: str
     op1_size: Optional[Size] = None
     op2_size: Optional[Size] = None
+    op3_size: Optional[Size] = None
 
 
 class UnsupportedOperandError(Exception):
@@ -41,11 +42,11 @@ class UnsupportedOperandError(Exception):
 
 
 def make_long_opcode(mnem, size):
-    return LongOpCode(mnem=mnem, op1_size=size, op2_size=size)
+    return LongOpCode(mnem=mnem, op1_size=size, op2_size=size, op3_size=size)
 
 
 def make_long_opcode2(mnem, op1_size, op2_size):
-    return LongOpCode(mnem=mnem, op1_size=op1_size, op2_size=op2_size)
+    return LongOpCode(mnem=mnem, op1_size=op1_size, op2_size=op2_size, op3_size=None)
 
 
 def make_sized_aliases(mnem: str, sizes=None, short_mnem=None, xmm=False):
@@ -216,30 +217,6 @@ class AddressingMode(Enum):
     W = "W"  # The operand is either a 128-bit XMM register or a memory address.
     Z = "Z"  # The three least-significant bits of the opcode byte selects a general-purpose register
 
-    def to_c_enum(self):
-        C_ENUMS = {
-            "C": 1,
-            "D": 2,
-            "E": 3,
-            "ES": 4,
-            "EST": 5,
-            "G": 6,
-            "I": 7,
-            "J": 8,
-            "H": 0,
-            "M": 10,
-            "O": 11,
-            "R": 12,
-            "S": 13,
-            "ST": 14,
-            "T": 15,
-            "V": 16,
-            "W": 17,
-            "Z": 18,
-        }
-
-        return C_ENUMS[self.value]
-
 
 class OperandType(Enum):
     b = "b"  # Byte
@@ -297,12 +274,6 @@ OPERAND_TYPES_THAT_USE_OPERAND_SIZE = {
     OperandType.w,
 }
 
-SIGN_EXTENDED_OPERANDS = {
-    OperandType.bs,
-    OperandType.bss,
-    OperandType.vds,
-}
-
 # Operands that have a 64-bit immediate when the opcode size is 64 bit
 IMM64_OPERANDS = {
     OperandType.vqp,
@@ -320,7 +291,6 @@ class WasOperand:
     sizes: str
     uses_operand_size: int
     can_be_imm64: int
-    sign_extended: int
     word_or_double_word_operand: int
     type: int
     is_gen_reg: bool = False
@@ -344,7 +314,6 @@ class WasOperand:
             sizes=WasOperand.type_to_str(type),
             uses_operand_size=int(type in OPERAND_TYPES_THAT_USE_OPERAND_SIZE),
             can_be_imm64=int(type in IMM64_OPERANDS),
-            sign_extended=int(type in SIGN_EXTENDED_OPERANDS),
             word_or_double_word_operand=int(type in WORD_OR_DOUBLE_WORD_OPERANDS),
             type=type,
         )
@@ -368,6 +337,7 @@ class WasOpcode:
     x87fpu: int
     op1: WasOperand
     op2: WasOperand
+    op3: WasOperand
 
     def __str__(self):
         opcd_ext = str(self.opcd_ext) if self.opcd_ext != -1 else " "
@@ -379,12 +349,15 @@ class WasOpcode:
 
         op1_amt = f"{self.op1.am.value if self.op1.am else ''}{self.op1.type.value if self.op1.type else ''}"
         op2_amt = f"{self.op2.am.value if self.op2.am else ''}{self.op2.type.value if self.op2.type else ''}"
+        op3_amt = f"{self.op3.am.value if self.op3.am else ''}{self.op3.type.value if self.op3.type else ''}"
 
         # General registers
         if self.op1.is_gen_reg:
             op1_amt = f"ge{self.op1.gen_reg_nr}{op1_amt}"
         if self.op2.is_gen_reg:
             op2_amt = f"ge{self.op2.gen_reg_nr}{op2_amt}"
+        if self.op3.is_gen_reg:
+            op3_amt = f"ge{self.op3.gen_reg_nr}{op3_amt}"
 
         acc = "a" if self.acc else " "
         return (
@@ -400,7 +373,7 @@ class WasOpcode:
             + f"{opcd_ext:2s}"
             + f"{acc}  "
             + f"{self.mnem:10s}"
-            + f"{op1_amt:5s} {op2_amt:5s}"
+            + f"{op1_amt:5s} {op2_amt:5s} {op3_amt:5s}"
             + f"{self.note}"
         )
 
@@ -471,11 +444,15 @@ def parse_operand(entry, operand: str) -> List[WasOperand]:
 
 
 def parse_operands(mnem, syntax) -> Tuple[WasOperand, WasOperand]:
+    # The operands are backwards in the XML from the point of view of the GAS
+    # syntax so need to be reversed.
+
     srcs = parse_operand(syntax, "src")
     dsts = parse_operand(syntax, "dst")
 
     op1 = WasOperand.from_am_and_type(None, None)
     op2 = WasOperand.from_am_and_type(None, None)
+    op3 = WasOperand.from_am_and_type(None, None)
 
     if len(srcs) == 1 and len(dsts) == 0:
         op1 = srcs[0]
@@ -484,10 +461,13 @@ def parse_operands(mnem, syntax) -> Tuple[WasOperand, WasOperand]:
     elif len(srcs) == 1 and len(dsts) == 1:
         op1 = srcs[0]
         op2 = dsts[0]
-    elif len(srcs) == 2:
-        # Don't ask. This makes the test mnemonic get encoded correctly
+    elif len(srcs) == 2 and len(dsts) == 0:
         op1 = srcs[1]
         op2 = srcs[0]
+    elif len(srcs) == 2 and len(dsts) == 1:
+        op1 = srcs[1]
+        op2 = srcs[0]
+        op3 = dsts[0]
     elif len(srcs) == 0 and len(dsts) == 0:
         pass
     else:
@@ -495,7 +475,7 @@ def parse_operands(mnem, syntax) -> Tuple[WasOperand, WasOperand]:
             f"Unable to interpret srcs/dsts for {mnem:10s} srcs={len(srcs)} dsts={len(dsts)}"
         )
 
-    return op1, op2
+    return op1, op2, op3
 
 
 def parse_pri_opcd(one_byte, ohf_prefix):
@@ -559,22 +539,34 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                     OPCODE_ALIASES[mnem] = LongOpCode(mnem=mnem)
 
                 try:
-                    op1, op2 = parse_operands(mnem, syntax)
+                    op1, op2, op3 = parse_operands(mnem, syntax)
                 except UnsupportedOperandError:
                     continue
 
                 # Not implemented
                 # The reg field of the ModR/M byte selects a control register (only MOV (0F20, 0F22)).
-                if op2.am == AddressingMode.C or op1.am == AddressingMode.C:
+                if (
+                    op1.am == AddressingMode.C
+                    or op2.am == AddressingMode.C
+                    or op3.am == AddressingMode.C
+                ):
                     continue
 
                 # Not implemented
                 # The reg field of the ModR/M byte selects a debug register (only MOV (0F21, 0F23)).
-                if op2.am == AddressingMode.D or op1.am == AddressingMode.D:
+                if (
+                    op1.am == AddressingMode.D
+                    or op2.am == AddressingMode.D
+                    or op3.am == AddressingMode.D
+                ):
                     continue
 
                 # 16-bit segment registers not used in long mode
-                if op2.am == AddressingMode.S or op1.am == AddressingMode.S:
+                if (
+                    op1.am == AddressingMode.S
+                    or op2.am == AddressingMode.S
+                    or op3.am == AddressingMode.S
+                ):
                     continue
 
                 # Replicate bug in GNU as reversed vs. non-reversed mnemonics for x87
@@ -609,6 +601,7 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                     x87fpu=int(x87fpu),
                     op1=op1,
                     op2=op2,
+                    op3=op3,
                 )
 
                 print(was_opcode)
