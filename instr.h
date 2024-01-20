@@ -42,14 +42,14 @@ typedef enum operand_type {
     MEM64 =  SIZE64 | MEM,
 } OperandType;
 
-#define OP_TYPE_IS_REG(op) (((op)->type & REG) == REG)
+#define OP_TYPE_IS_REG(op) ((((op)->type & REG) == REG) && (!((op)->type & SIZEXM)))
 #define OP_TYPE_IS_IMM(op) (((op)->type & IMM) == IMM)
 #define OP_TYPE_IS_MEM(op) (((op)->type & MEM) == MEM)
 #define OP_TO_SIZE(op) ((op)->type & ~(IMM | REG | MEM | ALT_8BIT))
 #define OP_HAS_SIZE(op) (!((op)->type & (SIZEXM | MEM)) && !op->indirect)
-#define OP_IS_XMM(op) ((op)->type & SIZEXM)
-#define OP_IS_ST(op) ((op)->type & SIZEST)
-#define OP_IS_ALT_8BIT(op) ((op->type & ALT_8BIT))
+#define OP_TYPE_IS_XMM(op) ((op)->type & SIZEXM)
+#define OP_TYPE_IS_ST(op) ((op)->type & SIZEST)
+#define OP_TYPE_IS_ALT_8BIT(op) ((op->type & ALT_8BIT))
 
 typedef struct operand {
     OperandType type;           // Operand type

@@ -51,7 +51,7 @@ Opcode opcodes[] = {
 };
 
 OpcodeAlias opcode_aliases[] = {
-{%- for opcode_alias, wcc_opcode in opcode_aliases.items() %}
+{%- for opcode_alias, wcc_opcode in opcode_aliases %}
     { "{{opcode_alias}}","{{wcc_opcode.mnem}}",
         {{-wcc_opcode.op1_size.value if wcc_opcode.op1_size else 0}},
         {{-wcc_opcode.op2_size.value if wcc_opcode.op2_size else 0}},

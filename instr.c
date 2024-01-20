@@ -163,11 +163,11 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
 
          case AM_ES:
             // fp87 stack register or memory
-            return OP_IS_ST(op) || OP_TYPE_IS_MEM(op) || op->indirect;
+            return OP_TYPE_IS_ST(op) || OP_TYPE_IS_MEM(op) || op->indirect;
 
         case AM_EST:
             // fp87 stack register
-            return OP_IS_ST(op);
+            return OP_TYPE_IS_ST(op);
 
         case AM_G:
             // Register
@@ -195,7 +195,7 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
 
         case AM_M:
             // Memory
-            return OP_TYPE_IS_MEM(op) || op->indirect;
+            return OP_TYPE_IS_MEM(op) || (OP_TYPE_IS_REG(op) && op->indirect);
 
         case AM_S:
             // Not implemented
@@ -203,15 +203,15 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
 
         case AM_ST:
             // x87 FPU stack register
-            return OP_IS_ST(op);
+            return OP_TYPE_IS_ST(op);
 
         case AM_V:
             // xmm register
-            return OP_TYPE_IS_REG(op) && !op->indirect;
+            return OP_TYPE_IS_XMM(op);
 
         case AM_W:
             // xmm register or memory
-            return OP_TYPE_IS_REG(op) || OP_TYPE_IS_MEM(op);
+            return OP_TYPE_IS_XMM(op) || OP_TYPE_IS_MEM(op) || (OP_TYPE_IS_REG(op) && op->indirect);
 
         case AM_Z:
             // Register
@@ -388,13 +388,13 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Operand *op3, Opcode *
     enc.branch = opcode->branch;
     enc.prefix = opcode->prefix;
     enc.ohf_prefix = opcode->ohf_prefix;
-    int is_xmm = ((op1 && OP_IS_XMM(op1)) || (op2 && OP_IS_XMM(op2)) || (op3 && OP_IS_XMM(op3)));
+    int is_xmm = ((op1 && OP_TYPE_IS_XMM(op1)) || (op2 && OP_TYPE_IS_XMM(op2)) || (op3 && OP_TYPE_IS_XMM(op3)));
     enc.need_size16 = (enc.size == SIZE16 && !is_xmm && !opcode->x87fpu);
 
     int primary_opcode = opcode->primary_opcode;
 
     // Emit a rex byte when one of the alternate spl, bpl, sil, dil 8 bit registers are used
-    if ((op1 && OP_IS_ALT_8BIT(op1)) || (op2 && OP_IS_ALT_8BIT(op2)) || (op3 && OP_IS_ALT_8BIT(op3))) enc.need_rex = 1;
+    if ((op1 && OP_TYPE_IS_ALT_8BIT(op1)) || (op2 && OP_TYPE_IS_ALT_8BIT(op2)) || (op3 && OP_TYPE_IS_ALT_8BIT(op3))) enc.need_rex = 1;
 
     Operand *memory_op = NULL;
 
@@ -557,56 +557,60 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Opera
     if (!strncmp("imul", mnemonic, 4) && OP_TYPE_IS_IMM(op1) && OP_TYPE_IS_REG(op2) && !op2->indirect && !op3)
         op3 = op2;
 
-    OpcodeAlias *opcode_alias = strmap_get(opcode_alias_map, mnemonic);
+    List *opcode_alias_list = strmap_get(opcode_alias_map, mnemonic);
 
-    if (!opcode_alias) error("Unknown instruction %", mnemonic);
+    if (!opcode_alias_list) error("Unknown instruction %", mnemonic);
 
     // Loop over all possible encodings, picking the one that generates
     // the smallest number of bytes.
     Encoding best_enc;
     int best_enc_size = -1;
 
-    for (int i = 0; i < opcode_alias->opcodes->length; i++) {
-        Opcode *opcode = opcode_alias->opcodes->elements[i];
+    for (int alias_i = 0; alias_i < opcode_alias_list->length; alias_i++) {
+        OpcodeAlias *opcode_alias = opcode_alias_list->elements[alias_i];
 
-        #ifdef DEBUG
-        printf("Checking: %s ", opcode_alias->alias_mnem);
-        print_opcode(opcode);
-        #endif
+        for (int i = 0; i < opcode_alias->opcodes->length; i++) {
+            Opcode *opcode = opcode_alias->opcodes->elements[i];
 
-        int opcode_arg_count = check_args(opcode, op1, op2, op3);
-        if (opcode_arg_count == -1) continue; // The number of args mismatch
+            #ifdef DEBUG
+            printf("Checking: %s ", opcode_alias->alias_mnem);
+            print_opcode(opcode);
+            #endif
 
-        int size = get_operation_size(opcode, opcode_alias, op1, op2, op3);
+            int opcode_arg_count = check_args(opcode, op1, op2, op3);
+            if (opcode_arg_count == -1) continue; // The number of args mismatch
 
-        int op1_size = size;
-        int op2_size = size;
-        int op3_size = size;
+            int size = get_operation_size(opcode, opcode_alias, op1, op2, op3);
 
-        if (opcode->conver) {
-            if (op1 && !OP_HAS_SIZE(op1)) op1_size = opcode_alias->op1_size;
-            if (op2 && !OP_HAS_SIZE(op2)) op2_size = opcode_alias->op2_size;
-        }
+            int op1_size = size;
+            int op2_size = size;
+            int op3_size = size;
 
-        // Check for match
-        if (op1 && !op_matches(opcode, opcode_alias->op1_size, &opcode->op1, op1, op1_size)) continue;
-        if (op2 && !op_matches(opcode, opcode_alias->op2_size, &opcode->op2, op2, op2_size)) continue;
-        if (op3 && !op_matches(opcode, opcode_alias->op3_size, &opcode->op3, op3, op3_size)) continue;
+            if (opcode->conver) {
+                if (op1 && !OP_HAS_SIZE(op1)) op1_size = opcode_alias->op1_size;
+                if (op2 && !OP_HAS_SIZE(op2)) op2_size = opcode_alias->op2_size;
+            }
 
-        // At this point, the opcode can be used to generate code
-        #ifdef DEBUG
-        printf("  Matched\n");
-        #endif
+            // Check for match
+            if (op1 && !op_matches(opcode, opcode_alias->op1_size, &opcode->op1, op1, op1_size)) continue;
+            if (op2 && !op_matches(opcode, opcode_alias->op2_size, &opcode->op2, op2, op2_size)) continue;
+            if (op3 && !op_matches(opcode, opcode_alias->op3_size, &opcode->op3, op3, op3_size)) continue;
 
-        // Encode instruction
-        Encoding enc = make_encoding(op1, op2, op3, opcode, opcode_alias, opcode_arg_count, size);
+            // At this point, the opcode can be used to generate code
+            #ifdef DEBUG
+            printf("  Matched\n");
+            #endif
 
-        int enc_size = encoding_size(&enc);
+            // Encode instruction
+            Encoding enc = make_encoding(op1, op2, op3, opcode, opcode_alias, opcode_arg_count, size);
 
-        // Store the encoding with the least number of bytes in best_enc.
-        if (enc_size < best_enc_size || best_enc_size == -1) {
-            best_enc = enc;
-            best_enc_size = enc_size;
+            int enc_size = encoding_size(&enc);
+
+            // Store the encoding with the least number of bytes in best_enc.
+            if (enc_size < best_enc_size || best_enc_size == -1) {
+                best_enc = enc;
+                best_enc_size = enc_size;
+            }
         }
     }
 

@@ -59,82 +59,89 @@ def make_sized_aliases(mnem: str, sizes=None, short_mnem=None, xmm=False):
     if xmm:
         # FP registers
 
-        result = {}
+        result = []
 
         if Size.SIZE16 in sizes:
-            result[f"{mnem}s"] = make_long_opcode(f"{mnem}s", Size.SIZE16)
+            result.append((f"{mnem}s", make_long_opcode(f"{mnem}s", Size.SIZE16)))
         if Size.SIZE32 in sizes:
-            result[f"{mnem}d"] = make_long_opcode(f"{mnem}d", Size.SIZE32)
+            result.append((f"{mnem}d", make_long_opcode(f"{mnem}d", Size.SIZE32)))
     else:
         # Integer registers
 
         if short_mnem is None:
             short_mnem = mnem
 
-        result = {mnem: make_long_opcode(short_mnem, None)}
+        result = [(mnem, make_long_opcode(short_mnem, None))]
 
         if Size.SIZE08 in sizes:
-            result[f"{mnem}b"] = make_long_opcode(short_mnem, Size.SIZE08)
+            result.append((f"{mnem}b", make_long_opcode(short_mnem, Size.SIZE08)))
         if Size.SIZE16 in sizes:
-            result[f"{mnem}w"] = make_long_opcode(short_mnem, Size.SIZE16)
+            result.append((f"{mnem}w", make_long_opcode(short_mnem, Size.SIZE16)))
         if Size.SIZE32 in sizes:
-            result[f"{mnem}l"] = make_long_opcode(short_mnem, Size.SIZE32)
+            result.append((f"{mnem}l", make_long_opcode(short_mnem, Size.SIZE32)))
         if Size.SIZE64 in sizes:
-            result[f"{mnem}q"] = make_long_opcode(short_mnem, Size.SIZE64)
+            result.append((f"{mnem}q", make_long_opcode(short_mnem, Size.SIZE64)))
 
     return result
 
 
-OPCODE_ALIASES = {
-    **make_sized_aliases("div", sizes={Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("idiv", sizes={Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("lea", sizes={Size.SIZE64}),
-    **make_sized_aliases("pop", sizes={Size.SIZE64}),
-    **make_sized_aliases("push", sizes={Size.SIZE64}),
-    **make_sized_aliases("ret", short_mnem="retn", sizes={Size.SIZE64}),
-    "callq": LongOpCode(mnem="call"),
-    "leaveq": LongOpCode(mnem="leave"),
-    "movabsq": make_long_opcode("mov", Size.SIZE64),
-    "movsbw": make_long_opcode2("movsx", Size.SIZE08, Size.SIZE32),
-    "movsbl": make_long_opcode2("movsx", Size.SIZE08, Size.SIZE32),
-    "movsbq": make_long_opcode2("movsx", Size.SIZE08, Size.SIZE64),
-    "movswl": make_long_opcode2("movsx", Size.SIZE16, Size.SIZE32),
-    "movswq": make_long_opcode2("movsx", Size.SIZE16, Size.SIZE64),
-    "movslq": make_long_opcode2("movsxd", Size.SIZE32, Size.SIZE64),
-    "movzbl": make_long_opcode2("movzx", Size.SIZE08, Size.SIZE32),
-    "movzbw": make_long_opcode2("movzx", Size.SIZE08, Size.SIZE16),
-    "movzbq": make_long_opcode2("movzx", Size.SIZE08, Size.SIZE64),
-    "movzwl": make_long_opcode2("movzx", Size.SIZE16, Size.SIZE32),
-    "movzwq": make_long_opcode2("movzx", Size.SIZE16, Size.SIZE64),
-    "cwtd": make_long_opcode2("cwd", Size.SIZE16, Size.SIZE32),
-    "cltd": make_long_opcode2("cdq", Size.SIZE32, Size.SIZE32),
-    "cqto": make_long_opcode2("cqo", Size.SIZE64, Size.SIZE64),
-    "cvtsd2ss": make_long_opcode2("cvtsd2ss", Size.SIZE32, Size.SIZE16),
-    "cvtsi2ssl": make_long_opcode2("cvtsi2ss", Size.SIZE32, Size.SIZE16),
-    "cvtsi2ssq": make_long_opcode2("cvtsi2ss", Size.SIZE32, Size.SIZE32),
-    "cvtsi2sdl": make_long_opcode2("cvtsi2sd", Size.SIZE32, Size.SIZE32),
-    "cvtsi2sdq": make_long_opcode2("cvtsi2sd", Size.SIZE64, Size.SIZE32),
-    **make_sized_aliases("cvttss2si", {Size.SIZE32, Size.SIZE64}),
-    **make_sized_aliases("cvttsd2si", {Size.SIZE32, Size.SIZE64}),
-    "fild": make_long_opcode("fild", Size.SIZE16),
-    "filds": make_long_opcode("fild", Size.SIZE16),
-    "fildl": make_long_opcode("fild", Size.SIZE32),
-    "fildq": make_long_opcode("fild", Size.SIZE64),
-    "fildll": make_long_opcode("fild", Size.SIZE64),
-    "fistp": make_long_opcode("fistp", Size.SIZE16),
-    "fistps": make_long_opcode("fistp", Size.SIZE16),
-    "fistpl": make_long_opcode("fistp", Size.SIZE32),
-    "fistpq": make_long_opcode("fistp", Size.SIZE64),
-    "fistpll": make_long_opcode("fistp", Size.SIZE64),
-    "fadds": make_long_opcode("fadd", Size.SIZE32),
-    "fld": make_long_opcode("fld", Size.SIZE32),
-    "flds": make_long_opcode("fld", Size.SIZE32),
-    "fldt": make_long_opcode("fld", Size.SIZEST),
-    "fldl": make_long_opcode("fld", Size.SIZE64),
-    "fstps": make_long_opcode("fstp", Size.SIZE32),
-    "fstpt": make_long_opcode("fstp", Size.SIZEST),
-    "fstpl": make_long_opcode("fstp", Size.SIZE64),
-}
+OPCODE_ALIASES = (
+    (
+        make_sized_aliases("div", sizes={Size.SIZE32, Size.SIZE64})
+        + make_sized_aliases("idiv", sizes={Size.SIZE32, Size.SIZE64})
+        + make_sized_aliases("lea", sizes={Size.SIZE64})
+        + make_sized_aliases("pop", sizes={Size.SIZE64})
+        + make_sized_aliases("push", sizes={Size.SIZE64})
+        + make_sized_aliases("ret", short_mnem="retn", sizes={Size.SIZE64})
+        + make_sized_aliases("cvttss2si", {Size.SIZE32, Size.SIZE64})
+        + make_sized_aliases("cvttsd2si", {Size.SIZE32, Size.SIZE64})
+    )
+    + [
+        ("callq", LongOpCode(mnem="call")),
+        ("leaveq", LongOpCode(mnem="leave")),
+        ("movabsq", make_long_opcode("mov", Size.SIZE64)),
+        ("movsbw", make_long_opcode2("movsx", Size.SIZE08, Size.SIZE32)),
+        ("movsbl", make_long_opcode2("movsx", Size.SIZE08, Size.SIZE32)),
+        ("movsbq", make_long_opcode2("movsx", Size.SIZE08, Size.SIZE64)),
+        ("movswl", make_long_opcode2("movsx", Size.SIZE16, Size.SIZE32)),
+        ("movswq", make_long_opcode2("movsx", Size.SIZE16, Size.SIZE64)),
+        ("movslq", make_long_opcode2("movsxd", Size.SIZE32, Size.SIZE64)),
+        ("movzbl", make_long_opcode2("movzx", Size.SIZE08, Size.SIZE32)),
+        ("movzbw", make_long_opcode2("movzx", Size.SIZE08, Size.SIZE16)),
+        ("movzbq", make_long_opcode2("movzx", Size.SIZE08, Size.SIZE64)),
+        ("movzwl", make_long_opcode2("movzx", Size.SIZE16, Size.SIZE32)),
+        ("movzwq", make_long_opcode2("movzx", Size.SIZE16, Size.SIZE64)),
+        ("cwtd", make_long_opcode2("cwd", Size.SIZE16, Size.SIZE32)),
+        ("cltd", make_long_opcode2("cdq", Size.SIZE32, Size.SIZE32)),
+        ("cqto", make_long_opcode2("cqo", Size.SIZE64, Size.SIZE64)),
+        ("cvtsd2ss", make_long_opcode2("cvtsd2ss", Size.SIZE32, Size.SIZE16)),
+        ("cvtsi2ssl", make_long_opcode2("cvtsi2ss", Size.SIZE32, Size.SIZE16)),
+        ("cvtsi2ssq", make_long_opcode2("cvtsi2ss", Size.SIZE32, Size.SIZE32)),
+        ("cvtsi2sdl", make_long_opcode2("cvtsi2sd", Size.SIZE32, Size.SIZE32)),
+        ("cvtsi2sdq", make_long_opcode2("cvtsi2sd", Size.SIZE64, Size.SIZE32)),
+        ("movq", make_long_opcode("movq", Size.SIZE64)),  # reg <-> xmm conversion
+    ]
+) + [
+    ("fild", make_long_opcode("fild", Size.SIZE16)),
+    ("filds", make_long_opcode("fild", Size.SIZE16)),
+    ("fildl", make_long_opcode("fild", Size.SIZE32)),
+    ("fildq", make_long_opcode("fild", Size.SIZE64)),
+    ("fildll", make_long_opcode("fild", Size.SIZE64)),
+    ("fistp", make_long_opcode("fistp", Size.SIZE16)),
+    ("fistps", make_long_opcode("fistp", Size.SIZE16)),
+    ("fistpl", make_long_opcode("fistp", Size.SIZE32)),
+    ("fistpq", make_long_opcode("fistp", Size.SIZE64)),
+    ("fistpll", make_long_opcode("fistp", Size.SIZE64)),
+    ("fadds", make_long_opcode("fadd", Size.SIZE32)),
+    ("fld", make_long_opcode("fld", Size.SIZE32)),
+    ("flds", make_long_opcode("fld", Size.SIZE32)),
+    ("fldt", make_long_opcode("fld", Size.SIZEST)),
+    ("fldl", make_long_opcode("fld", Size.SIZE64)),
+    ("fstps", make_long_opcode("fstp", Size.SIZE32)),
+    ("fstpt", make_long_opcode("fstp", Size.SIZEST)),
+    ("fstpl", make_long_opcode("fstp", Size.SIZE64)),
+]
+
 
 # Add all-sizes aliases
 for mnem in (
@@ -152,7 +159,7 @@ for mnem in (
     "test",
     "xor",
 ):
-    OPCODE_ALIASES.update(**make_sized_aliases(mnem))
+    OPCODE_ALIASES += make_sized_aliases(mnem)
 
 
 # Aliases for 16, 32 and 64 bit integers
@@ -188,16 +195,17 @@ for mnem in (
     "cmovnle",
     "cmovg",
 ):
-    OPCODE_ALIASES.update(
-        **make_sized_aliases(mnem, sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64})
+    OPCODE_ALIASES += make_sized_aliases(
+        mnem, sizes={Size.SIZE16, Size.SIZE32, Size.SIZE64}
     )
+
 
 # Aliases for 16, 32 bit FP
 # These aliases are needed, since in come cases, e.g. movss  (%rax), %xmm14
 # where the size of the operation must be derived from the mnemonic. The XML
 # doesn't have data to indicate the mnemonic size, other than the operand sizes.
 for mnem in ("movs", "adds", "subs", "muls", "divs", "comis", "ucomis"):
-    OPCODE_ALIASES.update(**make_sized_aliases(mnem, xmm=True))
+    OPCODE_ALIASES += make_sized_aliases(mnem, xmm=True)
 
 
 class AddressingMode(Enum):
@@ -225,10 +233,12 @@ class OperandType(Enum):
     d = "d"  #  Doubleword
     di = "di"  #  Doubleword Integer (x87 FPU only)
     dr = "dr"  #  Double-real. Only x87 FPU instructions
-    dqp = "dqp"  # Doubleword, or quadword, promoted by REX.W in 64-bit mode
+    dq = "dq"  # Double-quadword, regardless of operand-size attribute
+    dqp = "dqp"  # Double-quadword, regardless of operand-size attribute (for example, CMPXCHG16B).
     er = "er"  # Extended-real. Only x87 FPU instructions).
     q = "q"  # Quad
     qi = "qi"  # Quad Integer (x87 FPU only)
+    qp = "qp"  # Quadword, promoted by REX.W (for example, IRETQ).
     sr = "sr"  # Single-real (x87 FPU only)
     ss = "ss"  #  Scalar element of a 128-bit packed single-precision floating data.
     sd = "sd"  #  Scalar element of a 128-bit packed double-precision floating data.
@@ -247,6 +257,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.bss: set([Size.SIZE08]),
     OperandType.d: set([Size.SIZE32]),
     OperandType.di: set([Size.SIZE32]),
+    OperandType.dq: set([Size.SIZE64]),
     OperandType.dqp: set([Size.SIZE32, Size.SIZE64]),
     OperandType.dr: set([Size.SIZE64]),
     OperandType.er: set([Size.SIZEST]),
@@ -255,6 +266,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.sd: set([Size.SIZE32]),
     OperandType.q: set([Size.SIZE64]),
     OperandType.qi: set([Size.SIZE64]),
+    OperandType.qp: set([Size.SIZE64]),
     OperandType.v: set([Size.SIZE16, Size.SIZE32]),
     OperandType.vds: set([Size.SIZE16, Size.SIZE32]),
     OperandType.vq: set([Size.SIZE16, Size.SIZE64]),
@@ -378,7 +390,7 @@ class WasOpcode:
         )
 
 
-OPCODES = {opcode.mnem for opcode in OPCODE_ALIASES.values()}
+OPCODES = {opcode_alias_tuple[1].mnem for opcode_alias_tuple in OPCODE_ALIASES}
 
 
 def read_xml(input_path: str):
@@ -534,9 +546,9 @@ def parse_pri_opcd(one_byte, ohf_prefix):
                     continue
 
                 mnem = syntax.mnem.text.lower()
-                if mnem not in OPCODE_ALIASES:
+                if mnem not in [oa[0] for oa in OPCODE_ALIASES]:
                     OPCODES.add(mnem)
-                    OPCODE_ALIASES[mnem] = LongOpCode(mnem=mnem)
+                    OPCODE_ALIASES.append((mnem, LongOpCode(mnem=mnem)))
 
                 try:
                     op1, op2, op3 = parse_operands(mnem, syntax)
@@ -629,12 +641,14 @@ def make_was_opcodes(x86reference):
 def output_code(was_opcodes: List[WasOpcode], output_path: str):
     template = Template(open("scripts/opcodes.j2").read())
 
+    sorted_opcode_aliases = sorted(OPCODE_ALIASES, key=lambda oa: oa[0])
+
     with open(output_path, "w") as f:
         f.write(
             template.render(
                 generator=sys.argv[0],
                 opcodes=was_opcodes,
-                opcode_aliases=OPCODE_ALIASES,
+                opcode_aliases=sorted_opcode_aliases,
             )
         )
 

@@ -31,23 +31,25 @@
 #define AT_B    1    // # Byte
 #define AT_BS   2    // # Byte, sign-extended to the size of the destination operand.
 #define AT_BSS  3    // # Byte, sign-extended to the size of the stack pointer (for example, PUSH (6A)).
-#define AT_D    4    // #  Doubleword
-#define AT_DI   5    // #  Doubleword Integer (x87 FPU only)
-#define AT_DR   6    // #  Double-real. Only x87 FPU instructions
-#define AT_DQP  7    // # Doubleword, or quadword, promoted by REX.W in 64-bit mode
-#define AT_ER   8    // # Extended-real. Only x87 FPU instructions).
-#define AT_Q    9    // # Quad
-#define AT_QI   10   // # Quad Integer (x87 FPU only)
-#define AT_SR   11   // # Single-real (x87 FPU only)
-#define AT_SS   12   // #  Scalar element of a 128-bit packed single-precision floating data.
-#define AT_SD   13   // #  Scalar element of a 128-bit packed double-precision floating data.
-#define AT_V    14   // #   Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
-#define AT_VDS  15   // # Word or doubleword, depending on operand-size attribute, or doubleword, sign-extended to 64 bits for 64-bit operand size.
-#define AT_VQ   16   // # Quadword (default) or word if operand-size prefix is used (for example, PUSH (50)).
-#define AT_VQP  17   // # Word or doubleword, depending on operand-size attribute, or quadword, promoted by REX.W in 64-bit mode.
-#define AT_VS   18   // # Word or doubleword sign extended to the size of the stack pointer (for example, PUSH (68)).
-#define AT_W    19   // #  Word
-#define AT_WI   20   // #  Word Integer (x87 FPU only)
+#define AT_D    4    // # Doubleword
+#define AT_DI   5    // # Doubleword Integer (x87 FPU only)
+#define AT_DR   6    // # Double-real. Only x87 FPU instructions
+#define AT_DQ   7    // # Double-quadword, regardless of operand-size attribute
+#define AT_DQP  8    // # Doubleword, or quadword, promoted by REX.W in 64-bit mode
+#define AT_ER   9    // # Extended-real. Only x87 FPU instructions).
+#define AT_Q    10   // # Quad
+#define AT_QI   11   // # Quad Integer (x87 FPU only)
+#define AT_QP   12   // # Quadword, promoted by REX.W (for example, IRETQ).
+#define AT_SR   13   // # Single-real (x87 FPU only)
+#define AT_SS   14   // # Scalar element of a 128-bit packed single-precision floating data.
+#define AT_SD   15   // # Scalar element of a 128-bit packed double-precision floating data.
+#define AT_V    16   // # Word or doubleword, depending on operand-size attribute (for example, INC (40), PUSH (50)).
+#define AT_VDS  17   // # Word or doubleword, depending on operand-size attribute, or doubleword, sign-extended to 64 bits for 64-bit operand size.
+#define AT_VQ   18   // # Quadword (default) or word if operand-size prefix is used (for example, PUSH (50)).
+#define AT_VQP  19   // # Word or doubleword, depending on operand-size attribute, or quadword, promoted by REX.W in 64-bit mode.
+#define AT_VS   20   // # Word or doubleword sign extended to the size of the stack pointer (for example, PUSH (68)).
+#define AT_W    21   // # Word
+#define AT_WI   22   // # Word Integer (x87 FPU only)
 
 typedef struct opcode_op {
     int am;                     // Addressing mode

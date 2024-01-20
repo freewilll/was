@@ -12,7 +12,7 @@
 
 static char *am_strings[] = { " ", "C", "D", "E", "ES", "EST", "G", "I", "J", "H", "M", "O", "R", "S", "ST", "T", "V", "W", "Z" };
 
-static char *type_strings[] = { "  ", "b", "bs", "bss", "d", "di", "dr", "dqp", "er", "q", "qi", "sr", "ss", "sd", "v", "vds", "vq", "vqp", "vs", "w", "wi"};
+static char *type_strings[] = { "  ", "b", "bs", "bss", "d", "di", "dr", "dq", "dqp", "er", "q", "qi", "qp", "sr", "ss", "sd", "v", "vds", "vq", "vqp", "vs", "w", "wi"};
 
 StrMap *opcode_alias_map;
 
@@ -76,9 +76,13 @@ void init_opcodes(void) {
         OpcodeAlias *opcode_alias = &opcode_aliases[i];
 
         // Ensure opcode aliases are unique and add them to the map
-        OpcodeAlias *opcode_alias_test = strmap_get(opcode_alias_map, opcode_alias->alias_mnem);
-        if (opcode_alias_test) panic("Duplicate opcode alias %s", opcode_alias->alias_mnem);
-        strmap_put(opcode_alias_map, opcode_alias->alias_mnem, opcode_alias);
+        List *opcode_alias_list = strmap_get(opcode_alias_map, opcode_alias->alias_mnem);
+        if (!opcode_alias_list) {
+            opcode_alias_list = new_list(8);
+            strmap_put(opcode_alias_map, opcode_alias->alias_mnem, opcode_alias_list);
+        }
+
+        append_to_list(opcode_alias_list, opcode_alias);
 
         #ifdef DEBUG
         printf("%s\n", opcode_alias->alias_mnem);

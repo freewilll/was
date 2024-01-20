@@ -605,8 +605,13 @@ void test_parse_instruction_statement() {
     test_assembly("cvtsi2ssq %rbx,                      %xmm0", 0xf3, 0x48, 0x0f, 0x2a, 0xc3, END);     // Convert DW Integer to Scalar Single-FP Value
     test_assembly("cvtsi2sd  %eax,                      %xmm0", 0xf2, 0x0f, 0x2a, 0xc0, END);           // Convert DW Integer to Scalar Double-FP Value
     test_assembly("cvtsi2sd  %rbx,                      %xmm0", 0xf2, 0x48, 0x0f, 0x2a, 0xc3, END);     // Convert DW Integer to Scalar Double-FP Value
-    test_assembly("cvtsi2sdl %eax,                      %xmm0", 0xf2, 0x0f, 0x2a, 0xc0, END);
+    test_assembly("cvtsi2sdl %eax,                      %xmm0", 0xf2, 0x0f, 0x2a, 0xc0, END);           // Convert DW Integer to Scalar Double-FP Value
     test_assembly("cvtsi2sdq %rbx,                      %xmm0", 0xf2, 0x48, 0x0f, 0x2a, 0xc3, END);     // Convert DW Integer to Scalar Double-FP Value
+
+    test_assembly("movd     %r15d,                      %xmm0", 0x66, 0x41, 0x0f, 0x6e, 0xc7, END);     // Move Doubleword
+    test_assembly("movq     %r15,                       %xmm0", 0x66, 0x49, 0x0f, 0x6e, 0xc7, END);     // Move Quadword
+    test_assembly("movd     %xmm0,                      %r15d", 0x66, 0x41, 0x0f, 0x7e, 0xc7, END);     // Move Doubleword
+    test_assembly("movq     %xmm0,                      %r15",  0x66, 0x49, 0x0f, 0x7e, 0xc7, END);     // Move Quadword
 
     test_assembly("faddp  %st,                          %st(1)", 0xde, 0xc1, END);
     test_assembly("fsubp  %st,                          %st(1)", 0xde, 0xe1, END);
