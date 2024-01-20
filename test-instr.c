@@ -207,10 +207,10 @@ void test_parse_instruction_statement() {
     test_assembly("mov      %r15,                       (%r15)", 0x4d, 0x89, 0x3f, END);
     test_assembly("mov      (%r14),                     %r15",   0x4d, 0x8b, 0x3e, END);
 
-    test_assembly("movb     %bl,                        (%rax)",       0x88, 0x18, END);
-    test_assembly("movw     %bx,                        (%rax)", 0x66, 0x89, 0x18, END);
-    test_assembly("movl     %ebx,                       (%rax)",       0x89, 0x18, END);
-    test_assembly("movq     %rbx,                       (%rax)", 0x48, 0x89, 0x18, END);
+    test_assembly("movb     %bl,                        (%rax)",        0x88, 0x18, END);
+    test_assembly("movw     %bx,                        (%rax)",  0x66, 0x89, 0x18, END);
+    test_assembly("movl     %ebx,                       (%rax)",        0x89, 0x18, END);
+    test_assembly("movq     %rbx,                       0(%rax)", 0x48, 0x89, 0x18, END);
 
     test_assembly("mov      %r15,                       0x42(%rax)", 0x4c, 0x89, 0x78,       0x42, END);
     test_assembly("mov      %r15,                       0x42(%rcx)", 0x4c, 0x89, 0x79,       0x42, END);

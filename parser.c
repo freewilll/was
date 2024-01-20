@@ -386,14 +386,18 @@ static void parse_operand(Operand *op) {
         if (cur_token == TOK_LPAREN) {
             // Parse 5(...)
             parse_indirect_operand(op);
-            op->displacement = value;
-            op->displacement_size = get_integer_size(value);
 
-            // Displacements are only possible with 8 and 32 bits
-            if (op->displacement_size == SIZE16)
-                op->displacement_size = SIZE32;
-            else if (op->displacement_size == SIZE64)
-                error("Invalid operand size");
+            // Only add displacement if the value is non zero
+            if (value) {
+                op->displacement = value;
+                op->displacement_size = get_integer_size(value);
+
+                // Displacements are only possible with 8 and 32 bits
+                if (op->displacement_size == SIZE16)
+                    op->displacement_size = SIZE32;
+                else if (op->displacement_size == SIZE64)
+                    error("Invalid operand size");
+            }
         }
 
         else
