@@ -407,6 +407,14 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Operand *op3, Opcode *
     if (!opcode->op1.word_or_double_word_operand && !opcode->op2.word_or_double_word_operand && !opcode->x87fpu && !opcode->branch)
         enc.rex_w = enc.size == SIZE64;
 
+    // Don't emit a rex prefix for some exceptions that default to be 64 bit in long mode
+    // like push, pushq.
+    // https://wiki.osdev.org/X86-64_Instruction_Encoding#Usage
+    if (!strcmp(opcode->mnem, "push")) {
+        enc.need_rex = 0;
+        enc.rex_w =0;
+    }
+
     // Figure out mod/RM SIB and displacement
     if (opcode->needs_mod_rm || opcode->opcd_ext != -1) {
         if (memory_op)
