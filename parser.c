@@ -13,7 +13,7 @@
 #include "utils.h"
 #include "was.h"
 
-#define MAX_BRANCH_REDUCTIONS 8
+#define MAX_BRANCH_REDUCTIONS 0 // TODO: Disabled due to bugs in the algorithm
 
 typedef struct simple_expression {
     Symbol *symbol; // Optional symbol
@@ -692,7 +692,14 @@ void emit_code(void) {
                 }
                 else {
                     instr = is->secondary;
-                    char relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
+
+                    // Double check relative offset doesn't exceed the limits of a signed char.
+                    int relative_offset_int = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
+                    if (relative_offset_int < -128 || relative_offset_int > 127)
+                        panic("Relative offset for code at %#lx out of bounds for symbol %s@%#x: %d",
+                            base_offset, instr->relocation_symbol->name, instr->relocation_symbol->value, relative_offset_int);
+
+                    char relative_offset = relative_offset_int;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 1); // 8 bit address
                 }
             }
