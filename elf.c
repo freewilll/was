@@ -98,7 +98,7 @@ int add_to_current_section(void *src, int size) {
 }
 
 // Copy src to the end of a section and return the offset
-static int add_zeros_to_section(ElfSection *section, int size) {
+int add_zeros_to_section(ElfSection *section, int size) {
     char *data = allocate_in_section(section, size);
     memset(data, 0, size);
     return data - section->data;

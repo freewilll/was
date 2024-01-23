@@ -1060,6 +1060,21 @@ void test_data_with_defined_symbol(void) {
     );
 }
 
+// Ensure data is placed together with surrounding instructions instead of at the start
+// of the section.
+void test_zero_in_text_section(void) {
+    char *input;
+
+    // Byte
+    input =
+        ".text\n"
+        "nop\n"
+        ".zero 4\n"
+        ".byte 0x42";
+
+    test_full_assembly("test_zero_in_text_section byte", input, 0x90, 0x00, 0x00, 0x00, 0x00, 0x42, END);
+}
+
 void test_symbol_types_and_binding(void) {
     int text_index = section_text.index;
     int data_index = section_data.index;
@@ -1137,6 +1152,7 @@ int main() {
     test_global_defined_symbol_relocation();
     test_data_with_undefined_symbol();
     test_data_with_defined_symbol();
+    test_zero_in_text_section();
     test_symbol_types_and_binding();
     test_size_with_number();
     test_size_difference();

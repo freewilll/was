@@ -55,6 +55,15 @@ static SimpleExpression parse_simple_expression(void) {
     return result;
 }
 
+// Add primary instructions to new instruction set and add it to the list
+static InstructionsSet *add_instructions_to_instruction_sets(Instructions instr) {
+    InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
+    append_to_list(instruction_sets, instructions_set);
+    instructions_set->primary = malloc(sizeof(Instructions));
+    *instructions_set->primary = instr;
+    instructions_set->using_primary = 1;
+}
+
 // Parse .byte, .word, .long and .quad in .text section
 // Data in the .text segment is processed in a second phase in emit_code(), like
 // instructions.
@@ -72,13 +81,7 @@ static InstructionsSet *parse_data_directive_text(int relocation_type, int size)
     else
         memcpy(instr.data, &expr.value, size);
 
-    InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
-    append_to_list(instruction_sets, instructions_set);
-    instructions_set->primary = malloc(sizeof(Instructions));
-    *instructions_set->primary = instr;
-    instructions_set->using_primary = 1;
-
-    return instructions_set;
+    return add_instructions_to_instruction_sets(instr);
 }
 
 // Parse .byte, .word, .long and .quad in .data and .rodata section
@@ -257,10 +260,20 @@ InstructionsSet *parse_directive_statement(void) {
             skip();
             break;
 
-        case TOK_DIRECTIVE_ZERO:
-            add_zeros_to_current_section(cur_long);
+        case TOK_DIRECTIVE_ZERO: {
+            if (get_current_section() == &section_text) {
+                Instructions instr = {0};
+                instr.size = cur_long;
+
+                InstructionsSet *is = add_instructions_to_instruction_sets(instr);
+                is->is_zero = 1;
+            }
+            else
+                add_zeros_to_current_section(cur_long);
+
             next();
             break;
+        }
 
         default:
             error("Unknown token %d", directive);
@@ -703,7 +716,12 @@ void emit_code(void) {
             }
         }
 
-        if (!is->size_expr) add_to_section(&section_text, instr->data, instr->size);
+        if (!is->size_expr) {
+            if (is->is_zero)
+                add_zeros_to_section(&section_text, instr->size);
+            else
+                add_to_section(&section_text, instr->data, instr->size);
+        }
     }
 }
 
