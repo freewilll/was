@@ -79,17 +79,6 @@ typedef struct instructions {
     int branch;                 // Is it a branch instruction?
 } Instructions;
 
-typedef struct instructions_set {
-    int using_primary;
-    Instructions *primary;
-    Instructions *secondary;
-    List *symbols;              // Zero or more symbols associated with the address at this instruction
-    int is_code;                // Is this code or data?
-    int is_zero;                // This is a bunch of zeroes. data[] isn't used
-    Node *size_expr;            // Expression to be evaluated in a .size statement
-    Symbol *size_symbol;        // Symbol in a .size statement
-} InstructionsSet;
-
 void dump_instructions(Instructions *instr);
 
 Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Operand *op3);

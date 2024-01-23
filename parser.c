@@ -7,6 +7,7 @@
 #include "instr.h"
 #include "lexer.h"
 #include "list.h"
+#include "parser.h"
 #include "relocations.h"
 #include "strmap.h"
 #include "symbols.h"
@@ -20,7 +21,7 @@ typedef struct simple_expression {
     long value;     // Optional value. If symbol is set, it's an offset
 } SimpleExpression;
 
-static List *instruction_sets;
+static List *text_chunks;
 
 // TODO remove skip
 static void skip() {
@@ -56,18 +57,19 @@ static SimpleExpression parse_simple_expression(void) {
 }
 
 // Add primary instructions to new instruction set and add it to the list
-static InstructionsSet *add_instructions_to_instruction_sets(Instructions instr) {
-    InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
-    append_to_list(instruction_sets, instructions_set);
-    instructions_set->primary = malloc(sizeof(Instructions));
-    *instructions_set->primary = instr;
-    instructions_set->using_primary = 1;
+static TextChunk *add_data_to_text_chunks(Instructions instr) {
+    TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
+    text_chunk->type = CT_DATA;
+    append_to_list(text_chunks, text_chunk);
+    text_chunk->cdc.primary = malloc(sizeof(Instructions));
+    *text_chunk->cdc.primary = instr;
+    text_chunk->cdc.using_primary = 1;
 }
 
 // Parse .byte, .word, .long and .quad in .text section
 // Data in the .text segment is processed in a second phase in emit_code(), like
 // instructions.
-static InstructionsSet *parse_data_directive_text(int relocation_type, int size) {
+static TextChunk *parse_data_directive_text(int relocation_type, int size) {
     SimpleExpression expr = parse_simple_expression();
 
     Instructions instr = {0};
@@ -81,13 +83,13 @@ static InstructionsSet *parse_data_directive_text(int relocation_type, int size)
     else
         memcpy(instr.data, &expr.value, size);
 
-    return add_instructions_to_instruction_sets(instr);
+    return add_data_to_text_chunks(instr);
 }
 
 // Parse .byte, .word, .long and .quad in .data and .rodata section
 // Data in these sections are added to the section immediately. Also, relocations
 // can be added straight away since the offsets in the segment are known at his point.
-static InstructionsSet *parse_data_directive_data(int relocation_type, int size) {
+static TextChunk *parse_data_directive_data(int relocation_type, int size) {
     SimpleExpression expr = parse_simple_expression();
 
     if (expr.symbol) {
@@ -111,15 +113,15 @@ static InstructionsSet *parse_data_directive_data(int relocation_type, int size)
 }
 
 // Parse .byte, .word, .long and .quad
-static InstructionsSet *parse_data_directive(int relocation_type, int size) {
+static TextChunk *parse_data_directive(int relocation_type, int size) {
     if (get_current_section() == &section_text)
         return parse_data_directive_text(relocation_type, size);
     else
         return parse_data_directive_data(relocation_type, size);
 }
 
-InstructionsSet *parse_directive_statement(void) {
-    InstructionsSet *result = NULL;
+TextChunk *parse_directive_statement(void) {
+    TextChunk *result = NULL;
     int directive = cur_token;
     next();
 
@@ -218,10 +220,11 @@ InstructionsSet *parse_directive_statement(void) {
                 symbol->size = root->value->number;
             }
             else {
-                InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
-                instructions_set->size_expr = root;
-                instructions_set->size_symbol = symbol;
-                append_to_list(instruction_sets, instructions_set);
+                TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
+                text_chunk->type = CT_SIZE_EXPR;
+                text_chunk->sic.size_expr = root;
+                text_chunk->sic.size_symbol = symbol;
+                append_to_list(text_chunks, text_chunk);
             }
 
             break;
@@ -262,11 +265,11 @@ InstructionsSet *parse_directive_statement(void) {
 
         case TOK_DIRECTIVE_ZERO: {
             if (get_current_section() == &section_text) {
-                Instructions instr = {0};
-                instr.size = cur_long;
+                TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
+                append_to_list(text_chunks, text_chunk);
 
-                InstructionsSet *is = add_instructions_to_instruction_sets(instr);
-                is->is_zero = 1;
+                text_chunk->type = CT_ZERO;
+                text_chunk->zec.size = cur_long;
             }
             else
                 add_zeros_to_current_section(cur_long);
@@ -458,7 +461,7 @@ static void parse_operand(Operand *op) {
         error("Unable to parse operand for token %d", cur_token);
 }
 
-InstructionsSet *parse_instruction_statement(void) {
+TextChunk *parse_instruction_statement(void) {
     char *mnemonic = strdup(cur_identifier);
     next();
 
@@ -491,19 +494,19 @@ InstructionsSet *parse_instruction_statement(void) {
 
     Instructions instr = make_instructions(mnemonic, op1, op2, op3);
 
-    InstructionsSet *instructions_set = calloc(1, sizeof(InstructionsSet));
-    append_to_list(instruction_sets, instructions_set);
-    instructions_set->primary = malloc(sizeof(Instructions));
-    *instructions_set->primary = instr;
-    instructions_set->using_primary = 1;
-    instructions_set->is_code = 1;
+    TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
+    append_to_list(text_chunks, text_chunk);
+    text_chunk->cdc.primary = malloc(sizeof(Instructions));
+    *text_chunk->cdc.primary = instr;
+    text_chunk->cdc.using_primary = 1;
+    text_chunk->type = CT_CODE;
 
     if (instr.branch && op1 && op1->type == MEM32) {
         op1->type = MEM08;
         Instructions alt_instr = make_instructions(mnemonic, op1, op2, op3);
 
-        instructions_set->secondary = calloc(1, sizeof(Instructions));
-        *instructions_set->secondary = alt_instr;
+        text_chunk->cdc.secondary = calloc(1, sizeof(Instructions));
+        *text_chunk->cdc.secondary = alt_instr;
     }
 
     free(mnemonic);
@@ -525,32 +528,32 @@ InstructionsSet *parse_instruction_statement(void) {
 
     if (relocation_op) {
         int relocation_type;
-        if (instructions_set->primary->branch) // This is set for branch opcodes
+        if (text_chunk->cdc.primary->branch) // This is set for branch opcodes
             relocation_type = R_X86_64_PLT32;
         else
             relocation_type = R_X86_64_PC32;
 
-        instructions_set->primary->relocation_type = relocation_type;
-        instructions_set->primary->relocation_symbol = relocation_op->relocation_symbol;
-        instructions_set->primary->relocation_addend = relocation_addend;
+        text_chunk->cdc.primary->relocation_type = relocation_type;
+        text_chunk->cdc.primary->relocation_symbol = relocation_op->relocation_symbol;
+        text_chunk->cdc.primary->relocation_addend = relocation_addend;
 
-        if (instructions_set->secondary) {
-            instructions_set->secondary->relocation_type = relocation_type;
-            instructions_set->secondary->relocation_symbol = relocation_op->relocation_symbol;
-            instructions_set->secondary->relocation_addend = relocation_addend;
+        if (text_chunk->cdc.secondary) {
+            text_chunk->cdc.secondary->relocation_type = relocation_type;
+            text_chunk->cdc.secondary->relocation_symbol = relocation_op->relocation_symbol;
+            text_chunk->cdc.secondary->relocation_addend = relocation_addend;
         }
     }
 
-    return instructions_set;
+    return text_chunk;
 }
 
-static void add_labels_to_instruction_set(InstructionsSet *instr_set, List *labels) {
+static void add_labels_to_text_chunk(TextChunk *text_chunk, List *labels) {
     for (int i = 0; i < labels->length; i++) {
         char *name = labels->elements[i];
         Symbol *symbol = get_or_add_symbol(strdup(name));
 
-        if (!instr_set->symbols) instr_set->symbols = new_list(labels->length);
-        append_to_list(instr_set->symbols, symbol);
+        if (!text_chunk->symbols) text_chunk->symbols = new_list(labels->length);
+        append_to_list(text_chunk->symbols, symbol);
     }
 }
 
@@ -578,17 +581,17 @@ void parse(void) {
 
         // Parse statement
         if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO) {
-            InstructionsSet *instr_set = parse_directive_statement();
+            TextChunk *text_chunk = parse_directive_statement();
 
-            if (instr_set) add_labels_to_instruction_set(instr_set, labels);
+            if (text_chunk) add_labels_to_text_chunk(text_chunk, labels);
         }
         else if (cur_token == TOK_INSTRUCTION) {
             if (get_current_section() != &section_text)
                 panic("Instructions can only be added to the .text section");
 
-            InstructionsSet *instr_set = parse_instruction_statement();
+            TextChunk *text_chunk = parse_instruction_statement();
 
-            add_labels_to_instruction_set(instr_set, labels);
+            add_labels_to_text_chunk(text_chunk, labels);
         }
         else if (cur_token == TOK_EOF)
             break;
@@ -609,10 +612,10 @@ void parse(void) {
 void make_symbol_offsets(void) {
     int offset = 0;
 
-    for (int i = 0; i < instruction_sets->length; i++) {
-        InstructionsSet *is = instruction_sets->elements[i];
+    for (int i = 0; i < text_chunks->length; i++) {
+        TextChunk *tc = text_chunks->elements[i];
 
-        List *symbols = is->symbols;
+        List *symbols = tc->symbols;
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
@@ -621,7 +624,7 @@ void make_symbol_offsets(void) {
             }
         }
 
-        if (!is->size_expr) offset += is->using_primary ? is->primary->size : is->secondary->size;
+        if (tc->type != CT_SIZE_EXPR) offset += TEXT_CHUNK_SIZE(tc);
     }
 }
 
@@ -632,19 +635,19 @@ int reduce_branch_instructions(void) {
 
     int changed = 0;
 
-    for (int i = 0; i < instruction_sets->length; i++) {
-        InstructionsSet *is = instruction_sets->elements[i];
+    for (int i = 0; i < text_chunks->length; i++) {
+        TextChunk *tc = text_chunks->elements[i];
 
-        if (is->using_primary && is->secondary && is->primary->relocation_symbol && is->primary->relocation_symbol->section_index == section_text.index) {
-            int relative_offset = is->primary->relocation_symbol->value - (offset + is->secondary->relocation_offset + 1);
+        if (tc->cdc.using_primary && tc->cdc.secondary && tc->cdc.primary->relocation_symbol && tc->cdc.primary->relocation_symbol->section_index == section_text.index) {
+            int relative_offset = tc->cdc.primary->relocation_symbol->value - (offset + tc->cdc.secondary->relocation_offset + 1);
 
             if (relative_offset >= -128 && relative_offset <= 127) {
-                is->using_primary = 0;
+                tc->cdc.using_primary = 0;
                 changed = 1;
             }
         }
 
-        if (!is->size_expr) offset += is->using_primary ? is->primary->size : is->secondary->size;
+        if (tc->type != CT_SIZE_EXPR) offset += TEXT_CHUNK_SIZE(tc);
     }
 
     return changed;
@@ -663,21 +666,23 @@ void emit_code(void) {
     }
 
     // Add the code to the .text section
-    for (int i = 0; i < instruction_sets->length; i++) {
-        InstructionsSet *is = instruction_sets->elements[i];
-        Instructions *instr = is->using_primary ? is->primary : is->secondary;
+    for (int i = 0; i < text_chunks->length; i++) {
+        TextChunk *tc = text_chunks->elements[i];
+        Instructions *instr = tc->cdc.using_primary ? tc->cdc.primary : tc->cdc.secondary;
 
         // All branch instructions use 32 bit memory addresses for the time being,
         // so we're only taking the primary instructions into account.
         int base_offset = get_current_section_size();
 
-        if (is->size_expr) {
-            Value value = evaluate_node(is->size_expr, base_offset);
+        if (!tc->type) panic("Internal error: zero tc->type");
+
+        if (tc->type == CT_SIZE_EXPR) {
+            Value value = evaluate_node(tc->sic.size_expr, base_offset);
             if (value.symbol) panic("Unexpectedly got a symbol when evaluating .size");
-            is->size_symbol->size = value.number;
+            tc->sic.size_symbol->size = value.number;
         }
 
-        else if (instr->relocation_symbol) {
+        else if ((tc->type == CT_CODE || tc->type == CT_DATA) && instr->relocation_symbol) {
             int relocation_type;
             if (instr->relocation_type)
                 relocation_type = instr->relocation_type; // Set by data handling code
@@ -687,22 +692,22 @@ void emit_code(void) {
                 relocation_type = R_X86_64_PC32;
 
             // Data instructions in the .txt section always need a relocation
-            if (instr->relocation_symbol->section_index != section_text.index || !is->is_code || instr->relocation_symbol->binding == STB_GLOBAL) {
+            if (instr->relocation_symbol->section_index != section_text.index || tc->type == CT_DATA || instr->relocation_symbol->binding == STB_GLOBAL) {
                 // The -4 is because this is a 32 bit relocation (so 4 bytes), and the relocated value applies after the code has been read, so has
                 // to be corrected for the size of the 32 bit operand.
-                int relocation_addend_offset = is->is_code ? -4 : 0;
+                int relocation_addend_offset = tc->type == CT_CODE ? -4 : 0;
                 add_relocation(
                     &section_rela_text, instr->relocation_symbol, relocation_type,
                     base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);
             }
 
             else {
-                if (is->using_primary) {
+                if (tc->cdc.using_primary) {
                     int relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // 32 bit address
                 }
                 else {
-                    instr = is->secondary;
+                    instr = tc->cdc.secondary;
 
                     // Double check relative offset doesn't exceed the limits of a signed char.
                     int relative_offset_int = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
@@ -716,9 +721,9 @@ void emit_code(void) {
             }
         }
 
-        if (!is->size_expr) {
-            if (is->is_zero)
-                add_zeros_to_section(&section_text, instr->size);
+        if (tc->type != CT_SIZE_EXPR) {
+            if (tc->type == CT_ZERO)
+                add_zeros_to_section(&section_text, tc->zec.size);
             else
                 add_to_section(&section_text, instr->data, instr->size);
         }
@@ -726,5 +731,5 @@ void emit_code(void) {
 }
 
 void init_parser(void) {
-    instruction_sets = new_list(10240);
+    text_chunks = new_list(10240);
 }
