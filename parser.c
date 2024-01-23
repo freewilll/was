@@ -85,8 +85,6 @@ static InstructionsSet *parse_data_directive_text(int relocation_type, int size)
 // Data in these sections are added to the section immediately. Also, relocations
 // can be added straight away since the offsets in the segment are known at his point.
 static InstructionsSet *parse_data_directive_data(int relocation_type, int size) {
-    if (get_current_section() == &section_text) return parse_data_directive_text(relocation_type, size);
-
     SimpleExpression expr = parse_simple_expression();
 
     if (expr.symbol) {
