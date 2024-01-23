@@ -129,7 +129,7 @@ InstructionsSet *parse_directive_statement(void) {
             if (current_section != &section_data && current_section != &section_rodata)
                 panic("Can only use .align in .data and .rodata sections");
 
-            if (value & (value - 1) != 0) panic(".align is not a power of 2");
+            if ((value & (value - 1)) != 0) panic(".align is not a power of 2");
 
             int new_size = (current_section->size + value - 1) & ~(value - 1);
             int needed_zeros =  new_size - current_section->size;
