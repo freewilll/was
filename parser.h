@@ -38,13 +38,15 @@ typedef struct text_chunk {
     List *symbols;              // Zero or more symbols associated with the address at this instruction
 } TextChunk;
 
-#define TEXT_CHUNK_SIZE(text_chunk) \
+#define TEXT_CHUNK_SIZE(text_chunk) ( \
     ((text_chunk)->type == CT_CODE || (text_chunk)->type == CT_DATA) \
         ? (text_chunk)->cdc.using_primary ? (text_chunk)->cdc.primary->size : (text_chunk)->cdc.secondary->size \
-        : (text_chunk)->zec.size
+        : (text_chunk)->zec.size \
+    )
+
+List *text_chunks;
 
 TextChunk *parse_instruction_statement(void);
-
 TextChunk *parse_directive_statement(void);
 void parse(void);
 void init_parser(void);

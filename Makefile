@@ -1,6 +1,7 @@
 all: was
 
 HEADERS = \
+	branches.h \
 	elf.h \
 	expr.h \
 	instr.h \
@@ -15,6 +16,7 @@ HEADERS = \
 	was.h \
 
 OBJECTS = \
+	branches.o \
 	elf.o \
 	expr.o \
 	instr.o \

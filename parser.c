@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "branches.h"
 #include "elf.h"
 #include "expr.h"
 #include "instr.h"
@@ -21,7 +22,7 @@ typedef struct simple_expression {
     long value;     // Optional value. If symbol is set, it's an offset
 } SimpleExpression;
 
-static List *text_chunks;
+List *text_chunks;
 
 // TODO remove skip
 static void skip() {
@@ -607,63 +608,8 @@ void parse(void) {
     }
 }
 
-// For all instructions that have symbols, update the offset of the symbol
-// based on the selection of primary/secondary instructions.
-void make_symbol_offsets(void) {
-    int offset = 0;
-
-    for (int i = 0; i < text_chunks->length; i++) {
-        TextChunk *tc = text_chunks->elements[i];
-
-        List *symbols = tc->symbols;
-        if (symbols) {
-            for (int j = 0; j < symbols->length; j++) {
-                Symbol *symbol = symbols->elements[j];
-                symbol->value = offset;
-                symbol->section_index = section_text.index;
-            }
-        }
-
-        if (tc->type != CT_SIZE_EXPR) offset += TEXT_CHUNK_SIZE(tc);
-    }
-}
-
-// Do one pass over all instructions and find branch instructions that
-// can be truncated due to proximity to its target.
-int reduce_branch_instructions(void) {
-    int offset = 0;
-
-    int changed = 0;
-
-    for (int i = 0; i < text_chunks->length; i++) {
-        TextChunk *tc = text_chunks->elements[i];
-
-        if (tc->cdc.using_primary && tc->cdc.secondary && tc->cdc.primary->relocation_symbol && tc->cdc.primary->relocation_symbol->section_index == section_text.index) {
-            int relative_offset = tc->cdc.primary->relocation_symbol->value - (offset + tc->cdc.secondary->relocation_offset + 1);
-
-            if (relative_offset >= -128 && relative_offset <= 127) {
-                tc->cdc.using_primary = 0;
-                changed = 1;
-            }
-        }
-
-        if (tc->type != CT_SIZE_EXPR) offset += TEXT_CHUNK_SIZE(tc);
-    }
-
-    return changed;
-}
-
-
 void emit_code(void) {
-    // Reduce code size by looking for near branch instructions
-    // using the secondary instructions in the set
-    make_symbol_offsets();
-
-    for (int i = 0; i < MAX_BRANCH_REDUCTIONS; i++) {
-        // This is a timebomb since it runs in O(n^2). To be revisited.
-        if (!reduce_branch_instructions()) break;
-        make_symbol_offsets();
-    }
+    reduce_branch_instructions();
 
     // Add the code to the .text section
     for (int i = 0; i < text_chunks->length; i++) {
@@ -691,7 +637,7 @@ void emit_code(void) {
             else
                 relocation_type = R_X86_64_PC32;
 
-            // Data instructions in the .txt section always need a relocation
+            // Data instructions in the .text section always need a relocation
             if (instr->relocation_symbol->section_index != section_text.index || tc->type == CT_DATA || instr->relocation_symbol->binding == STB_GLOBAL) {
                 // The -4 is because this is a 32 bit relocation (so 4 bytes), and the relocated value applies after the code has been read, so has
                 // to be corrected for the size of the 32 bit operand.
@@ -701,6 +647,7 @@ void emit_code(void) {
                     base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);
             }
 
+            // The symbol address is known and can be used directly.
             else {
                 if (tc->cdc.using_primary) {
                     int relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;

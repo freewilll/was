@@ -739,6 +739,96 @@ void test_reduce_branch_instructions(void) {
         0x90,           // nop
         0x90,           // nop
         END);
+
+    // 121 zeroes: both branches get shortened
+    input =
+        "nop\n"
+        "jne a\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "jne b\n"
+        "nop\n"
+        ".zero 121\n"
+        "a: nop\n"
+        "b: nop\n";
+
+    test_full_assembly("reduce_branch_instructions with 121 zeros", input,
+        0x90,                   // nop
+        0x75, 0x7f,             // jne a
+        0x90, 0x90, 0x90,       // nop * 3
+        0x75, 0x7b,             // jne b
+        0x90,                   // nop
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 121 zeroes
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0,
+        0x90,                   // a: nop
+        0x90,                   // b: nop
+        END);
+
+    // 122 zeroes: only the second branch gets shortened
+    input =
+        "nop\n"
+        "jne a\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "jne b\n"
+        "nop\n"
+        ".zero 122\n"
+        "a: nop\n"
+        "b: nop\n";
+
+    test_full_assembly("reduce_branch_instructions with 122 zeros", input,
+        0x90,                                   // nop
+        0x0f, 0x85, 0x80, 0x00, 0x00, 0x00,     // jne a
+        0x90, 0x90, 0x90,                       // nop * 3
+        0x75, 0x7c,                             // jne b
+        0x90,                                   // nop
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 122 zeroes
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0,
+        0x90,                   // a: nop
+        0x90,                   // b: nop
+        END);
+
+    // 126 zeroes: no  branches are shortened
+    input =
+        "nop\n"
+        "jne a\n"
+        "nop\n"
+        "nop\n"
+        "nop\n"
+        "jne b\n"
+        "nop\n"
+        ".zero 126\n"
+        "a: nop\n"
+        "b: nop\n";
+
+    test_full_assembly("reduce_branch_instructions with 126 zeros", input,
+        0x90,                                   // nop
+        0x0f, 0x85, 0x88, 0x00, 0x00, 0x00,     // jne a
+        0x90, 0x90, 0x90,                       // nop * 3
+        0x0f, 0x85, 0x80, 0x00, 0x00, 0x00,     // jne a
+        0x90,                                   // nop
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, // 126 zeroes
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0x90,                   // a: nop
+        0x90,                   // b: nop
+        END);
 }
 
 // foo is not defined, so must be added to the relocation table.
@@ -1145,7 +1235,7 @@ int main() {
     init_tests();
 
     test_parse_instruction_statement();
-    // test_reduce_branch_instructions(); // TODO: Disabled due to bugs in the algorithm
+    test_reduce_branch_instructions();
     test_relocations_with_rip_and_undefined_symbol();
     test_relocations_with_rip_and_defined_symbol();
     test_local_defined_symbol_relocation();
