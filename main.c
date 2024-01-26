@@ -17,6 +17,7 @@ int main(int argc, char **argv) {
         if (*argv[0] == '-') {
                  if (argc > 0 && !strcmp(argv[0], "-h"   )) { help = 1;    argc--; argv++; }
             else if (argc > 0 && !strcmp(argv[0], "-v"   )) { verbose = 1; argc--; argv++; }
+            else if (argc > 0 && !strcmp(argv[0], "-64"  )) {              argc--; argv++; }
             else if (argc > 1 && !memcmp(argv[0], "-o", 2)) {
                 output_filename = argv[1];
                 argc -= 2;
@@ -44,6 +45,7 @@ int main(int argc, char **argv) {
         printf("-h      Help\n");
         printf("-v      Display the programs invoked by the compiler\n");
         printf("-o      Output filename\n");
+        printf("-64     Select x86-64 architecture (for compatibility with gnu as)\n");
         exit(1);
     }
 
