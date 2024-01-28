@@ -712,8 +712,9 @@ void test_parse_instruction_statement() {
     test_assembly("pop      %rbx", 0x5b, END);
     test_assembly("pop      %r15", 0x41, 0x5f, END);
 
-    test_assembly("callq    foo@PLT", 0xe8, 00, 00, 00, 00, END);
-    test_assembly("callq    1",       0xe8, 00, 00, 00, 00, END);
+    test_assembly("callq    foo@PLT",       0xe8, 00, 00, 00, 00, END);
+    test_assembly("callq    foo@GOTPCREL",  0xe8, 00, 00, 00, 00, END);
+    test_assembly("callq    1",             0xe8, 00, 00, 00, 00, END);
 
     test_assembly("callq    *%rbx",         0xff, 0xd3, END);
     test_assembly("callq    *%r15",   0x41, 0xff, 0xd7, END);
@@ -1167,6 +1168,52 @@ void test_data_with_defined_symbol(void) {
     );
 }
 
+void test_GOTPCREL_relocations(void) {
+    char *input;
+
+    input = "movq foo@GOTPCREL(%rip), %rax"; // With foo undefined
+
+    test_full_assembly("test_GOTPCREL_relocations movq foo@GOTPCREL(%rip)", input,
+        0x48, 0x8b, 0x05, 0x00, 0x00, 0x00, 0x00, END);
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_REX_GOTP, first_symbol_index, 0x03, -4,
+        END
+    );
+
+    input = "foo: nop; movq foo@GOTPCREL(%rip), %rax"; // With foo defined
+    test_full_assembly("test_GOTPCREL_relocations movq foo@GOTPCREL(%rip), %rax", input,
+        0x90,
+        0x48, 0x8b, 0x05, 0x00, 0x00, 0x00, 0x00,
+        END);
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_REX_GOTP, first_symbol_index, 0x04, -4,
+        END
+    );
+
+    input = "callq foo@GOTPCREL"; // With foo undefined
+    test_full_assembly("test_GOTPCREL_relocations callq foo@GOTPCREL", input,
+        0xe8, 0x00, 0x00, 0x00, 0x00,
+        END);
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_REX_GOTP, first_symbol_index, 0x01, -4,
+        END
+    );
+
+    input = "foo: nop; callq foo@GOTPCREL"; // With foo defined
+    test_full_assembly("test_GOTPCREL_relocations callq foo@GOTPCREL", input,
+        0x90,
+        0xe8, 0x00, 0x00, 0x00, 0x00,
+        END);
+
+    assert_relocations(&section_rela_text,
+        R_X86_64_REX_GOTP, first_symbol_index, 0x02, -4,
+        END
+    );
+}
+
 // Ensure data is placed together with surrounding instructions instead of at the start
 // of the section.
 void test_zero_in_text_section(void) {
@@ -1260,6 +1307,7 @@ int main() {
     test_global_defined_symbol_relocation();
     test_data_with_undefined_symbol();
     test_data_with_defined_symbol();
+    test_GOTPCREL_relocations();
     test_zero_in_text_section();
     test_symbol_types_and_binding();
     test_size_with_number();

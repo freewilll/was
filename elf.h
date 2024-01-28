@@ -44,16 +44,17 @@
 // L Represents the place (section offset or address) of the Procedure Linkage Table entry for a symbol.
 // P Represents the place (section offset or address) of the storage unit being relocated (computed using r_offset).
 // https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/+/02075080d51c371ae87b9898bf84a085e436ee27/sysroot/usr/include/elf.h#2526
-#define R_X86_64_NONE   0   // No calculation
-#define R_X86_64_64     1   // Direct 64 bit                 S + A
-#define R_X86_64_PC32   2   // PC relative 32 bit signed     S + A - P
-#define R_X86_64_GOT32  3   // 32 bit GOT entry              G + A
-#define R_X86_64_PLT32  4   // 32 bit PLT address            L + A - P
-#define R_X86_64_32    10   // Direct 8 bit                  S + A
-#define R_X86_64_32S   11   // Direct 8 bit sign extended    S + A
-#define R_X86_64_16    12   // Direct 8 bit                  S + A
-#define R_X86_64_16S   13   // Direct 8 bit sign extended    S + A
-#define R_X86_64_8     14   // Direct 8 bit                  S + A
+#define R_X86_64_NONE            0   // No calculation
+#define R_X86_64_64              1   // Direct 64 bit                 S + A
+#define R_X86_64_PC32            2   // PC relative 32 bit signed     S + A - P
+#define R_X86_64_GOT32           3   // 32 bit GOT entry              G + A
+#define R_X86_64_PLT32           4   // 32 bit PLT address            L + A - P
+#define R_X86_64_32             10   // Direct 8 bit                  S + A
+#define R_X86_64_32S            11   // Direct 8 bit sign extended    S + A
+#define R_X86_64_16             12   // Direct 8 bit                  S + A
+#define R_X86_64_16S            13   // Direct 8 bit sign extended    S + A
+#define R_X86_64_8              14   // Direct 8 bit                  S + A
+#define R_X86_64_REX_GOTP       42   // Introduced in GNU binutils 2.26
 
 #define E_MACHINE_TYPE_X86_64   0x3e
 #define ET_REL   1                         // relocatable

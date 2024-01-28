@@ -137,7 +137,7 @@ void assert_relocations(ElfSection* section, ...) {
 
         ElfRelocation *r = (ElfRelocation *) &section->data[pos];
 
-        int got_type         = r->r_info & 31;
+        int got_type         = r->r_info & -1;
         int got_symbol_index = r->r_info >> 32;
         int got_offset       = r->r_offset;
         int got_addend       = r->r_addend;

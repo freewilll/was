@@ -359,6 +359,12 @@ static void preprocess_op_relocation(Operand *op, char *identifier) {
         symbol_name[strlen(identifier) - 4] = 0;
         identifier = symbol_name;
     }
+    else if (string_ends_with(identifier, "@GOTPCREL")) {
+        char *symbol_name = strdup(identifier);
+        symbol_name[strlen(identifier) - 9] = 0;
+        identifier = symbol_name;
+        op->relocation_type = R_X86_64_REX_GOTP;
+    }
     else
         identifier = strdup(identifier);
 
@@ -529,7 +535,9 @@ TextChunk *parse_instruction_statement(void) {
 
     if (relocation_op) {
         int relocation_type;
-        if (text_chunk->cdc.primary->branch) // This is set for branch opcodes
+        if (relocation_op->relocation_type)
+            relocation_type = relocation_op->relocation_type;
+        else if (text_chunk->cdc.primary->branch) // This is set for branch opcodes
             relocation_type = R_X86_64_PLT32;
         else
             relocation_type = R_X86_64_PC32;
@@ -638,7 +646,13 @@ void emit_code(void) {
                 relocation_type = R_X86_64_PC32;
 
             // Does the symbol need an entry in the relocation table?
-            if (instr->relocation_symbol->section_index != section_text.index || tc->type == CT_DATA || instr->relocation_symbol->binding == STB_GLOBAL) {
+            if (
+                    instr->relocation_symbol->section_index != section_text.index ||
+                    tc->type == CT_DATA ||
+                    instr->relocation_symbol->binding == STB_GLOBAL ||
+                    instr->relocation_type == R_X86_64_REX_GOTP
+                    ) {
+
                 // For code relocations , a relative relocation is calculated from the end of the instruction.
                 // The linker doesn't know this though, so it needs to get an
                 // addend = -(instr->size - instr->relocation_offset)

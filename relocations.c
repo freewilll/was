@@ -27,7 +27,8 @@ void add_elf_relocations(void) {
         Relocation *r = relocations->elements[i];
 
         // Global symbols that have been declared don't get rewritten to a section offset.
-        if (r->symbol->section_index && !r->symbol->binding == STB_GLOBAL) {
+        // Symbols that use the global offset table also don't get rewritten to a section offset.
+        if (r->symbol->section_index && !r->symbol->binding == STB_GLOBAL && r->type != R_X86_64_REX_GOTP) {
             // By convention, the section indexes correspond with the symbol table indexes..
             add_elf_relocation(r->section, r->type, r->symbol->section_index, r->offset, r->symbol->value + r->addend);
         }

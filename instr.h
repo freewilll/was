@@ -64,6 +64,7 @@ typedef struct operand {
     int base;                   // SIB base register
     Symbol *relocation_symbol;
     int relocation_addend;      // Addend in the relocation table
+    int relocation_type;        // May be set in the parsing code
 } Operand;
 
 // A chunk of data in the .text segment. This could be a single instruction or data.
