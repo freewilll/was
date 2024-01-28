@@ -637,11 +637,12 @@ void emit_code(void) {
             else
                 relocation_type = R_X86_64_PC32;
 
-            // Data instructions in the .text section always need a relocation
+            // Does the symbol need an entry in the relocation table?
             if (instr->relocation_symbol->section_index != section_text.index || tc->type == CT_DATA || instr->relocation_symbol->binding == STB_GLOBAL) {
-                // The -4 is because this is a 32 bit relocation (so 4 bytes), and the relocated value applies after the code has been read, so has
-                // to be corrected for the size of the 32 bit operand.
-                int relocation_addend_offset = tc->type == CT_CODE ? -4 : 0;
+                // For code relocations , a relative relocation is calculated from the end of the instruction.
+                // The linker doesn't know this though, so it needs to get an
+                // addend = -(instr->size - instr->relocation_offset)
+                int relocation_addend_offset = tc->type == CT_CODE ? instr->relocation_offset - instr->size : 0;
                 add_relocation(
                     &section_rela_text, instr->relocation_symbol, relocation_type,
                     base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);

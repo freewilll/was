@@ -831,6 +831,23 @@ void test_reduce_branch_instructions(void) {
         END);
 }
 
+void test_relocations_with_imm_rip_and_undefined_symbol(void) {
+    char *input = "movl $0x42, foo(%rip)";
+
+    test_full_assembly("test_relocations_with_call", input,
+        0xc7, 0x05,              // opcode and mod/rm
+        0x00, 0x00, 0x00, 0x00,  // displacement
+        0x42, 0x00, 0x00, 0x00,  // immediate
+        END);
+
+    // The offset is 2 and instruction size 10.
+    // The relocation has to have an addend of -(10 - 2) = -8
+    assert_relocations(&section_rela_text,
+        R_X86_64_PC32, first_symbol_index, 0x02, 0x00 - 8,
+        END
+    );
+}
+
 // foo is not defined, so must be added to the relocation table.
 // A 32 bit RIP-relative relocation is added + different addends
 void test_relocations_with_rip_and_undefined_symbol(void) {
@@ -1236,6 +1253,7 @@ int main() {
 
     test_parse_instruction_statement();
     test_reduce_branch_instructions();
+    test_relocations_with_imm_rip_and_undefined_symbol();
     test_relocations_with_rip_and_undefined_symbol();
     test_relocations_with_rip_and_defined_symbol();
     test_local_defined_symbol_relocation();

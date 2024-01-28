@@ -528,8 +528,17 @@ static void emit_displacement(Instructions *instr, Encoding *enc) {
 
 static void emit_imm_or_memory(Instructions *instr, Encoding *enc) {
     int value_size = enc->imm_or_mem_size;
-    instr->relocation_offset = instr->size;
-    instr->relocation_size = value_size;
+
+    // A relocation can be either encoded as a displacement or memory.
+    // Check if a relocation has already been added due to a displacement, otherwise
+    // it will be due to memory.
+    // This is a bit fragile, the code here can set the relocation
+    // values for immediates, but they are ignored by the code emission.
+    if (!instr->relocation_size) {
+        instr->relocation_offset = instr->size;
+        instr->relocation_size = value_size;
+    }
+
     long value = enc->branch ? 0 : enc->imm_or_mem;
     emit_value(instr, value_size, value);
 }
