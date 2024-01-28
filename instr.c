@@ -431,6 +431,8 @@ static Encoding make_encoding(Operand *op1, Operand *op2, Operand *op3, Opcode *
     if (op2 && (OP_TYPE_IS_IMM(op2) || OP_TYPE_IS_MEM(op2))) make_imm_or_memory_size(&enc, &opcode->op2, op2);
     if (op3 && (OP_TYPE_IS_IMM(op3) || OP_TYPE_IS_MEM(op3))) make_imm_or_memory_size(&enc, &opcode->op3, op3);
 
+    if (opcode->op1.type == AT_1) enc.imm_or_mem_size = 0; // Disable emission of immediate 1
+
     return enc;
 }
 
@@ -594,24 +596,40 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Opera
             print_opcode(opcode);
             #endif
 
-            int opcode_arg_count = check_args(opcode, op1, op2, op3);
+            // Rewritten opcodes
+            Operand *rop1 = op1;
+            Operand *rop2 = op2;
+            Operand *rop3 = op3;
+
+            // Add an immediate one of the opcode defines it
+            if (opcode->op1.type == AT_1) {
+                static Operand imm1_op;
+                imm1_op.type = IMM08;
+                imm1_op.imm_or_mem_value = 1;
+
+                rop1 = &imm1_op;
+                rop2 = op1;
+                rop3 = op2;
+            }
+
+            int opcode_arg_count = check_args(opcode, rop1, rop2, rop3);
             if (opcode_arg_count == -1) continue; // The number of args mismatch
 
-            int size = get_operation_size(opcode, opcode_alias, op1, op2, op3);
+            int size = get_operation_size(opcode, opcode_alias, rop1, rop2, rop3);
 
             int op1_size = size;
             int op2_size = size;
             int op3_size = size;
 
             if (opcode->conver) {
-                if (op1 && !OP_HAS_SIZE(op1)) op1_size = opcode_alias->op1_size;
-                if (op2 && !OP_HAS_SIZE(op2)) op2_size = opcode_alias->op2_size;
+                if (rop1 && !OP_HAS_SIZE(rop1)) op1_size = opcode_alias->op1_size;
+                if (rop2 && !OP_HAS_SIZE(rop2)) op2_size = opcode_alias->op2_size;
             }
 
             // Check for match
-            if (op1 && !op_matches(opcode, opcode_alias->op1_size, &opcode->op1, op1, op1_size)) continue;
-            if (op2 && !op_matches(opcode, opcode_alias->op2_size, &opcode->op2, op2, op2_size)) continue;
-            if (op3 && !op_matches(opcode, opcode_alias->op3_size, &opcode->op3, op3, op3_size)) continue;
+            if (rop1 && !op_matches(opcode, opcode_alias->op1_size, &opcode->op1, rop1, op1_size)) continue;
+            if (rop2 && !op_matches(opcode, opcode_alias->op2_size, &opcode->op2, rop2, op2_size)) continue;
+            if (rop3 && !op_matches(opcode, opcode_alias->op3_size, &opcode->op3, rop3, op3_size)) continue;
 
             // At this point, the opcode can be used to generate code
             #ifdef DEBUG
@@ -619,7 +637,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Opera
             #endif
 
             // Encode instruction
-            Encoding enc = make_encoding(op1, op2, op3, opcode, opcode_alias, opcode_arg_count, size);
+            Encoding enc = make_encoding(rop1, rop2, rop3, opcode, opcode_alias, opcode_arg_count, size);
 
             int enc_size = encoding_size(&enc);
 

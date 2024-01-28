@@ -580,6 +580,23 @@ void test_parse_instruction_statement() {
     test_assembly("sarl   %cl,                          %r15d",             0x41, 0xd3, 0xff, END);
     test_assembly("sarq   %cl,                          %r15",              0x49, 0xd3, 0xff, END);
 
+    test_assembly("shr    %bl" ,                                      0xd0, 0xeb,       END);
+    test_assembly("shl    %bl" ,                                      0xd0, 0xe3,       END);
+    test_assembly("shr    %bx" ,                                0x66, 0xd1, 0xeb,       END);
+    test_assembly("shl    %bx" ,                                0x66, 0xd1, 0xe3,       END);
+    test_assembly("shr    %ebx",                                      0xd1, 0xeb,       END);
+    test_assembly("shl    %ebx",                                      0xd1, 0xe3,       END);
+    test_assembly("shr    %rbx",                                0x48, 0xd1, 0xeb,       END);
+    test_assembly("shl    %rbx",                                0x48, 0xd1, 0xe3,       END);
+    test_assembly("shr    $0x2,                         %bl",         0xc0, 0xeb, 0x02, END);
+    test_assembly("shl    $0x2,                         %bl",         0xc0, 0xe3, 0x02, END);
+    test_assembly("shr    $0x2,                         %bx",   0x66, 0xc1, 0xeb, 0x02, END);
+    test_assembly("shl    $0x2,                         %bx",   0x66, 0xc1, 0xe3, 0x02, END);
+    test_assembly("shr    $0x2,                         %ebx",        0xc1, 0xeb, 0x02, END);
+    test_assembly("shl    $0x2,                         %ebx",        0xc1, 0xe3, 0x02, END);
+    test_assembly("shr    $0x2,                         %rbx",  0x48, 0xc1, 0xeb, 0x02, END);
+    test_assembly("shl    $0x2,                         %rbx",  0x48, 0xc1, 0xe3, 0x02, END);
+
     test_assembly("cmp    $0x42,                        %al",          0x3c, 0x42, END);
 
     test_assembly("comiss  %xmm14,                      %xmm15",             0x45, 0x0f, 0x2f, 0xfe, END);

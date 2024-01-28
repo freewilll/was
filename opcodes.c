@@ -12,7 +12,7 @@
 
 static char *am_strings[] = { " ", "C", "D", "E", "ES", "EST", "G", "I", "J", "H", "M", "O", "R", "S", "ST", "T", "V", "W", "Z" };
 
-static char *type_strings[] = { "  ", "b", "bs", "bss", "d", "di", "dr", "dq", "dqp", "er", "q", "qi", "qp", "sr", "ss", "sd", "v", "vds", "vq", "vqp", "vs", "w", "wi"};
+static char *type_strings[] = { "  ", "b", "bs", "bss", "d", "di", "dr", "dq", "dqp", "er", "q", "qi", "qp", "sr", "ss", "sd", "v", "vds", "vq", "vqp", "vs", "w", "wi", "1"};
 
 StrMap *opcode_alias_map;
 

@@ -249,6 +249,7 @@ class OperandType(Enum):
     vs = "vs"  # Word or doubleword sign extended to the size of the stack pointer (for example, PUSH (68)).
     w = "w"  #  Word
     wi = "wi"  #  Word Integer (x87 FPU only)
+    one = "1"  # Immediate 1. Not an official operand type, but convenient.
 
 
 OPERAND_TYPE_TO_SIZES = {
@@ -274,6 +275,7 @@ OPERAND_TYPE_TO_SIZES = {
     OperandType.vs: set([Size.SIZE16, Size.SIZE32]),
     OperandType.w: set([Size.SIZE16]),
     OperandType.wi: set([Size.SIZE16]),
+    OperandType.one: set([Size.SIZE08]),
 }
 
 # Operand types that have the operand-size attribute set
@@ -428,6 +430,13 @@ def parse_operand(entry, operand: str) -> List[WasOperand]:
             # This is not really an addressing mode, but it's convenient
             # to treat an ST src/dst as such
             am = AddressingMode.ST
+
+        # Immediate 1
+        address = operand.get("address")
+        if address is not None:
+            if address == "I":
+                am = AddressingMode.I
+                type = OperandType.one
 
         was_operand = WasOperand.from_am_and_type(am, type)
         results.append(was_operand)

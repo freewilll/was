@@ -50,6 +50,7 @@
 #define AT_VS   20   // # Word or doubleword sign extended to the size of the stack pointer (for example, PUSH (68)).
 #define AT_W    21   // # Word
 #define AT_WI   22   // # Word Integer (x87 FPU only)
+#define AT_1    23   // Immediate one. Not part of the official spec
 
 typedef struct opcode_op {
     int am;                     // Addressing mode
