@@ -15,8 +15,6 @@
 #include "utils.h"
 #include "was.h"
 
-#define MAX_BRANCH_REDUCTIONS 0 // TODO: Disabled due to bugs in the algorithm
-
 typedef struct simple_expression {
     Symbol *symbol; // Optional symbol
     long value;     // Optional value. If symbol is set, it's an offset
