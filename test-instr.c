@@ -1340,6 +1340,14 @@ static void test_size_difference(void) {
         1, 0, STT_NOTYPE, STB_LOCAL,  text_index, "bar",
         0, 1, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF,  "obj", // Size of nop instruction
         END);
+
+    // Ensure the . symbol doesn't make it into the symbol table
+    test_full_assembly("foo: nop; .size obj, . - foo", "foo: nop; .size obj, . - foo", 0x90, END);
+
+    assert_symbols(
+        0, 0, STT_NOTYPE, STB_LOCAL,  text_index, "foo",
+        0, 1, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF,  "obj", // Size of nop instruction
+        END);
 }
 
 int main() {
