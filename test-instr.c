@@ -1249,6 +1249,7 @@ void test_zero_in_text_section(void) {
 void test_symbol_types_and_binding(void) {
     int text_index = section_text.index;
     int data_index = section_data.index;
+    int bss_index  = section_bss.index;
 
     test_full_assembly("default symbol type is NOTYPE", "foo: nop", 0x90, END);
     assert_symbols(0, 0, STT_NOTYPE, STB_LOCAL, text_index, "foo", END);
@@ -1286,8 +1287,37 @@ void test_symbol_types_and_binding(void) {
         1, 0, STT_NOTYPE, STB_GLOBAL, text_index, "bar",
         END);
 
+    // A .local symbol
+    test_full_assembly("a .local symbol", ".local foo", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF, "foo", END);
+
+    // A .comm symbol
     test_full_assembly("a .comm symbol", ".comm foo, 8, 16", END);
     assert_symbols(16, 8, STT_OBJECT, STB_GLOBAL, SHN_COMMON, "foo", END);
+
+    // A .comm symbol followed by a .local; the .local doesn't change anything
+    test_full_assembly("a .comm symbol", ".comm foo, 8, 16; .local foo", END);
+    assert_symbols(16, 8, STT_OBJECT, STB_GLOBAL, SHN_COMMON, "foo", END);
+
+    // Two.local symbols followed by a .comm; they get allocated in the bss section
+    test_full_assembly("three .local symbols followed by .comm",
+        ".local foo1; .comm foo1, 8, 16;"
+        ".local foo2; .comm foo2, 4, 8;"
+        ".local foo3; .comm foo3, 4, 8",
+        END);
+    assert_symbols(
+        0,  8, STT_OBJECT, STB_LOCAL, bss_index, "foo1", // The odd order is due to the strmap_iterator
+        12, 4, STT_OBJECT, STB_LOCAL, bss_index, "foo3",
+        8,  4, STT_OBJECT, STB_LOCAL, bss_index, "foo2",
+        END);
+
+    // A .local followed by a .globl
+    test_full_assembly("a .local followed by a .globl", ".local foo; .globl foo", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF, "foo", END);
+
+    // A .globl followed by a .local
+    test_full_assembly("a .globl followed by a .local", ".globl foo; .local foo", END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_GLOBAL, SHN_UNDEF, "foo", END);
 }
 
 static void test_size_with_number(void) {

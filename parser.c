@@ -159,24 +159,6 @@ TextChunk *parse_directive_statement(void) {
             result = parse_data_directive(R_X86_64_64, 8);
             break;
 
-        case TOK_DIRECTIVE_COMM: {
-            expect(TOK_IDENTIFIER, "symbol");
-            Symbol *symbol = get_or_add_symbol(strdup(cur_identifier));
-            next();
-            consume(TOK_COMMA, ",");
-            long size = parse_signed_integer();
-            consume(TOK_COMMA, ",");
-            long alignment = parse_signed_integer();
-
-            symbol->type = STT_OBJECT;
-            symbol->binding = STB_GLOBAL;
-            symbol->size = size;
-            symbol->value = alignment;
-            symbol->section_index = SHN_COMMON;
-
-            break;
-        }
-
         case TOK_DIRECTIVE_DATA:
             set_current_section(".data");
             break;
@@ -186,6 +168,43 @@ TextChunk *parse_directive_statement(void) {
             add_file_symbol(strdup(cur_string_literal.data));
             next();
             break;
+
+        case TOK_DIRECTIVE_COMM: {
+            expect(TOK_IDENTIFIER, "symbol");
+
+            // Need to see if the symbol is preexisting and was flagged as a local
+            Symbol *symbol = get_symbol(cur_identifier);
+            int was_local = 0;
+            if (!symbol)
+                symbol = add_symbol(strdup(cur_identifier));
+            else
+                was_local = symbol->binding == STB_LOCAL;
+
+            next();
+            consume(TOK_COMMA, ",");
+            long size = parse_signed_integer();
+            consume(TOK_COMMA, ",");
+            long alignment = parse_signed_integer();
+
+            symbol->type = STT_OBJECT;
+            symbol->size = size;
+
+            if (was_local) {
+                // The symbol was already declared as .local. Adding a .comm to that
+                // allocates local bss storage for it.
+                symbol->section_index = section_bss.index;
+                symbol->value = section_bss.size;
+                section_bss.size += symbol->size;
+            }
+            else {
+                // The symbol may be merged with other symbols and so becomes global
+                symbol->section_index = SHN_COMMON;
+                symbol->value = alignment;
+                symbol->binding = STB_GLOBAL;
+            }
+
+            break;
+        }
 
         case TOK_DIRECTIVE_GLOBL: {
             expect(TOK_IDENTIFIER, "symbol");
@@ -198,7 +217,7 @@ TextChunk *parse_directive_statement(void) {
         case TOK_DIRECTIVE_LOCAL: {
             expect(TOK_IDENTIFIER, "symbol");
             Symbol *symbol = get_or_add_symbol(strdup(cur_identifier));
-            symbol->binding = STB_LOCAL;
+            if (symbol->binding != STB_GLOBAL) symbol->binding = STB_LOCAL; // Global trumps local
             next();
             break;
         }

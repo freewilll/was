@@ -15,13 +15,8 @@ Symbol *get_symbol(char *name) {
     return (Symbol *) strmap_get(symbols, name);
 }
 
-// Retrieve a symbol. If it doesn't exist, create one.
-Symbol *get_or_add_symbol(char *name) {
-    Symbol *symbol = strmap_get(symbols, name);
-
-    if (symbol) return symbol;
-
-    symbol = calloc(1, sizeof(Symbol));
+Symbol *add_symbol(char *name) {
+    Symbol *symbol = calloc(1, sizeof(Symbol));
 
     symbol->name    = name;
     symbol->type    = STT_NOTYPE;
@@ -32,4 +27,14 @@ Symbol *get_or_add_symbol(char *name) {
     strmap_put(symbols, name, symbol);
 
     return symbol;
+}
+
+// Retrieve a symbol. If it doesn't exist, create one.
+Symbol *get_or_add_symbol(char *name) {
+    Symbol *symbol = strmap_get(symbols, name);
+
+    if (symbol)
+        return symbol;
+    else
+    return add_symbol(name);
 }

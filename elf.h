@@ -137,10 +137,11 @@ typedef struct elf_relocation {
 } ElfRelocation;
 
 extern ElfSection section_text;
-extern ElfSection section_data;
-extern ElfSection section_rodata;
 extern ElfSection section_rela_text;
+extern ElfSection section_data;
 extern ElfSection section_rela_data;
+extern ElfSection section_bss;
+extern ElfSection section_rodata;
 extern ElfSection section_rela_rodata;
 extern ElfSection section_symtab;
 extern ElfSection section_strtab;

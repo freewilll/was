@@ -17,6 +17,7 @@ extern StrMap *symbols;
 
 void init_symbols(void);
 Symbol *get_symbol(char *name);
+Symbol *add_symbol(char *name);
 Symbol *get_or_add_symbol(char *name);
 
 #endif

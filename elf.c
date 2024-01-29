@@ -262,7 +262,10 @@ static int layout_elf_sections(ElfSectionHeader *section_headers) {
 void copy_sections_to_elf(char *program) {
     for (int i = 0; i < section_count; i++) {
         ElfSection *section = sections[i];
-        memcpy(&program[section->start], section->data, section->size);
+
+        // All sections have data other than bss
+        if (section->index != section_bss.index)
+            memcpy(&program[section->start], section->data, section->size);
     }
 }
 
