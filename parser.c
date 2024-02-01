@@ -20,7 +20,12 @@ typedef struct simple_expression {
     long value;     // Optional value. If symbol is set, it's an offset
 } SimpleExpression;
 
-List *text_chunks;
+StrMap *chunks_map;     // Map from section name to a list of chunks
+List *cur_chunks;       // Chunks list for current section
+
+static void set_cur_chunks(void) {
+    cur_chunks = strmap_get(chunks_map, get_current_section()->name);
+}
 
 // TODO remove skip
 static void skip() {
@@ -55,20 +60,10 @@ static SimpleExpression parse_simple_expression(void) {
     return result;
 }
 
-// Add primary instructions to new instruction set and add it to the list
-static TextChunk *add_data_to_text_chunks(Instructions instr) {
-    TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
-    text_chunk->type = CT_DATA;
-    append_to_list(text_chunks, text_chunk);
-    text_chunk->cdc.primary = malloc(sizeof(Instructions));
-    *text_chunk->cdc.primary = instr;
-    text_chunk->cdc.using_primary = 1;
-}
-
 // Parse .byte, .word, .long and .quad in .text section
 // Data in the .text segment is processed in a second phase in emit_code(), like
 // instructions.
-static TextChunk *parse_data_directive_text(int relocation_type, int size) {
+static Chunk *parse_data_directive_text(int relocation_type, int size) {
     SimpleExpression expr = parse_simple_expression();
 
     Instructions instr = {0};
@@ -82,13 +77,20 @@ static TextChunk *parse_data_directive_text(int relocation_type, int size) {
     else
         memcpy(instr.data, &expr.value, size);
 
-    return add_data_to_text_chunks(instr);
+    Chunk *chunk = calloc(1, sizeof(Chunk));
+    chunk->type = CT_DATA;
+    append_to_list(cur_chunks, chunk);
+    chunk->cdc.primary = malloc(sizeof(Instructions));
+    *chunk->cdc.primary = instr;
+    chunk->cdc.using_primary = 1;
+
+    return chunk;
 }
 
 // Parse .byte, .word, .long and .quad in a non .text section
 // Data in these sections are added to the section immediately. Also, relocations
 // can be added straight away since the offsets in the segment are known at his point.
-static TextChunk *parse_data_directive_data(int relocation_type, int size) {
+static Chunk *parse_data_directive_data(int relocation_type, int size) {
     SimpleExpression expr = parse_simple_expression();
 
     if (expr.symbol) {
@@ -105,15 +107,15 @@ static TextChunk *parse_data_directive_data(int relocation_type, int size) {
 }
 
 // Parse .byte, .word, .long and .quad
-static TextChunk *parse_data_directive(int relocation_type, int size) {
+static Chunk *parse_data_directive(int relocation_type, int size) {
     if (get_current_section() == section_text)
         return parse_data_directive_text(relocation_type, size);
     else
         return parse_data_directive_data(relocation_type, size);
 }
 
-TextChunk *parse_directive_statement(void) {
-    TextChunk *result = NULL;
+Chunk *parse_directive_statement(void) {
+    Chunk *result = NULL;
     int directive = cur_token;
     next();
 
@@ -121,9 +123,6 @@ TextChunk *parse_directive_statement(void) {
         case TOK_DIRECTIVE_ALIGN: {
             long value = parse_signed_integer();
             Section *current_section = get_current_section();
-            if (current_section == section_text)
-                panic("Cannot only use .align in .text section");
-
             if ((value & (value - 1)) != 0) panic(".align is not a power of 2");
 
             int new_size = (current_section->size + value - 1) & ~(value - 1);
@@ -152,6 +151,7 @@ TextChunk *parse_directive_statement(void) {
 
         case TOK_DIRECTIVE_DATA:
             set_current_section(".data");
+            set_cur_chunks();
             break;
 
         case TOK_DIRECTIVE_FILE:
@@ -266,6 +266,7 @@ TextChunk *parse_directive_statement(void) {
             if (!get_section(name)) add_section(name, type, flags, 1);
 
             set_current_section(name); // Auto creates the section
+            set_cur_chunks();
 
             break;
 
@@ -281,11 +282,11 @@ TextChunk *parse_directive_statement(void) {
                 symbol->size = root->value->number;
             }
             else {
-                TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
-                text_chunk->type = CT_SIZE_EXPR;
-                text_chunk->sic.size_expr = root;
-                text_chunk->sic.size_symbol = symbol;
-                append_to_list(text_chunks, text_chunk);
+                Chunk *chunk = calloc(1, sizeof(Chunk));
+                chunk->type = CT_SIZE_EXPR;
+                chunk->sic.size_expr = root;
+                chunk->sic.size_symbol = symbol;
+                append_to_list(cur_chunks, chunk);
             }
 
             break;
@@ -299,6 +300,7 @@ TextChunk *parse_directive_statement(void) {
 
         case TOK_DIRECTIVE_TEXT:
             set_current_section(".text");
+            set_cur_chunks();
             break;
 
         case TOK_DIRECTIVE_TYPE:
@@ -326,11 +328,11 @@ TextChunk *parse_directive_statement(void) {
 
         case TOK_DIRECTIVE_ZERO: {
             if (get_current_section() == section_text) {
-                TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
-                append_to_list(text_chunks, text_chunk);
+                Chunk *chunk = calloc(1, sizeof(Chunk));
+                append_to_list(cur_chunks, chunk);
 
-                text_chunk->type = CT_ZERO;
-                text_chunk->zec.size = cur_long;
+                chunk->type = CT_ZERO;
+                chunk->zec.size = cur_long;
             }
             else
                 add_zeros_to_current_section(cur_long);
@@ -528,7 +530,7 @@ static void parse_operand(Operand *op) {
         error("Unable to parse operand for token %d", cur_token);
 }
 
-TextChunk *parse_instruction_statement(void) {
+Chunk *parse_instruction_statement(void) {
     char *mnemonic = strdup(cur_identifier);
     next();
 
@@ -561,19 +563,19 @@ TextChunk *parse_instruction_statement(void) {
 
     Instructions instr = make_instructions(mnemonic, op1, op2, op3);
 
-    TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
-    append_to_list(text_chunks, text_chunk);
-    text_chunk->cdc.primary = malloc(sizeof(Instructions));
-    *text_chunk->cdc.primary = instr;
-    text_chunk->cdc.using_primary = 1;
-    text_chunk->type = CT_CODE;
+    Chunk *chunk = calloc(1, sizeof(Chunk));
+    append_to_list(cur_chunks, chunk);
+    chunk->cdc.primary = malloc(sizeof(Instructions));
+    *chunk->cdc.primary = instr;
+    chunk->cdc.using_primary = 1;
+    chunk->type = CT_CODE;
 
     if (instr.branch && op1 && op1->type == MEM32) {
         op1->type = MEM08;
         Instructions alt_instr = make_instructions(mnemonic, op1, op2, op3);
 
-        text_chunk->cdc.secondary = calloc(1, sizeof(Instructions));
-        *text_chunk->cdc.secondary = alt_instr;
+        chunk->cdc.secondary = calloc(1, sizeof(Instructions));
+        *chunk->cdc.secondary = alt_instr;
     }
 
     free(mnemonic);
@@ -597,32 +599,32 @@ TextChunk *parse_instruction_statement(void) {
         int relocation_type;
         if (relocation_op->relocation_type)
             relocation_type = relocation_op->relocation_type;
-        else if (text_chunk->cdc.primary->branch) // This is set for branch opcodes
+        else if (chunk->cdc.primary->branch) // This is set for branch opcodes
             relocation_type = R_X86_64_PLT32;
         else
             relocation_type = R_X86_64_PC32;
 
-        text_chunk->cdc.primary->relocation_type = relocation_type;
-        text_chunk->cdc.primary->relocation_symbol = relocation_op->relocation_symbol;
-        text_chunk->cdc.primary->relocation_addend = relocation_addend;
+        chunk->cdc.primary->relocation_type = relocation_type;
+        chunk->cdc.primary->relocation_symbol = relocation_op->relocation_symbol;
+        chunk->cdc.primary->relocation_addend = relocation_addend;
 
-        if (text_chunk->cdc.secondary) {
-            text_chunk->cdc.secondary->relocation_type = relocation_type;
-            text_chunk->cdc.secondary->relocation_symbol = relocation_op->relocation_symbol;
-            text_chunk->cdc.secondary->relocation_addend = relocation_addend;
+        if (chunk->cdc.secondary) {
+            chunk->cdc.secondary->relocation_type = relocation_type;
+            chunk->cdc.secondary->relocation_symbol = relocation_op->relocation_symbol;
+            chunk->cdc.secondary->relocation_addend = relocation_addend;
         }
     }
 
-    return text_chunk;
+    return chunk;
 }
 
-static void add_labels_to_text_chunk(TextChunk *text_chunk, List *labels) {
+static void add_labels_to_chunk(Chunk *chunk, List *labels) {
     for (int i = 0; i < labels->length; i++) {
         char *name = labels->elements[i];
         Symbol *symbol = get_or_add_symbol(strdup(name));
 
-        if (!text_chunk->symbols) text_chunk->symbols = new_list(labels->length);
-        append_to_list(text_chunk->symbols, symbol);
+        if (!chunk->symbols) chunk->symbols = new_list(labels->length);
+        append_to_list(chunk->symbols, symbol);
     }
 }
 
@@ -650,17 +652,17 @@ void parse(void) {
 
         // Parse statement
         if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO) {
-            TextChunk *text_chunk = parse_directive_statement();
+            Chunk *chunk = parse_directive_statement();
 
-            if (text_chunk) add_labels_to_text_chunk(text_chunk, labels);
+            if (chunk) add_labels_to_chunk(chunk, labels);
         }
         else if (cur_token == TOK_INSTRUCTION) {
             if (get_current_section() != section_text)
                 panic("Instructions can only be added to the .text section");
 
-            TextChunk *text_chunk = parse_instruction_statement();
+            Chunk *chunk = parse_instruction_statement();
 
-            add_labels_to_text_chunk(text_chunk, labels);
+            add_labels_to_chunk(chunk, labels);
         }
         else if (cur_token == TOK_EOF)
             break;
@@ -676,27 +678,26 @@ void parse(void) {
     }
 }
 
-void emit_code(void) {
-    reduce_branch_instructions();
+void emit_chunk_code(Section *section, List *chunks) {
+    reduce_branch_instructions(chunks);
 
-    // Add the code to the .text section
-    for (int i = 0; i < text_chunks->length; i++) {
-        TextChunk *tc = text_chunks->elements[i];
-        Instructions *instr = tc->cdc.using_primary ? tc->cdc.primary : tc->cdc.secondary;
+    for (int i = 0; i < chunks->length; i++) {
+        Chunk *chunk = chunks->elements[i];
+        Instructions *instr = chunk->cdc.using_primary ? chunk->cdc.primary : chunk->cdc.secondary;
 
         // All branch instructions use 32 bit memory addresses for the time being,
         // so we're only taking the primary instructions into account.
         int base_offset = get_current_section_size();
 
-        if (!tc->type) panic("Internal error: zero tc->type");
+        if (!chunk->type) panic("Internal error: zero chunk->type");
 
-        if (tc->type == CT_SIZE_EXPR) {
-            Value value = evaluate_node(tc->sic.size_expr, base_offset);
+        if (chunk->type == CT_SIZE_EXPR) {
+            Value value = evaluate_node(chunk->sic.size_expr, base_offset);
             if (value.symbol) panic("Unexpectedly got a symbol when evaluating .size");
-            tc->sic.size_symbol->size = value.number;
+            chunk->sic.size_symbol->size = value.number;
         }
 
-        else if ((tc->type == CT_CODE || tc->type == CT_DATA) && instr->relocation_symbol) {
+        else if ((chunk->type == CT_CODE || chunk->type == CT_DATA) && instr->relocation_symbol) {
             int relocation_type;
             if (instr->relocation_type)
                 relocation_type = instr->relocation_type; // Set by data handling code
@@ -707,8 +708,8 @@ void emit_code(void) {
 
             // Does the symbol need an entry in the relocation table?
             if (
-                    instr->relocation_symbol->section != section_text ||
-                    tc->type == CT_DATA ||
+                    instr->relocation_symbol->section != section ||
+                    chunk->type == CT_DATA ||
                     instr->relocation_symbol->binding == STB_GLOBAL ||
                     instr->relocation_type == R_X86_64_REX_GOTP
                     ) {
@@ -716,20 +717,20 @@ void emit_code(void) {
                 // For code relocations , a relative relocation is calculated from the end of the instruction.
                 // The linker doesn't know this though, so it needs to get an
                 // addend = -(instr->size - instr->relocation_offset)
-                int relocation_addend_offset = tc->type == CT_CODE ? instr->relocation_offset - instr->size : 0;
+                int relocation_addend_offset = chunk->type == CT_CODE ? instr->relocation_offset - instr->size : 0;
                 add_relocation(
-                    get_relocation_section(section_text), instr->relocation_symbol, relocation_type,
+                    get_relocation_section(section), instr->relocation_symbol, relocation_type,
                     base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);
             }
 
             // The symbol address is known and can be used directly.
             else {
-                if (tc->cdc.using_primary) {
+                if (chunk->cdc.using_primary) {
                     int relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;
                     memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // 32 bit address
                 }
                 else {
-                    instr = tc->cdc.secondary;
+                    instr = chunk->cdc.secondary;
 
                     // Double check relative offset doesn't exceed the limits of a signed char.
                     int relative_offset_int = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
@@ -743,15 +744,27 @@ void emit_code(void) {
             }
         }
 
-        if (tc->type != CT_SIZE_EXPR) {
-            if (tc->type == CT_ZERO)
-                add_zeros_to_section(section_text, tc->zec.size);
+        if (chunk->type != CT_SIZE_EXPR) {
+            if (chunk->type == CT_ZERO)
+                add_zeros_to_section(section, chunk->zec.size);
             else
-                add_to_section(section_text, instr->data, instr->size);
+                add_to_section(section, instr->data, instr->size);
         }
     }
 }
 
+void emit_code(void) {
+    for (StrMapIterator it = strmap_iterator(chunks_map); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
+        char *section_name = strmap_iterator_key(&it);
+        Section *section = get_section(section_name);
+        List *chunks = strmap_get(chunks_map, section_name);
+        emit_chunk_code(section, chunks);
+    }
+}
+
 void init_parser(void) {
-    text_chunks = new_list(10240);
+    chunks_map = new_strmap();
+    strmap_put(chunks_map, ".text", new_list(10240));
+    set_current_section(".text");
+    set_cur_chunks();
 }

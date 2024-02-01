@@ -28,26 +28,24 @@ typedef enum chunk_type {
     CT_SIZE_EXPR  = 4, // A size expression to be evaluated in the second pass
 } ChunkType;
 
-typedef struct text_chunk {
+typedef struct chunk {
     ChunkType type;
     union {
-        CodeOrDataChunk   cdc; // Used by both code, data and zero
-        ZeroChunk         zec; // Used by .zero sections
-        SizeChunk         sic; // Used by .size sections
+        CodeOrDataChunk   cdc;
+        ZeroChunk         zec;
+        SizeChunk         sic;
     };
-    List *symbols;              // Zero or more symbols associated with the address at this instruction
-} TextChunk;
+    List *symbols; // Zero or more symbols associated with the address at this instruction
+} Chunk;
 
-#define TEXT_CHUNK_SIZE(text_chunk) ( \
-    ((text_chunk)->type == CT_CODE || (text_chunk)->type == CT_DATA) \
-        ? (text_chunk)->cdc.using_primary ? (text_chunk)->cdc.primary->size : (text_chunk)->cdc.secondary->size \
-        : (text_chunk)->zec.size \
+#define CHUNK_SIZE(chunk) ( \
+    ((chunk)->type == CT_CODE || (chunk)->type == CT_DATA) \
+        ? (chunk)->cdc.using_primary ? (chunk)->cdc.primary->size : (chunk)->cdc.secondary->size \
+        : (chunk)->zec.size \
     )
 
-extern List *text_chunks;
-
-TextChunk *parse_instruction_statement(void);
-TextChunk *parse_directive_statement(void);
+Chunk *parse_instruction_statement(void);
+Chunk *parse_directive_statement(void);
 void parse(void);
 void init_parser(void);
 void emit_code(void);

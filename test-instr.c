@@ -49,8 +49,8 @@ void test_assembly(char *input, ...) {
     printf("%-60s", input);
     init_lexer_from_string(input);
     init_parser();
-    TextChunk *tc = parse_instruction_statement();
-    Instructions *instr = tc->cdc.primary;
+    Chunk *c = parse_instruction_statement();
+    Instructions *instr = c->cdc.primary;
     assert_instructions(instr, ap);
 
     printf("pass\n");

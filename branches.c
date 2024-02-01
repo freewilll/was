@@ -3,6 +3,7 @@
 
 #include "branches.h"
 #include "elf.h"
+#include "list.h"
 #include "parser.h"
 #include "utils.h"
 
@@ -19,7 +20,7 @@
 // #define DEBUG
 
 typedef struct fragment {
-    int text_chunk_index;           // Index of the branch instruction in the text_chunks list
+    int chunk_index;                // Index of the branch instruction in the chunks list
     int offset;                     // Offset of the first instruction
     int fixed_size;                 // The size of all the instructions except the first one
     int branch_targets_index;       // Index in branch_target_list of the first symbol (if any) following the branch instruction. -1 if none
@@ -31,15 +32,16 @@ typedef struct fragment {
 Fragment *head;             // The first of the linked list of frags
 List *branch_target_list;   // A list of all symbols, in order of declaration
 
+#ifdef DEBUG
 // Dump all frags + symbols
-void dump_frags(void) {
+void dump_frags(List *chunks) {
     printf("Frags:\n");
 
     for (Fragment *frag = head; frag; frag = frag->next) {
-        TextChunk *tc = text_chunks->elements[frag->text_chunk_index];
+        Chunk *chunk = chunks->elements[frag->chunk_index];
 
         printf("%5d %06x -> %s\n",
-            frag->text_chunk_index, frag->offset, tc->cdc.primary->relocation_symbol->name);
+            frag->chunk_index, frag->offset, chunk->cdc.primary->relocation_symbol->name);
 
         int start = frag->branch_targets_index;
         int end = frag->next ? frag->next->branch_targets_index : branch_target_list->length;
@@ -52,15 +54,16 @@ void dump_frags(void) {
         }
     }
 }
+#endif
 
 // Update all symbol offsets
-static void make_symbol_offsets(void) {
+static void make_symbol_offsets(List *chunks) {
     int offset = 0;
 
-    for (int i = 0; i < text_chunks->length; i++) {
-        TextChunk *tc = text_chunks->elements[i];
+    for (int i = 0; i < chunks->length; i++) {
+        Chunk *chunk = chunks->elements[i];
 
-        List *symbols = tc->symbols;
+        List *symbols = chunk->symbols;
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
@@ -69,22 +72,22 @@ static void make_symbol_offsets(void) {
             }
         }
 
-        if (tc->type != CT_SIZE_EXPR) offset += TEXT_CHUNK_SIZE(tc);
+        if (chunk->type != CT_SIZE_EXPR) offset += CHUNK_SIZE(chunk);
     }
 }
 
-static void make_frags(void) {
+static void make_frags(List *chunks) {
     head = NULL;
 
     StrMap *branch_target_set = new_strmap(); // Branch targets
     StrMap *seen_symbols = new_strmap(); // Declared symbols
-    char *tc_target_symbol_is_before = malloc(text_chunks->length); // For branches, is the target before or after the instruction?
+    char *chunk_target_symbol_is_before = malloc(chunks->length); // For branches, is the target before or after the instruction?
 
-    // Make branch_target_set and tc_target_symbol_is_before
-    for (int i = 0; i < text_chunks->length; i++) {
-        TextChunk *tc = text_chunks->elements[i];
+    // Make branch_target_set and chunk_target_symbol_is_before
+    for (int i = 0; i < chunks->length; i++) {
+        Chunk *chunk = chunks->elements[i];
 
-        List *symbols = tc->symbols;
+        List *symbols = chunk->symbols;
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
@@ -92,9 +95,9 @@ static void make_frags(void) {
             }
         }
 
-        if (tc->type == CT_CODE && tc->cdc.secondary) {
-            tc_target_symbol_is_before[i] = (char) (long) strmap_get(seen_symbols, tc->cdc.primary->relocation_symbol->name);
-            strmap_put(branch_target_set, tc->cdc.primary->relocation_symbol->name, (void *) 1);
+        if (chunk->type == CT_CODE && chunk->cdc.secondary) {
+            chunk_target_symbol_is_before[i] = (char) (long) strmap_get(seen_symbols, chunk->cdc.primary->relocation_symbol->name);
+            strmap_put(branch_target_set, chunk->cdc.primary->relocation_symbol->name, (void *) 1);
         }
     }
 
@@ -105,12 +108,12 @@ static void make_frags(void) {
     branch_target_list = new_list(1024);
 
     // Make fragments: loop over all text chunks
-    for (int i = 0; i < text_chunks->length; i++) {
-        TextChunk *tc = text_chunks->elements[i];
+    for (int i = 0; i < chunks->length; i++) {
+        Chunk *chunk = chunks->elements[i];
 
         // Loop over all labels and add them to branch_target_list if they
         // are a branch target.
-        List *symbols = tc->symbols;
+        List *symbols = chunk->symbols;
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
@@ -128,7 +131,7 @@ static void make_frags(void) {
         }
 
         // It's a branch
-        if (tc->type == CT_CODE && tc->cdc.secondary) {
+        if (chunk->type == CT_CODE && chunk->cdc.secondary) {
             // Create a new frag
             if (!frag) {
                 head = calloc(1, sizeof(Fragment));
@@ -141,20 +144,20 @@ static void make_frags(void) {
             }
 
 
-            frag->text_chunk_index = i;
+            frag->chunk_index = i;
             frag->offset = offset;
             frag->branch_targets_index = -1; // The next instruction (if any) sets this
-            frag->target_symbol_is_before = tc_target_symbol_is_before[i];
+            frag->target_symbol_is_before = chunk_target_symbol_is_before[i];
 
             if (frag->prev)
-                frag->prev->fixed_size = offset - frag->prev->offset - TEXT_CHUNK_SIZE((TextChunk *) text_chunks->elements[frag->prev->text_chunk_index]);
+                frag->prev->fixed_size = offset - frag->prev->offset - CHUNK_SIZE((Chunk *) chunks->elements[frag->prev->chunk_index]);
         }
 
-        if (tc->type != CT_SIZE_EXPR) offset += TEXT_CHUNK_SIZE(tc);
+        if (chunk->type != CT_SIZE_EXPR) offset += CHUNK_SIZE(chunk);
     }
 
     free_strmap(branch_target_set);
-    free(tc_target_symbol_is_before);
+    free(chunk_target_symbol_is_before);
 
     if (!frag) return; // Do nothing if there are No branch instructions
 
@@ -184,9 +187,9 @@ static void make_frags(void) {
     #endif
 }
 
-static void reduce(void) {
+static void reduce(List *chunks) {
     int iterations = 0;
-    const int max_iterations = text_chunks->length * text_chunks->length; // Don't go further than O(n^2)
+    const int max_iterations = chunks->length * chunks->length; // Don't go further than O(n^2)
 
     int changed = 1;
     while (iterations < max_iterations && changed) {
@@ -196,22 +199,22 @@ static void reduce(void) {
         int compression = 0;
 
         for (Fragment *frag = head; frag; frag = frag->next) {
-            TextChunk *tc = text_chunks->elements[frag->text_chunk_index];
+            Chunk *chunk = chunks->elements[frag->chunk_index];
 
             // If it's not already been reduced ...
-            if (tc->cdc.using_primary) {
-                int symbol_offset = tc->cdc.primary->relocation_symbol->value;
+            if (chunk->cdc.using_primary) {
+                int symbol_offset = chunk->cdc.primary->relocation_symbol->value;
 
                 // Symbols in the past have had their offset set. Symbols in the
                 // future are displaced backwards as the iteration goes on
                 if (!frag->target_symbol_is_before) symbol_offset += compression;
 
-                int relative_offset = symbol_offset - (offset + tc->cdc.secondary->relocation_offset + 1 + 4);
+                int relative_offset = symbol_offset - (offset + chunk->cdc.secondary->relocation_offset + 1 + 4);
 
                 if (relative_offset >= -128 && relative_offset <= 127) {
-                    tc->cdc.using_primary = 0;
+                    chunk->cdc.using_primary = 0;
                     changed = 1;
-                    compression += tc->cdc.secondary->size - tc->cdc.primary->size;
+                    compression += chunk->cdc.secondary->size - chunk->cdc.primary->size;
                 }
             }
 
@@ -228,7 +231,7 @@ static void reduce(void) {
                 }
             }
 
-            offset += frag->fixed_size + TEXT_CHUNK_SIZE(tc);
+            offset += frag->fixed_size + CHUNK_SIZE(chunk);
         }
 
         iterations++;
@@ -239,19 +242,19 @@ static void reduce(void) {
     #endif
 }
 
-void reduce_branch_instructions(void) {
-    make_symbol_offsets();
+void reduce_branch_instructions(List *chunks) {
+    make_symbol_offsets(chunks);
 
-    if (!text_chunks->length) return;
+    if (!chunks->length) return;
 
-    make_frags();
+    make_frags(chunks);
 
     #ifdef DEBUG
-    dump_frags();
+    dump_frags(chunks);
     #endif
 
     if (!head) return;
 
-    reduce();
-    make_symbol_offsets();
+    reduce(chunks);
+    make_symbol_offsets(chunks);
 }

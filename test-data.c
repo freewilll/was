@@ -23,6 +23,7 @@ void test_assembly(char *input, ...) {
     char *lexer_str = malloc(strlen(input) + 8);
     sprintf(lexer_str, ".data; %s", input);
     init_lexer_from_string(lexer_str);
+    init_parser();
 
     parse_directive_statement();
     next();
