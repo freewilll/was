@@ -47,7 +47,7 @@ static Node *parse_binary_expression(Node *left, Operation operation, int token)
         // Evalulate symbol - symbol
         if (operation != OP_SUBTRACT) error("Invalid operation on two symbols");
 
-        if (left->value->symbol->section_index != right->value->symbol->section_index)
+        if (left->value->symbol->section != right->value->symbol->section)
             error("Cannot subtract two symbols in different sections");
 
         // Create an operation node
@@ -177,8 +177,8 @@ static Value evaluate(Node *node, long current_offset) {
     if (!left.symbol || !right.symbol)
         panic("Interal error: can only subtract two symbols");
 
-    if (left.symbol->section_index && right.symbol->section_index && left.symbol->section_index != right.symbol->section_index)
-        panic("Mismatch in section index: %d vs %d", left.symbol->section_index, right.symbol->section_index);
+    if (left.symbol->section && right.symbol->section && left.symbol->section != right.symbol->section)
+        panic("Mismatch in section");
 
     int right_is_dot = right.symbol->name[0] == '.' && !right.symbol->name[1];
     int left_is_dot =  left. symbol->name[0] == '.' && !left. symbol->name[1];

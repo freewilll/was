@@ -10,9 +10,10 @@
 
 void init_tests(void);
 void test_full_assembly(char *summary, char *input, ...);
-int dump_section(ElfSection *section);
-void vassert_section(ElfSection* section, va_list ap);
-void assert_section(ElfSection* section, ...);
-void assert_relocations(ElfSection* section, ...);
+int dump_section(Section *section);
+void vassert_section_data(Section* section, va_list ap);
+void assert_section_data(Section* section, ...);
+void assert_relocations(char *section_name, ...);
 void dump_symbols(void);
 void assert_symbols(int first, ...);
+void assert_section(char *name, int type, int flags);

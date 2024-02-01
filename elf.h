@@ -1,7 +1,7 @@
 #ifndef _ELF_H
 #define _ELF_H
 
-#include "symbols.h"
+#include "list.h"
 
 // https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
 // https://github.com/torvalds/linux/blob/master/include/uapi/linux/elf.h
@@ -9,9 +9,11 @@
 #define SHN_UNDEF         0        // This section table index means the symbol is undefined. When the link editor combines this object file with another that defines the indicated symbol, this file's references to the symbol will be linked to the actual definition.
 #define SHN_ABS           65521    // The symbol has an absolute value that will not change because of relocation.#define
 #define SHN_COMMON        65522    // This symbol labels a common block that has not yet been allocate
-#define SHF_WRITE         1
-#define SHF_ALLOC         2
-#define SHF_EXECINSTR     4
+#define SHF_WRITE         0x01
+#define SHF_ALLOC         0x02
+#define SHF_EXECINSTR     0x04
+#define SHF_MERGE         0x10
+#define SHF_STRINGS       0x20
 
 #define SHT_PROGBITS    0x01
 #define SHT_SYMTAB      0x02
@@ -105,21 +107,23 @@ typedef struct elf_section_header {
     long sh_entsize;        // Contains the size, in bytes, of each entry, for sections that contain fixed-size entries. Otherwise, this field contains zero.
 } ElfSectionHeader;
 
-typedef struct elf_section {
-    int index;      // Index in the section header table
-    char *name;     // Name of the section
-    int type;       // Type of the section
-    int flags;      // Section attributes
-    int align;      // Contains the required alignment of the section. This field must be a power of two.
-    int link;       // Contains the section index of an associated section.
-    int info;       // Contains extra information about the section.
-    char *data;     // Contents of the section
-    int allocated;  // Amount of bytes allocated for data
-    int size;       // Size of the section
-    int start;      // Start address of the section in the ELF
-    long entsize;   // Contains the size, in bytes, of each entry, for sections that contain fixed-size entries. Otherwise, this field contains zero.
-} ElfSection;
+typedef struct section {
+    int index;                    // Index in the section header table
+    char *name;                   // Name of the section
+    int type;                     // Type of the section
+    int flags;                    // Section attributes
+    int align;                    // Contains the required alignment of the section. This field must be a power of two.
+    int link;                     // Contains the section index of an associated section.
+    int info;                     // Contains extra information about the section.
+    char *data;                   // Contents of the section
+    int allocated;                // Amount of bytes allocated for data
+    int size;                     // Size of the section
+    int start;                    // Start address of the section in the ELF
+    long entsize;                 // Contains the size, in bytes, of each entry, for sections that contain fixed-size entries. Otherwise, this field contains zero.
+    long symtab_index;            // Index in the symbol table for this section
+    struct section *rela_section; // Optional related relocation section
 
+} Section;
 
 typedef struct elf_symbol {
     int   st_name;          // This member holds an index into the object file's symbol string table
@@ -136,32 +140,34 @@ typedef struct elf_relocation {
     long r_addend;          // Addend
 } ElfRelocation;
 
-extern ElfSection section_text;
-extern ElfSection section_rela_text;
-extern ElfSection section_data;
-extern ElfSection section_rela_data;
-extern ElfSection section_bss;
-extern ElfSection section_rodata;
-extern ElfSection section_rela_rodata;
-extern ElfSection section_symtab;
-extern ElfSection section_strtab;
+extern Section *section_text;
+extern Section *section_data;
+extern Section *section_bss;
+extern Section *section_rodata;
+extern Section *section_symtab;
+extern Section *section_strtab;
 
-extern const int section_count;
-#define first_symbol_index section_count // This id in the symbol table is where non-section symbols get added
+extern List *sections_list;
 
-ElfSection *get_current_section(void);
+#define first_symbol_index sections_list->length // This id in the symbol table is where non-section symbols get added
+
+extern int local_symbol_end;
+
+Section *add_section(char *name, int type, int flags, int align);
+void init_sections(void);
+Section *get_current_section(void);
 int get_current_section_size(void);
+Section *get_section(char *name);
 void set_current_section(char *name);
-int add_to_section(ElfSection *section, void *src, int size);
+int add_to_section(Section *section, void *src, int size);
 int add_to_current_section(void *src, int size);
-int add_zeros_to_section(ElfSection *section, int size);
+int add_zeros_to_section(Section *section, int size);
 int add_zeros_to_current_section(int size);
+int add_elf_symbol(char *name, long value, long size, int binding, int type, int section_index);
 void add_file_symbol(char *filename);
-void associate_symbol_with_current_section(Symbol *symbol);
-void add_elf_relocation(ElfSection *section, int type, int symbol_index, long offset, long addend);
-void make_symbols_section(void);
-void make_rela_sections(void);
+void add_elf_relocation(Section *section, int type, int symbol_index, long offset, long addend);
+void make_section_indexes(void);
 void finish_elf(char *filename);
-void init_elf();
+void init_sections();
 
 #endif

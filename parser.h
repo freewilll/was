@@ -44,7 +44,7 @@ typedef struct text_chunk {
         : (text_chunk)->zec.size \
     )
 
-List *text_chunks;
+extern List *text_chunks;
 
 TextChunk *parse_instruction_statement(void);
 TextChunk *parse_directive_statement(void);

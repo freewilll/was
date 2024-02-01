@@ -64,7 +64,7 @@ static void make_symbol_offsets(void) {
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
                 Symbol *symbol = symbols->elements[j];
-                symbol->section_index = section_text.index;
+                symbol->section = section_text;
                 symbol->value = offset;
             }
         }

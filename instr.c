@@ -222,6 +222,8 @@ static int op_matches(Opcode *opcode, int opcode_alias_size, OpcodeOp *opcode_op
     }
 
     panic("Should not get here");
+
+    return 0;
 }
 
 // Encode non-indirect operand

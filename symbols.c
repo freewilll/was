@@ -1,8 +1,9 @@
 #include <stdlib.h>
+#include <string.h>
 
+#include "elf.h"
 #include "strmap.h"
 #include "symbols.h"
-#include "elf.h"
 
 StrMap *symbols;
 
@@ -25,8 +26,6 @@ Symbol *add_symbol(char *name) {
     symbol->name    = name;
     symbol->type    = STT_NOTYPE;
     symbol->binding = STB_LOCAL;
-    symbol->section_index = 0;
-    symbol->value = 0;
 
     strmap_put(symbols, name, symbol);
 
@@ -41,4 +40,46 @@ Symbol *get_or_add_symbol(char *name) {
         return symbol;
     else
         return add_symbol(name);
+}
+
+void associate_symbol_with_current_section(Symbol *symbol) {
+    Section *section = get_current_section();
+
+    symbol->value = section->size;
+    symbol->section = section;
+}
+
+// Add non-global, then global symbols to the symtab section
+void make_symbols_section(void) {
+    // Add non-global symbols
+    for (StrMapIterator it = strmap_iterator(symbols); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
+        char *name = strmap_iterator_key(&it);
+        Symbol *symbol = strmap_get(symbols, name);
+
+        if (symbol->section) symbol->section_index = symbol->section->index;
+
+        // All undefined symbols must be global.
+        if (!symbol->section_index) symbol->binding = STB_GLOBAL;
+
+        // Any local symbols starting with .L aren't included in the ELF.
+        int dot_local = strlen(name) >= 2 && name[0] == '.' && name[1] == 'L';
+        if (symbol->binding != STB_GLOBAL && !dot_local) {
+            symbol->symtab_index = add_elf_symbol(name, symbol->value, symbol->size, symbol->binding, symbol->type, symbol->section_index);
+        }
+    }
+
+    // Add global symbols
+    for (StrMapIterator it = strmap_iterator(symbols); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
+        char *name = strmap_iterator_key(&it);
+        Symbol *symbol = strmap_get(symbols, name);
+
+        if (symbol->section) symbol->section_index = symbol->section->index;
+
+        if (symbol->binding == STB_GLOBAL)
+            symbol->symtab_index = add_elf_symbol(name, symbol->value, symbol->size, symbol->binding, symbol->type, symbol->section_index);
+    }
+
+    section_symtab->link = section_strtab->index;
+    section_symtab->info = local_symbol_end + 1; // Index of the first global symbol
+    section_symtab->entsize = sizeof(ElfSymbol);
 }

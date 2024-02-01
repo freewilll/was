@@ -26,7 +26,7 @@ void test_assembly(char *input, ...) {
 
     parse_directive_statement();
     next();
-    ElfSection *section = get_current_section();
+    Section *section = get_current_section();
     section->size = 0;
 
     while (cur_token != TOK_EOF) {
@@ -34,7 +34,7 @@ void test_assembly(char *input, ...) {
         while (cur_token == TOK_EOL) next();
     }
 
-    vassert_section(section, ap);
+    vassert_section_data(section, ap);
 
     printf("pass\n");
 }

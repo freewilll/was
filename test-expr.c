@@ -77,8 +77,10 @@ static void test_symbol_difference_expression(void) {
     if (!root->right || !root->right->value || !root->right->value->symbol || strcmp(root->right->value->symbol->name, "bar"))
         panic("Expected RHS bar");
 
-    root->right->value->symbol->section_index = 1;
-    root->left->value->symbol->section_index = 1;
+    root->right->value->symbol->section = section_text;
+    root->right->value->symbol->section_index = section_text->index;
+    root->left->value->symbol->section = section_text;
+    root->left->value->symbol->section_index = section_text->index;
 
     // Check foo - bar
     root->left->value->symbol->value = 0x10;

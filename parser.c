@@ -85,22 +85,15 @@ static TextChunk *parse_data_directive_text(int relocation_type, int size) {
     return add_data_to_text_chunks(instr);
 }
 
-// Parse .byte, .word, .long and .quad in .data and .rodata section
+// Parse .byte, .word, .long and .quad in a non .text section
 // Data in these sections are added to the section immediately. Also, relocations
 // can be added straight away since the offsets in the segment are known at his point.
 static TextChunk *parse_data_directive_data(int relocation_type, int size) {
     SimpleExpression expr = parse_simple_expression();
 
     if (expr.symbol) {
-        ElfSection *cur = get_current_section();
-        ElfSection *rel;
-
-        if (cur == &section_data)
-            rel = &section_rela_data;
-        else if (cur == &section_rodata)
-            rel = &section_rela_rodata;
-        else
-            error("Cannot add data to sections other than .data and .rodata");
+        Section *cur = get_current_section();
+        Section *rel = get_relocation_section(cur);
 
         add_relocation(rel, expr.symbol, relocation_type, cur->size, expr.value);
         add_zeros_to_current_section(size);
@@ -113,7 +106,7 @@ static TextChunk *parse_data_directive_data(int relocation_type, int size) {
 
 // Parse .byte, .word, .long and .quad
 static TextChunk *parse_data_directive(int relocation_type, int size) {
-    if (get_current_section() == &section_text)
+    if (get_current_section() == section_text)
         return parse_data_directive_text(relocation_type, size);
     else
         return parse_data_directive_data(relocation_type, size);
@@ -127,9 +120,9 @@ TextChunk *parse_directive_statement(void) {
     switch (directive) {
         case TOK_DIRECTIVE_ALIGN: {
             long value = parse_signed_integer();
-            ElfSection *current_section = get_current_section();
-            if (current_section != &section_data && current_section != &section_rodata)
-                panic("Can only use .align in .data and .rodata sections");
+            Section *current_section = get_current_section();
+            if (current_section == section_text)
+                panic("Cannot only use .align in .text section");
 
             if ((value & (value - 1)) != 0) panic(".align is not a power of 2");
 
@@ -190,9 +183,9 @@ TextChunk *parse_directive_statement(void) {
             if (was_local) {
                 // The symbol was already declared as .local. Adding a .comm to that
                 // allocates local bss storage for it.
-                symbol->section_index = section_bss.index;
-                symbol->value = section_bss.size;
-                section_bss.size += symbol->size;
+                symbol->section = section_bss;
+                symbol->value = section_bss->size;
+                section_bss->size += symbol->size;
             }
             else {
                 // The symbol may be merged with other symbols and so becomes global
@@ -221,9 +214,59 @@ TextChunk *parse_directive_statement(void) {
         }
 
         case TOK_DIRECTIVE_SECTION:
+            // Parse:
+            //.- section .testing1
+            //.- section .testing1, ""
+            //.- section .debug_info,"",@progbits
+            //.- section .debug_str,"MS"
+            //.- section .debug_str,"MS",@progbits,1
+            //.- section .debug_strx,"S",@progbits
+
             expect(TOK_IDENTIFIER, "section name");
-            set_current_section(cur_identifier);
+            char *name = strdup(cur_identifier);
             next();
+
+            int flags = 0;
+            if (cur_token == TOK_COMMA) {
+                next();
+                expect(TOK_STRING_LITERAL, "flags string literal");
+
+                for (int i = 0; i < cur_string_literal.size - 1; i++) {
+                    char c = cur_string_literal.data[i];
+
+                    switch (c) {
+                        case 'a': flags |= SHF_ALLOC;     break;
+                        case 'w': flags |= SHF_WRITE;     break;
+                        case 'x': flags |= SHF_EXECINSTR; break;
+                        case 'M': flags |= SHF_MERGE;     break;
+                        case 'S': flags |= SHF_STRINGS;   break;
+                        default: error("Invalid flag %c", c);
+
+                    }
+                }
+
+                next();
+            }
+
+            int type = SHT_PROGBITS;
+            if (cur_token == TOK_COMMA) {
+                next();
+                expect(TOK_IDENTIFIER, "Expected @progbits"); // Other types aren't implemented
+                if (strcmp(cur_identifier, "@progbits")) error("Expected @progbits; others aren't implemented");
+                next();
+            }
+
+            if (cur_token == TOK_COMMA) {
+                next();
+                expect(TOK_INTEGER, "entsize");
+                if (cur_long != 1) error("Values other than 1 for entsise aren't implemented");
+                next();
+            }
+
+            if (!get_section(name)) add_section(name, type, flags, 1);
+
+            set_current_section(name); // Auto creates the section
+
             break;
 
         case TOK_DIRECTIVE_SIZE: {
@@ -282,7 +325,7 @@ TextChunk *parse_directive_statement(void) {
             break;
 
         case TOK_DIRECTIVE_ZERO: {
-            if (get_current_section() == &section_text) {
+            if (get_current_section() == section_text) {
                 TextChunk *text_chunk = calloc(1, sizeof(TextChunk));
                 append_to_list(text_chunks, text_chunk);
 
@@ -597,7 +640,7 @@ void parse(void) {
         }
 
         // If we're not in .text, add symbols for the labels
-        if (get_current_section() != &section_text) {
+        if (get_current_section() != section_text) {
             for (int i = 0; i < labels->length; i++) {
                 char *name = labels->elements[i];
                 Symbol *symbol = get_or_add_symbol(strdup(name));
@@ -612,7 +655,7 @@ void parse(void) {
             if (text_chunk) add_labels_to_text_chunk(text_chunk, labels);
         }
         else if (cur_token == TOK_INSTRUCTION) {
-            if (get_current_section() != &section_text)
+            if (get_current_section() != section_text)
                 panic("Instructions can only be added to the .text section");
 
             TextChunk *text_chunk = parse_instruction_statement();
@@ -664,7 +707,7 @@ void emit_code(void) {
 
             // Does the symbol need an entry in the relocation table?
             if (
-                    instr->relocation_symbol->section_index != section_text.index ||
+                    instr->relocation_symbol->section != section_text ||
                     tc->type == CT_DATA ||
                     instr->relocation_symbol->binding == STB_GLOBAL ||
                     instr->relocation_type == R_X86_64_REX_GOTP
@@ -675,7 +718,7 @@ void emit_code(void) {
                 // addend = -(instr->size - instr->relocation_offset)
                 int relocation_addend_offset = tc->type == CT_CODE ? instr->relocation_offset - instr->size : 0;
                 add_relocation(
-                    &section_rela_text, instr->relocation_symbol, relocation_type,
+                    get_relocation_section(section_text), instr->relocation_symbol, relocation_type,
                     base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);
             }
 
@@ -702,9 +745,9 @@ void emit_code(void) {
 
         if (tc->type != CT_SIZE_EXPR) {
             if (tc->type == CT_ZERO)
-                add_zeros_to_section(&section_text, tc->zec.size);
+                add_zeros_to_section(section_text, tc->zec.size);
             else
-                add_to_section(&section_text, instr->data, instr->size);
+                add_to_section(section_text, instr->data, instr->size);
         }
     }
 }

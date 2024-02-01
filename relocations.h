@@ -9,11 +9,13 @@ typedef struct relocation {
     int type;               // Type of relocation
     int offset;             // Offset in the data section the relocated address ends up in
     int addend;             // Number to add to the symbol
-    ElfSection *section;    // Section the relocation applies to
+    Section *section;       // Section the relocation applies to
 } Relocation;
 
 void init_relocations(void);
-void add_relocation(ElfSection *section, Symbol *symbol, int type, long offset, int addend);
+Section *get_relocation_section(Section *section);
+void add_relocation(Section *section, Symbol *symbol, int type, long offset, int addend);
 void add_elf_relocations(void);
+void make_rela_sections(void);
 
 #endif
