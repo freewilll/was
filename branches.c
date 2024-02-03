@@ -40,8 +40,12 @@ void dump_frags(List *chunks) {
     for (Fragment *frag = head; frag; frag = frag->next) {
         Chunk *chunk = chunks->elements[frag->chunk_index];
 
-        printf("%5d %06x -> %s\n",
-            frag->chunk_index, frag->offset, chunk->cdc.primary->relocation_symbol->name);
+        if (chunk->type == CT_ALIGN)
+            printf("%5d %06x align %d\n",
+                frag->chunk_index, frag->offset, chunk->aic.alignment);
+        else
+            printf("%5d %06x -> %s\n",
+                frag->chunk_index, frag->offset, chunk->cdc.primary ? chunk->cdc.primary->relocation_symbol->name: "(none)");
 
         int start = frag->branch_targets_index;
         int end = frag->next ? frag->next->branch_targets_index : branch_target_list->length;
@@ -63,6 +67,8 @@ static void make_symbol_offsets(List *chunks) {
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
 
+        chunk->offset = offset;
+
         List *symbols = chunk->symbols;
         if (symbols) {
             for (int j = 0; j < symbols->length; j++) {
@@ -72,7 +78,11 @@ static void make_symbol_offsets(List *chunks) {
             }
         }
 
-        if (chunk->type != CT_SIZE_EXPR) offset += CHUNK_SIZE(chunk);
+        if (chunk->type == CT_ALIGN)
+            offset += PADDING_FOR_ALIGN_UP(offset, chunk->aic.alignment);
+        else if (chunk->type != CT_SIZE_EXPR)
+            offset += CHUNK_SIZE(chunk);
+
     }
 }
 
@@ -130,8 +140,8 @@ static void make_frags(List *chunks) {
             }
         }
 
-        // It's a branch
-        if (chunk->type == CT_CODE && chunk->cdc.secondary) {
+        // It's a branch or alignment; any instruction that isn't a fixed size
+        if (chunk->type == CT_ALIGN || (chunk->type == CT_CODE && chunk->cdc.secondary)) {
             // Create a new frag
             if (!frag) {
                 head = calloc(1, sizeof(Fragment));
@@ -142,7 +152,6 @@ static void make_frags(List *chunks) {
                 frag->next->prev = frag;
                 frag = frag->next;
             }
-
 
             frag->chunk_index = i;
             frag->offset = offset;
@@ -193,6 +202,10 @@ static void reduce(List *chunks) {
 
     int changed = 1;
     while (iterations < max_iterations && changed) {
+        #ifdef DEBUG
+        printf("Branch reduction iteration %d\n", iterations);
+        #endif
+
         changed = 0;
 
         int offset = head->offset;
@@ -201,8 +214,8 @@ static void reduce(List *chunks) {
         for (Fragment *frag = head; frag; frag = frag->next) {
             Chunk *chunk = chunks->elements[frag->chunk_index];
 
-            // If it's not already been reduced ...
-            if (chunk->cdc.using_primary) {
+            // If it's a branch not already been reduced ...
+            if (chunk->type == CT_CODE && chunk->cdc.secondary && chunk->cdc.using_primary) {
                 int symbol_offset = chunk->cdc.primary->relocation_symbol->value;
 
                 // Symbols in the past have had their offset set. Symbols in the
@@ -231,7 +244,10 @@ static void reduce(List *chunks) {
                 }
             }
 
-            offset += frag->fixed_size + CHUNK_SIZE(chunk);
+            if (chunk->type == CT_ALIGN)
+                offset += PADDING_FOR_ALIGN_UP(offset, chunk->aic.alignment);
+            else
+                offset += frag->fixed_size + CHUNK_SIZE(chunk);
         }
 
         iterations++;

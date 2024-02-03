@@ -26,8 +26,6 @@ int local_symbol_end = 0;    // Index of last local symbol
 List *sections_list;
 static StrMap *sections_map;
 
-#define ALIGN(address, alignment) ((address) + (alignment) - 1) & (~((alignment) - 1));
-
 Section *add_section(char *name, int type, int flags, int align) {
     Section *section = calloc(1, sizeof(Section));
     section->index = sections_list->length;
@@ -140,16 +138,21 @@ int add_to_current_section(void *src, int size) {
     return add_to_section(current_section, src, size);
 }
 
-// Copy src to the end of a section and return the offset
-int add_zeros_to_section(Section *section, int size) {
+// Add size repeated characters to the section and return the offset
+int add_repeated_value_to_section(Section *section, char value, int size) {
     char *data = allocate_in_section(section, size);
-    memset(data, 0, size);
+    memset(data, value, size);
     return data - section->data;
+}
+
+// Add size zeros to the section and return the offset
+int add_zeros_to_section(Section *section, int size) {
+    return add_repeated_value_to_section(section, 0, size);
 }
 
 // Copy src to the end of the current section and return the offset
 int add_zeros_to_current_section(int size) {
-    return add_zeros_to_section(current_section, size);
+    return add_repeated_value_to_section(current_section, 0, size);
 }
 
 // Add a symbol to the ELF symbol table symtab
@@ -240,12 +243,12 @@ static int layout_elf_sections(ElfSectionHeader *section_headers) {
     int shdr_size = sizeof(ElfSectionHeader);
 
     // Determine section offsets
-    int offset = ALIGN(sizeof(ElfHeader) + shdr_size * sections_list->length, 16);
+    int offset = ALIGN_DOWN(sizeof(ElfHeader) + shdr_size * sections_list->length, 16);
     for (int i = 1; i < sections_list->length; i++) {
         Section *section = sections_list->elements[i];
         section->start = offset;
         section_headers[i].sh_offset = offset;
-        offset = ALIGN(offset + section->size, 16);
+        offset = ALIGN_DOWN(offset + section->size, 16);
     }
 
     return offset;

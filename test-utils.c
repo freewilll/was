@@ -28,6 +28,8 @@ void test_full_assembly(char *summary, char *input, ...) {
     va_list ap;
     va_start(ap, input);
 
+    if (!input) input = summary;
+
     printf("%-60s", summary);
 
     section_text->size = 0;

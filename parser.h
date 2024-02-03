@@ -21,18 +21,25 @@ typedef struct zero_chunk {
     int size;
 } ZeroChunk;
 
+typedef struct align_chunk {
+    int alignment;
+} AlignChunk;
+
 typedef enum chunk_type {
     CT_CODE       = 1, // Code
     CT_DATA       = 2, // Data
     CT_ZERO       = 3, // This is a bunch of zeroes. data[] isn't used
-    CT_SIZE_EXPR  = 4, // A size expression to be evaluated in the second pass
+    CT_ALIGN      = 4, // This is either a bunch of zeroes or NOPs, dependent on alignment and if it's in .text.. data[] isn't used
+    CT_SIZE_EXPR  = 5, // A size expression to be evaluated in the second pass
 } ChunkType;
 
 typedef struct chunk {
     ChunkType type;
+    int offset;
     union {
         CodeOrDataChunk   cdc;
         ZeroChunk         zec;
+        AlignChunk        aic;
         SizeChunk         sic;
     };
     List *symbols; // Zero or more symbols associated with the address at this instruction

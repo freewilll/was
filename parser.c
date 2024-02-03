@@ -79,10 +79,11 @@ static Chunk *parse_data_directive_text(int relocation_type, int size) {
 
     Chunk *chunk = calloc(1, sizeof(Chunk));
     chunk->type = CT_DATA;
-    append_to_list(cur_chunks, chunk);
     chunk->cdc.primary = malloc(sizeof(Instructions));
     *chunk->cdc.primary = instr;
     chunk->cdc.using_primary = 1;
+
+    append_to_list(cur_chunks, chunk);
 
     return chunk;
 }
@@ -125,10 +126,22 @@ Chunk *parse_directive_statement(void) {
             Section *current_section = get_current_section();
             if ((value & (value - 1)) != 0) panic(".align is not a power of 2");
 
-            int new_size = (current_section->size + value - 1) & ~(value - 1);
-            int needed_zeros =  new_size - current_section->size;
-            if (needed_zeros)
-                add_zeros_to_current_section(needed_zeros);
+            if (get_current_section() == section_text) {
+                // Align .text section
+
+                Chunk *chunk = calloc(1, sizeof(Chunk));
+                chunk->type = CT_ALIGN;
+                chunk->aic.alignment = value;
+
+                append_to_list(cur_chunks, chunk);
+            }
+            else {
+                // Align non-.text section
+
+                int padding =  PADDING_FOR_ALIGN_UP(current_section->size, value);
+                if (padding)
+                    add_zeros_to_current_section(padding);
+            }
 
             break;
         }
@@ -329,10 +342,10 @@ Chunk *parse_directive_statement(void) {
         case TOK_DIRECTIVE_ZERO: {
             if (get_current_section() == section_text) {
                 Chunk *chunk = calloc(1, sizeof(Chunk));
-                append_to_list(cur_chunks, chunk);
-
                 chunk->type = CT_ZERO;
                 chunk->zec.size = cur_long;
+
+                append_to_list(cur_chunks, chunk);
             }
             else
                 add_zeros_to_current_section(cur_long);
@@ -689,6 +702,12 @@ void emit_chunk_code(Section *section, List *chunks) {
         // so we're only taking the primary instructions into account.
         int base_offset = get_current_section_size();
 
+        // chunk->offset is really only used to assert that the code in branches.c
+        // is consistent with the code here. Admittedly, this reeks of duplication
+        // so something isn't pretty here.
+        if (base_offset != chunk->offset)
+            panic("Internal error: mismatch in running offset (%#x) vs chunk offset (%#x)", base_offset, chunk->offset);
+
         if (!chunk->type) panic("Internal error: zero chunk->type");
 
         if (chunk->type == CT_SIZE_EXPR) {
@@ -747,6 +766,11 @@ void emit_chunk_code(Section *section, List *chunks) {
         if (chunk->type != CT_SIZE_EXPR) {
             if (chunk->type == CT_ZERO)
                 add_zeros_to_section(section, chunk->zec.size);
+            else if (chunk->type == CT_ALIGN) {
+                int padding =  PADDING_FOR_ALIGN_UP(section->size, chunk->aic.alignment);
+                if (padding)
+                    add_repeated_value_to_section(section, 0x90, padding); // Insert NOPs (0x90) as padding in a text section
+            }
             else
                 add_to_section(section, instr->data, instr->size);
         }
