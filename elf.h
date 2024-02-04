@@ -155,15 +155,10 @@ extern int local_symbol_end;
 
 Section *add_section(char *name, int type, int flags, int align);
 void init_sections(void);
-Section *get_current_section(void);
-int get_current_section_size(void);
 Section *get_section(char *name);
-void set_current_section(char *name);
 int add_to_section(Section *section, void *src, int size);
-int add_to_current_section(void *src, int size);
 int add_repeated_value_to_section(Section *section, char value, int size);
 int add_zeros_to_section(Section *section, int size);
-int add_zeros_to_current_section(int size);
 int add_elf_symbol(char *name, long value, long size, int binding, int type, int section_index);
 void add_file_symbol(char *filename);
 void add_elf_relocation(Section *section, int type, int symbol_index, long offset, long addend);

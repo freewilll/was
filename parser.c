@@ -23,8 +23,18 @@ typedef struct simple_expression {
 StrMap *chunks_map;     // Map from section name to a list of chunks
 List *cur_chunks;       // Chunks list for current section
 
-static void set_cur_chunks(void) {
-    cur_chunks = strmap_get(chunks_map, get_current_section()->name);
+// Lookup or create section by name and make it the current section things are being added to
+static void set_current_section(char *name) {
+    Section *section = get_section(name);
+    if (!section)
+        section = add_section(name, SHT_PROGBITS, 0, 1);
+
+    cur_chunks = strmap_get(chunks_map, name);
+
+    if (!cur_chunks) {
+        cur_chunks = new_list(10240);
+        strmap_put(chunks_map, name, cur_chunks);
+    }
 }
 
 // TODO remove skip
@@ -60,10 +70,8 @@ static SimpleExpression parse_simple_expression(void) {
     return result;
 }
 
-// Parse .byte, .word, .long and .quad in .text section
-// Data in the .text segment is processed in a second phase in emit_code(), like
-// instructions.
-static Chunk *parse_data_directive_text(int relocation_type, int size) {
+// Parse .byte, .word, .long and .quad
+static Chunk *parse_data_directive(int relocation_type, int size) {
     SimpleExpression expr = parse_simple_expression();
 
     Instructions instr = {0};
@@ -88,33 +96,6 @@ static Chunk *parse_data_directive_text(int relocation_type, int size) {
     return chunk;
 }
 
-// Parse .byte, .word, .long and .quad in a non .text section
-// Data in these sections are added to the section immediately. Also, relocations
-// can be added straight away since the offsets in the segment are known at his point.
-static Chunk *parse_data_directive_data(int relocation_type, int size) {
-    SimpleExpression expr = parse_simple_expression();
-
-    if (expr.symbol) {
-        Section *cur = get_current_section();
-        Section *rel = get_relocation_section(cur);
-
-        add_relocation(rel, expr.symbol, relocation_type, cur->size, expr.value);
-        add_zeros_to_current_section(size);
-    }
-    else
-        add_to_current_section(&expr.value, size);
-
-    return NULL;
-}
-
-// Parse .byte, .word, .long and .quad
-static Chunk *parse_data_directive(int relocation_type, int size) {
-    if (get_current_section() == section_text)
-        return parse_data_directive_text(relocation_type, size);
-    else
-        return parse_data_directive_data(relocation_type, size);
-}
-
 Chunk *parse_directive_statement(void) {
     Chunk *result = NULL;
     int directive = cur_token;
@@ -123,25 +104,13 @@ Chunk *parse_directive_statement(void) {
     switch (directive) {
         case TOK_DIRECTIVE_ALIGN: {
             long value = parse_signed_integer();
-            Section *current_section = get_current_section();
             if ((value & (value - 1)) != 0) panic(".align is not a power of 2");
 
-            if (get_current_section() == section_text) {
-                // Align .text section
+            Chunk *result = calloc(1, sizeof(Chunk));
+            result->type = CT_ALIGN;
+            result->aic.alignment = value;
 
-                Chunk *chunk = calloc(1, sizeof(Chunk));
-                chunk->type = CT_ALIGN;
-                chunk->aic.alignment = value;
-
-                append_to_list(cur_chunks, chunk);
-            }
-            else {
-                // Align non-.text section
-
-                int padding =  PADDING_FOR_ALIGN_UP(current_section->size, value);
-                if (padding)
-                    add_zeros_to_current_section(padding);
-            }
+            append_to_list(cur_chunks, result);
 
             break;
         }
@@ -164,7 +133,6 @@ Chunk *parse_directive_statement(void) {
 
         case TOK_DIRECTIVE_DATA:
             set_current_section(".data");
-            set_cur_chunks();
             break;
 
         case TOK_DIRECTIVE_FILE:
@@ -279,7 +247,6 @@ Chunk *parse_directive_statement(void) {
             if (!get_section(name)) add_section(name, type, flags, 1);
 
             set_current_section(name); // Auto creates the section
-            set_cur_chunks();
 
             break;
 
@@ -295,25 +262,32 @@ Chunk *parse_directive_statement(void) {
                 symbol->size = root->value->number;
             }
             else {
-                Chunk *chunk = calloc(1, sizeof(Chunk));
-                chunk->type = CT_SIZE_EXPR;
-                chunk->sic.size_expr = root;
-                chunk->sic.size_symbol = symbol;
-                append_to_list(cur_chunks, chunk);
+                Chunk *result = calloc(1, sizeof(Chunk));
+                result->type = CT_SIZE_EXPR;
+                result->sic.size_expr = root;
+                result->sic.size_symbol = symbol;
+                append_to_list(cur_chunks, result);
             }
 
             break;
         }
 
-        case TOK_DIRECTIVE_STRING:
+        case TOK_DIRECTIVE_STRING: {
             expect(TOK_STRING_LITERAL, "string literal");
-            add_to_current_section(cur_string_literal.data, cur_string_literal.size);
+
+            result = calloc(1, sizeof(Chunk));
+            result->type = CT_STRING;
+            result->stc.data = strdup(cur_string_literal.data);
+            result->stc.size = cur_string_literal.size;
+            append_to_list(cur_chunks, result);
+
             next();
+
             break;
+        }
 
         case TOK_DIRECTIVE_TEXT:
             set_current_section(".text");
-            set_cur_chunks();
             break;
 
         case TOK_DIRECTIVE_TYPE:
@@ -340,17 +314,14 @@ Chunk *parse_directive_statement(void) {
             break;
 
         case TOK_DIRECTIVE_ZERO: {
-            if (get_current_section() == section_text) {
-                Chunk *chunk = calloc(1, sizeof(Chunk));
-                chunk->type = CT_ZERO;
-                chunk->zec.size = cur_long;
+            Chunk *result = calloc(1, sizeof(Chunk));
+            result->type = CT_ZERO;
+            result->zec.size = cur_long;
 
-                append_to_list(cur_chunks, chunk);
-            }
-            else
-                add_zeros_to_current_section(cur_long);
+            append_to_list(cur_chunks, result);
 
             next();
+
             break;
         }
 
@@ -654,15 +625,6 @@ void parse(void) {
             while (cur_token == TOK_EOL) next(); // More labels can follow
         }
 
-        // If we're not in .text, add symbols for the labels
-        if (get_current_section() != section_text) {
-            for (int i = 0; i < labels->length; i++) {
-                char *name = labels->elements[i];
-                Symbol *symbol = get_or_add_symbol(strdup(name));
-                associate_symbol_with_current_section(symbol);
-            }
-        }
-
         // Parse statement
         if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO) {
             Chunk *chunk = parse_directive_statement();
@@ -670,9 +632,6 @@ void parse(void) {
             if (chunk) add_labels_to_chunk(chunk, labels);
         }
         else if (cur_token == TOK_INSTRUCTION) {
-            if (get_current_section() != section_text)
-                panic("Instructions can only be added to the .text section");
-
             Chunk *chunk = parse_instruction_statement();
 
             add_labels_to_chunk(chunk, labels);
@@ -691,8 +650,10 @@ void parse(void) {
     }
 }
 
-void emit_chunk_code(Section *section, List *chunks) {
-    reduce_branch_instructions(chunks);
+void emit_section_code(Section *section) {
+    List *chunks = strmap_get(chunks_map, section->name);
+
+    reduce_branch_instructions(section, chunks);
 
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
@@ -700,7 +661,7 @@ void emit_chunk_code(Section *section, List *chunks) {
 
         // All branch instructions use 32 bit memory addresses for the time being,
         // so we're only taking the primary instructions into account.
-        int base_offset = get_current_section_size();
+        int base_offset = section->size;
 
         // chunk->offset is really only used to assert that the code in branches.c
         // is consistent with the code here. Admittedly, this reeks of duplication
@@ -763,16 +724,39 @@ void emit_chunk_code(Section *section, List *chunks) {
             }
         }
 
-        if (chunk->type != CT_SIZE_EXPR) {
-            if (chunk->type == CT_ZERO)
-                add_zeros_to_section(section, chunk->zec.size);
-            else if (chunk->type == CT_ALIGN) {
-                int padding =  PADDING_FOR_ALIGN_UP(section->size, chunk->aic.alignment);
-                if (padding)
-                    add_repeated_value_to_section(section, 0x90, padding); // Insert NOPs (0x90) as padding in a text section
-            }
-            else
+        // Add the chunk to the section
+        switch (chunk->type)  {
+            case CT_CODE:
+            case CT_DATA:
                 add_to_section(section, instr->data, instr->size);
+                break;
+
+            case CT_ZERO:
+                add_zeros_to_section(section, chunk->zec.size);
+                break;
+
+            case CT_ALIGN: {
+                int padding =  PADDING_FOR_ALIGN_UP(section->size, chunk->aic.alignment);
+                if (padding) {
+                    // Insert NOPs (0x90) as padding in a text section, otherwise zeros
+                    char value = section == section_text ? 0x90 : 0;
+                    add_repeated_value_to_section(section, value, padding);
+                }
+                break;
+            }
+
+            case CT_SIZE_EXPR:
+                // Nothing to do here
+                break;
+
+            case CT_STRING:
+                add_to_section(section, chunk->stc.data, chunk->stc.size);
+                break;
+
+            default:
+                panic("Unhandled chunk->type");
+
+
         }
     }
 }
@@ -781,14 +765,11 @@ void emit_code(void) {
     for (StrMapIterator it = strmap_iterator(chunks_map); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
         char *section_name = strmap_iterator_key(&it);
         Section *section = get_section(section_name);
-        List *chunks = strmap_get(chunks_map, section_name);
-        emit_chunk_code(section, chunks);
+        emit_section_code(section);
     }
 }
 
 void init_parser(void) {
     chunks_map = new_strmap();
-    strmap_put(chunks_map, ".text", new_list(10240));
     set_current_section(".text");
-    set_cur_chunks();
 }

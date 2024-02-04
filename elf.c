@@ -19,8 +19,6 @@ Section *section_symtab;
 Section *section_strtab;
 Section *section_shstrtab;
 
-static Section *current_section; // Current section code/data is being added to
-
 int local_symbol_end = 0;    // Index of last local symbol
 
 List *sections_list;
@@ -55,8 +53,6 @@ void init_sections(void) {
     section_strtab      = add_section(".strtab",      SHT_STRTAB,   0,                         0x01);
     section_shstrtab    = add_section(".shstrtab",    SHT_STRTAB,   0,                         0x01);
 
-    current_section = section_text;  // Current section code/data is being added to
-
     // Start string table entries at 1, so that the zero value goes to an empty string
     add_to_section(section_strtab, "", 1);
 
@@ -90,26 +86,6 @@ Section *get_section(char *name) {
     return strmap_get(sections_map, name);
 }
 
-// Lookup the section by name and make it the current section code/data is being
-// appended to. It is created if it doesn't exist.
-void set_current_section(char *name) {
-    current_section = get_section(name);
-    if (!current_section)
-        current_section = add_section(name, SHT_PROGBITS, 0, 1);
-
-    return;
-}
-
-// Return the size of the current section
-Section *get_current_section(void) {
-    return current_section;
-}
-
-// Return the size of the current section
-int get_current_section_size(void) {
-    return current_section->size;
-}
-
 // Allocate space at the end of a section and return a pointer to it.
 // Dynamically allocate space size as needed.
 static void *allocate_in_section(Section *section, int size) {
@@ -133,11 +109,6 @@ int add_to_section(Section *section, void *src, int size) {
     return data - section->data;
 }
 
-// Copy src to the end of the current section and return the offset
-int add_to_current_section(void *src, int size) {
-    return add_to_section(current_section, src, size);
-}
-
 // Add size repeated characters to the section and return the offset
 int add_repeated_value_to_section(Section *section, char value, int size) {
     char *data = allocate_in_section(section, size);
@@ -148,11 +119,6 @@ int add_repeated_value_to_section(Section *section, char value, int size) {
 // Add size zeros to the section and return the offset
 int add_zeros_to_section(Section *section, int size) {
     return add_repeated_value_to_section(section, 0, size);
-}
-
-// Copy src to the end of the current section and return the offset
-int add_zeros_to_current_section(int size) {
-    return add_repeated_value_to_section(current_section, 0, size);
 }
 
 // Add a symbol to the ELF symbol table symtab

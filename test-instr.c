@@ -1403,6 +1403,12 @@ static void test_align(void) {
         END);
 }
 
+static void test_string_with_label(void) {
+    int text_index = section_text->index;
+    test_full_assembly("foo: .string \"foo\"", NULL, 0x66, 0x6f, 0x6f, 0x00, END);
+    assert_symbols(0, 0, STT_NOTYPE, STB_LOCAL, text_index, "foo", END);
+}
+
 int main() {
     init_tests();
 
@@ -1422,4 +1428,5 @@ int main() {
     test_size_difference();
     test_section_creation();
     test_align();
+    test_string_with_label();
 }

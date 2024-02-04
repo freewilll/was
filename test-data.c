@@ -27,7 +27,7 @@ void test_assembly(char *input, ...) {
 
     parse_directive_statement();
     next();
-    Section *section = get_current_section();
+    Section *section = get_section(".data");
     section->size = 0;
 
     while (cur_token != TOK_EOF) {
@@ -35,6 +35,7 @@ void test_assembly(char *input, ...) {
         while (cur_token == TOK_EOL) next();
     }
 
+    emit_section_code(section);
     vassert_section_data(section, ap);
 
     printf("pass\n");

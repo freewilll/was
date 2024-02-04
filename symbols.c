@@ -42,13 +42,6 @@ Symbol *get_or_add_symbol(char *name) {
         return add_symbol(name);
 }
 
-void associate_symbol_with_current_section(Symbol *symbol) {
-    Section *section = get_current_section();
-
-    symbol->value = section->size;
-    symbol->section = section;
-}
-
 // Add non-global, then global symbols to the symtab section
 void make_symbols_section(void) {
     // Add non-global symbols

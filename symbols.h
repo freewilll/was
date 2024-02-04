@@ -21,7 +21,6 @@ void init_symbols(void);
 Symbol *get_symbol(char *name);
 Symbol *add_symbol(char *name);
 Symbol *get_or_add_symbol(char *name);
-void associate_symbol_with_current_section(Symbol *symbol);
 void make_symbols_section(void);
 
 #endif
