@@ -72,24 +72,10 @@ static SimpleExpression parse_simple_expression(void) {
 
 // Parse .byte, .word, .long and .quad
 static Chunk *parse_data_directive(int relocation_type, int size) {
-    SimpleExpression expr = parse_simple_expression();
-
-    Instructions instr = {0};
-    instr.size = size;
-
-    if (expr.symbol) {
-        instr.relocation_symbol = expr.symbol;
-        instr.relocation_type = relocation_type;
-        instr.relocation_addend = expr.value;
-    }
-    else
-        memcpy(instr.data, &expr.value, size);
-
     Chunk *chunk = calloc(1, sizeof(Chunk));
     chunk->type = CT_DATA;
-    chunk->cdc.primary = malloc(sizeof(Instructions));
-    *chunk->cdc.primary = instr;
-    chunk->cdc.using_primary = 1;
+    chunk->stc.expr = parse_expression();
+    chunk->stc.size = size;
 
     append_to_list(cur_chunks, chunk);
 
@@ -116,7 +102,7 @@ Chunk *parse_directive_statement(void) {
         }
 
         case TOK_DIRECTIVE_BYTE:
-            result = parse_data_directive(R_X86_64_8, 1);
+            result = parse_data_directive(R_X86_64_8, 1); // wwip remove first arg
             break;
 
         case TOK_DIRECTIVE_WORD:
@@ -276,7 +262,7 @@ Chunk *parse_directive_statement(void) {
             expect(TOK_STRING_LITERAL, "string literal");
 
             result = calloc(1, sizeof(Chunk));
-            result->type = CT_STRING;
+            result->type = CT_DATA;
             result->stc.data = strdup(cur_string_literal.data);
             result->stc.size = cur_string_literal.size;
             append_to_list(cur_chunks, result);
@@ -588,14 +574,14 @@ Chunk *parse_instruction_statement(void) {
         else
             relocation_type = R_X86_64_PC32;
 
-        chunk->cdc.primary->relocation_type = relocation_type;
-        chunk->cdc.primary->relocation_symbol = relocation_op->relocation_symbol;
-        chunk->cdc.primary->relocation_addend = relocation_addend;
+        chunk->cdc.primary->relocation.type = relocation_type;
+        chunk->cdc.primary->relocation.symbol = relocation_op->relocation_symbol;
+        chunk->cdc.primary->relocation.addend = relocation_addend;
 
         if (chunk->cdc.secondary) {
-            chunk->cdc.secondary->relocation_type = relocation_type;
-            chunk->cdc.secondary->relocation_symbol = relocation_op->relocation_symbol;
-            chunk->cdc.secondary->relocation_addend = relocation_addend;
+            chunk->cdc.secondary->relocation.type = relocation_type;
+            chunk->cdc.secondary->relocation.symbol = relocation_op->relocation_symbol;
+            chunk->cdc.secondary->relocation.addend = relocation_addend;
         }
     }
 
@@ -677,10 +663,10 @@ void emit_section_code(Section *section) {
             chunk->sic.size_symbol->size = value.number;
         }
 
-        else if ((chunk->type == CT_CODE || chunk->type == CT_DATA) && instr->relocation_symbol) {
+        else if (chunk->type == CT_CODE && instr->relocation.symbol) {
             int relocation_type;
-            if (instr->relocation_type)
-                relocation_type = instr->relocation_type; // Set by data handling code
+            if (instr->relocation.type)
+                relocation_type = instr->relocation.type; // Set by data handling code
             else if (instr->branch) // This is set for branch opcodes
                 relocation_type = R_X86_64_PLT32;
             else
@@ -688,38 +674,37 @@ void emit_section_code(Section *section) {
 
             // Does the symbol need an entry in the relocation table?
             if (
-                    instr->relocation_symbol->section != section ||
-                    chunk->type == CT_DATA ||
-                    instr->relocation_symbol->binding == STB_GLOBAL ||
-                    instr->relocation_type == R_X86_64_REX_GOTP
+                    instr->relocation.symbol->section != section ||
+                    instr->relocation.symbol->binding == STB_GLOBAL ||
+                    instr->relocation.type == R_X86_64_REX_GOTP
                     ) {
 
                 // For code relocations , a relative relocation is calculated from the end of the instruction.
                 // The linker doesn't know this though, so it needs to get an
-                // addend = -(instr->size - instr->relocation_offset)
-                int relocation_addend_offset = chunk->type == CT_CODE ? instr->relocation_offset - instr->size : 0;
+                // addend = -(instr->size - instr->relocation.offset)
+                int relocation_addend_offset = chunk->type == CT_CODE ? instr->relocation.offset - instr->size : 0;
                 add_relocation(
-                    get_relocation_section(section), instr->relocation_symbol, relocation_type,
-                    base_offset + instr->relocation_offset, instr->relocation_addend + relocation_addend_offset);
+                    get_relocation_section(section), instr->relocation.symbol, relocation_type,
+                    base_offset + instr->relocation.offset, instr->relocation.addend + relocation_addend_offset);
             }
 
             // The symbol address is known and can be used directly.
             else {
                 if (chunk->cdc.using_primary) {
-                    int relative_offset = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 4) + instr->relocation_addend;
-                    memcpy(instr->data + instr->relocation_offset, &relative_offset, 4); // 32 bit address
+                    int relative_offset = instr->relocation.symbol->value - (base_offset + instr->relocation.offset + 4) + instr->relocation.addend;
+                    memcpy(instr->data + instr->relocation.offset, &relative_offset, 4); // 32 bit address
                 }
                 else {
                     instr = chunk->cdc.secondary;
 
                     // Double check relative offset doesn't exceed the limits of a signed char.
-                    int relative_offset_int = instr->relocation_symbol->value - (base_offset + instr->relocation_offset + 1) + instr->relocation_addend;
+                    int relative_offset_int = instr->relocation.symbol->value - (base_offset + instr->relocation.offset + 1) + instr->relocation.addend;
                     if (relative_offset_int < -128 || relative_offset_int > 127)
                         panic("Relative offset for code at %#lx out of bounds for symbol %s@%#x: %d",
-                            base_offset, instr->relocation_symbol->name, instr->relocation_symbol->value, relative_offset_int);
+                            base_offset, instr->relocation.symbol->name, instr->relocation.symbol->value, relative_offset_int);
 
                     char relative_offset = relative_offset_int;
-                    memcpy(instr->data + instr->relocation_offset, &relative_offset, 1); // 8 bit address
+                    memcpy(instr->data + instr->relocation.offset, &relative_offset, 1); // 8 bit address
                 }
             }
         }
@@ -727,9 +712,37 @@ void emit_section_code(Section *section) {
         // Add the chunk to the section
         switch (chunk->type)  {
             case CT_CODE:
-            case CT_DATA:
                 add_to_section(section, instr->data, instr->size);
                 break;
+
+            case CT_DATA: {
+                if (chunk->stc.expr) {
+                    Value value = evaluate_node(chunk->stc.expr, base_offset);
+                    // printf("expression sym=%s num=%ld\n", value.symbol ? value.symbol->name : "?", value.number); // wwip
+                    chunk->stc.data = (char *) &value.number;
+
+                    if (value.symbol) {
+                        int relocation_type;
+                        switch (chunk->stc.size) {
+                            case 1: relocation_type = R_X86_64_8;  break;
+                            case 2: relocation_type = R_X86_64_16; break;
+                            case 4: relocation_type = R_X86_64_32; break;
+                            case 8: relocation_type = R_X86_64_64; break;
+                            default: panic("Missing case for data relocation size");
+                        }
+
+                        add_relocation(
+                            get_relocation_section(section), value.symbol, relocation_type,
+                            base_offset, value.number);
+
+                        value.number = 0; // Write a zero - it will be replaced by the linker
+                    }
+                }
+
+                add_to_section(section, chunk->stc.data, chunk->stc.size);
+
+                break;
+            }
 
             case CT_ZERO:
                 add_zeros_to_section(section, chunk->zec.size);
@@ -749,14 +762,8 @@ void emit_section_code(Section *section) {
                 // Nothing to do here
                 break;
 
-            case CT_STRING:
-                add_to_section(section, chunk->stc.data, chunk->stc.size);
-                break;
-
             default:
                 panic("Unhandled chunk->type");
-
-
         }
     }
 }

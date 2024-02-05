@@ -25,18 +25,18 @@ typedef struct size_chunk {
     Symbol *size_symbol;        // Symbol in a .size statement
 } SizeChunk;
 
-typedef struct string_chunk {
-    char *data;
+typedef struct string_chunk { // wwip rename
+    char *data;         // Either data or expr has a value
+    Node *expr;
     int size;
 } StringChunk;
 
 typedef enum chunk_type {
-    CT_CODE       = 1, // Code
-    CT_DATA       = 2, // Data
+    CT_CODE       = 1, // Code, i.e. instructions
+    CT_DATA       = 2, // Data, coming from .byte, .word, .long, .quad or .string, evaluated in the second pass
     CT_ZERO       = 3, // This is a bunch of zeroes.
     CT_ALIGN      = 4, // This is either a bunch of zeroes or NOPs, dependent on alignment and if it's in .text.
     CT_SIZE_EXPR  = 5, // A size expression to be evaluated in the second pass
-    CT_STRING     = 6, // Temporary CT to represent string data. Will be merged with CT_DATA.
 } ChunkType;
 
 typedef struct chunk {
@@ -54,12 +54,12 @@ typedef struct chunk {
 
 #define CODE_OR_DATA_CHUNK_SIZE(chunk) ((chunk)->cdc.using_primary ? (chunk)->cdc.primary->size : (chunk)->cdc.secondary->size)
 #define ZERO_CHUNK_SIZE(chunk) ((chunk)->zec.size)
-#define STRING_CHUNK_SIZE(chunk) ((chunk)->stc.size)
+#define DATA_CHUNK_SIZE(chunk) ((chunk)->stc.size)
 
 #define CHUNK_SIZE(chunk) ( \
-      ((chunk)->type == CT_CODE || (chunk)->type == CT_DATA) ? CODE_OR_DATA_CHUNK_SIZE(chunk) \
-    : ((chunk)->type == CT_ZERO)                             ? ZERO_CHUNK_SIZE(chunk) \
-    :                                                          STRING_CHUNK_SIZE(chunk) \
+      ((chunk)->type == CT_CODE) ? CODE_OR_DATA_CHUNK_SIZE(chunk) \
+    : ((chunk)->type == CT_ZERO) ? ZERO_CHUNK_SIZE(chunk) \
+    :                              DATA_CHUNK_SIZE(chunk) \
 )
 
 Chunk *parse_instruction_statement(void);

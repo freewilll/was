@@ -10,6 +10,7 @@ typedef struct relocation {
     int offset;             // Offset in the data section the relocated address ends up in
     int addend;             // Number to add to the symbol
     Section *section;       // Section the relocation applies to
+    int size;               // Redundant, since type covers it, but still useful.
 } Relocation;
 
 void init_relocations(void);

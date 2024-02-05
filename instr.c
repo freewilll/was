@@ -525,8 +525,8 @@ static void emit_value(Instructions *instr, int size, long value) {
 }
 
 static void emit_displacement(Instructions *instr, Encoding *enc) {
-    instr->relocation_offset = instr->size;
-    instr->relocation_size = enc->displacement_size;
+    instr->relocation.offset = instr->size;
+    instr->relocation.size = enc->displacement_size;
     emit_value(instr, enc->displacement_size, enc->displacement);
 }
 
@@ -538,9 +538,9 @@ static void emit_imm_or_memory(Instructions *instr, Encoding *enc) {
     // it will be due to memory.
     // This is a bit fragile, the code here can set the relocation
     // values for immediates, but they are ignored by the code emission.
-    if (!instr->relocation_size) {
-        instr->relocation_offset = instr->size;
-        instr->relocation_size = value_size;
+    if (!instr->relocation.size) {
+        instr->relocation.offset = instr->size;
+        instr->relocation.size = value_size;
     }
 
     long value = enc->branch ? 0 : enc->imm_or_mem;

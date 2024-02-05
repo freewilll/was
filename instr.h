@@ -2,6 +2,7 @@
 
 #include "expr.h"
 #include "opcodes.h"
+#include "relocations.h"
 #include "symbols.h"
 
 
@@ -72,11 +73,7 @@ typedef struct operand {
 typedef struct instructions {
     uint8_t data[16];
     int size;
-    int relocation_type;
-    int relocation_offset;
-    int relocation_size;
-    Symbol *relocation_symbol;
-    int relocation_addend;      // Addend in the relocation table
+    Relocation relocation;
     int branch;                 // Is it a branch instruction?
 } Instructions;
 
