@@ -37,11 +37,6 @@ static void set_current_section(char *name) {
     }
 }
 
-// TODO remove skip
-static void skip() {
-    while (cur_token != TOK_EOL && cur_token != TOK_EOF) next();
-}
-
 static long parse_signed_integer(void) {
     int negative = 0;
     if (cur_token == TOK_MINUS) {
@@ -76,6 +71,34 @@ static Chunk *parse_data_directive(int relocation_type, int size) {
     chunk->type = CT_DATA;
     chunk->stc.expr = parse_expression();
     chunk->stc.size = size;
+
+    append_to_list(cur_chunks, chunk);
+
+    return chunk;
+}
+
+// Parse and encode .uleb128
+static Chunk *parse_uleb128(void) {
+    Chunk *chunk = calloc(1, sizeof(Chunk));
+    chunk->type = CT_DATA;
+
+    expect(TOK_INTEGER, "integer");
+    int value = cur_long;
+    next();
+
+    char *data = malloc(8);
+
+    int pos = 0;
+    while (1) {
+        unsigned char c = value & 0x7f;
+        value >>= 7;
+        if (value) c |= 0x80;
+        data[pos++] = c;
+        if (!value) break;
+    }
+
+    chunk->stc.data = data;
+    chunk->stc.size = pos;
 
     append_to_list(cur_chunks, chunk);
 
@@ -295,8 +318,7 @@ Chunk *parse_directive_statement(void) {
             break;
 
         case TOK_DIRECTIVE_ULEB128:
-            printf("TODO: .uleb128\n");
-            skip();
+            result = parse_uleb128();
             break;
 
         case TOK_DIRECTIVE_ZERO: {
@@ -624,10 +646,8 @@ void parse(void) {
         }
         else if (cur_token == TOK_EOF)
             break;
-        else {
-            skip();
+        else
             error("Syntax error at token %d", cur_token);
-        }
 
         for (int i = 0; i < labels->length; i++) free(labels->elements[i]);
         free_list(labels);

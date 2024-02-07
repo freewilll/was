@@ -103,4 +103,14 @@ int main() {
     test_assembly(".byte 1; .align 2; .byte 2", 0x01, 0x00, 0x02, END);
     test_assembly(".byte 1; .align 4; .byte 2", 0x01, 0x00, 0x00, 0x00, 0x02, END);
     test_assembly(".byte 1; .align 8; .byte 2", 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, END);
+
+    test_assembly(".uleb128 0",        0x00, END);
+    test_assembly(".uleb128 1",        0x01, END);
+    test_assembly(".uleb128 127",      0x7f, END);
+    test_assembly(".uleb128 128",      0x80, 0x01, END);
+    test_assembly(".uleb128 1000",     0xe8, 0x07, END);
+    test_assembly(".uleb128 10000",    0x90, 0x4e, END);
+    test_assembly(".uleb128 100000",   0xa0, 0x8d, 0x06, END);
+    test_assembly(".uleb128 1000000",  0xc0, 0x84, 0x3d, END);
+    test_assembly(".uleb128 10000000", 0x80, 0xad, 0xe2, 0x04, END);
 }
