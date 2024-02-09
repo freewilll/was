@@ -24,7 +24,7 @@ int local_symbol_end = 0;    // Index of last local symbol
 List *sections_list;
 static StrMap *sections_map;
 
-Section *add_section(char *name, int type, int flags, int align) {
+Section *add_elf_section(char *name, int type, int flags, int align) {
     Section *section = calloc(1, sizeof(Section));
     section->index = sections_list->length;
     section->name = strdup(name);
@@ -41,22 +41,6 @@ Section *add_section(char *name, int type, int flags, int align) {
 void init_sections(void) {
     sections_list = new_list(8);
     sections_map = new_strmap();
-
-    // Add default sections
-    //                                name            type          flags                      alignment
-                          add_section("" ,            0,            0,                         0   );
-    section_text        = add_section(".text",        SHT_PROGBITS, SHF_ALLOC | SHF_EXECINSTR, 0x10);
-    section_data        = add_section(".data",        SHT_PROGBITS, SHF_ALLOC | SHF_WRITE,     0x04);
-    section_bss         = add_section(".bss",         SHT_NOBITS,   SHF_ALLOC | SHF_WRITE,     0x04);
-    section_rodata      = add_section(".rodata",      SHT_PROGBITS, SHF_ALLOC,                 0x04);
-    section_symtab      = add_section(".symtab",      SHT_SYMTAB,   0,                         0x08);
-    section_strtab      = add_section(".strtab",      SHT_STRTAB,   0,                         0x01);
-    section_shstrtab    = add_section(".shstrtab",    SHT_STRTAB,   0,                         0x01);
-
-    // Start string table entries at 1, so that the zero value goes to an empty string
-    add_to_section(section_strtab, "", 1);
-
-    add_elf_symbol("", 0, 0, STB_LOCAL, STT_NOTYPE,  SHN_UNDEF); // Null symbol
 }
 
 void make_section_indexes(void) {
@@ -77,7 +61,6 @@ void make_section_indexes(void) {
     for (int i = 1; i < sections_list->length; i++) {
         Section *section = sections_list->elements[i];
         section->index = i;
-        section->symtab_index = add_elf_symbol("", 0, 0, STB_LOCAL, STT_SECTION, section->index);
     }
 }
 
@@ -138,7 +121,7 @@ int add_elf_symbol(char *name, long value, long size, int binding, int type, int
 
     int index = symbol - (ElfSymbol *) section_symtab->data;
 
-    if (binding == STB_LOCAL) local_symbol_end = index;;
+    if (binding == STB_LOCAL) local_symbol_end = index;
 
     return index;
 }

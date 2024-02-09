@@ -122,7 +122,6 @@ typedef struct section {
     long entsize;                 // Contains the size, in bytes, of each entry, for sections that contain fixed-size entries. Otherwise, this field contains zero.
     long symtab_index;            // Index in the symbol table for this section
     struct section *rela_section; // Optional related relocation section
-
 } Section;
 
 typedef struct elf_symbol {
@@ -149,11 +148,9 @@ extern Section *section_strtab;
 
 extern List *sections_list;
 
-#define first_symbol_index sections_list->length // This id in the symbol table is where non-section symbols get added
-
 extern int local_symbol_end;
 
-Section *add_section(char *name, int type, int flags, int align);
+Section *add_elf_section(char *name, int type, int flags, int align);
 void init_sections(void);
 Section *get_section(char *name);
 int add_to_section(Section *section, void *src, int size);

@@ -66,11 +66,11 @@ static SimpleExpression parse_simple_expression(void) {
 }
 
 // Parse .byte, .word, .long and .quad
-static Chunk *parse_data_directive(int relocation_type, int size) {
+static Chunk *parse_data_directive(int size) {
     Chunk *chunk = calloc(1, sizeof(Chunk));
     chunk->type = CT_DATA;
-    chunk->stc.expr = parse_expression();
-    chunk->stc.size = size;
+    chunk->dac.expr = parse_expression();
+    chunk->dac.size = size;
 
     append_to_list(cur_chunks, chunk);
 
@@ -97,8 +97,8 @@ static Chunk *parse_uleb128(void) {
         if (!value) break;
     }
 
-    chunk->stc.data = data;
-    chunk->stc.size = pos;
+    chunk->dac.data = data;
+    chunk->dac.size = pos;
 
     append_to_list(cur_chunks, chunk);
 
@@ -125,19 +125,19 @@ Chunk *parse_directive_statement(void) {
         }
 
         case TOK_DIRECTIVE_BYTE:
-            result = parse_data_directive(R_X86_64_8, 1); // wwip remove first arg
+            result = parse_data_directive(1);
             break;
 
         case TOK_DIRECTIVE_WORD:
-            result = parse_data_directive(R_X86_64_16, 2);
+            result = parse_data_directive(2);
             break;
 
         case TOK_DIRECTIVE_LONG:
-            result = parse_data_directive(R_X86_64_32, 4);
+            result = parse_data_directive(4);
             break;
 
         case TOK_DIRECTIVE_QUAD:
-            result = parse_data_directive(R_X86_64_64, 8);
+            result = parse_data_directive(8);
             break;
 
         case TOK_DIRECTIVE_DATA:
@@ -156,10 +156,13 @@ Chunk *parse_directive_statement(void) {
             // Need to see if the symbol is preexisting and was flagged as a local
             Symbol *symbol = get_symbol(cur_identifier);
             int was_local = 0;
-            if (!symbol)
+            if (!symbol) {
                 symbol = add_symbol(strdup(cur_identifier));
-            else
-                was_local = symbol->binding == STB_LOCAL;
+            }
+            else {
+                was_local = 1;
+                symbol->binding = STB_LOCAL;
+            }
 
             next();
             consume(TOK_COMMA, ",");
@@ -286,8 +289,8 @@ Chunk *parse_directive_statement(void) {
 
             result = calloc(1, sizeof(Chunk));
             result->type = CT_DATA;
-            result->stc.data = strdup(cur_string_literal.data);
-            result->stc.size = cur_string_literal.size;
+            result->dac.data = strdup(cur_string_literal.data);
+            result->dac.size = cur_string_literal.size;
             append_to_list(cur_chunks, result);
 
             next();
@@ -557,17 +560,17 @@ Chunk *parse_instruction_statement(void) {
 
     Chunk *chunk = calloc(1, sizeof(Chunk));
     append_to_list(cur_chunks, chunk);
-    chunk->cdc.primary = malloc(sizeof(Instructions));
-    *chunk->cdc.primary = instr;
-    chunk->cdc.using_primary = 1;
+    chunk->coc.primary = malloc(sizeof(Instructions));
+    *chunk->coc.primary = instr;
+    chunk->coc.using_primary = 1;
     chunk->type = CT_CODE;
 
     if (instr.branch && op1 && op1->type == MEM32) {
         op1->type = MEM08;
         Instructions alt_instr = make_instructions(mnemonic, op1, op2, op3);
 
-        chunk->cdc.secondary = calloc(1, sizeof(Instructions));
-        *chunk->cdc.secondary = alt_instr;
+        chunk->coc.secondary = calloc(1, sizeof(Instructions));
+        *chunk->coc.secondary = alt_instr;
     }
 
     free(mnemonic);
@@ -591,19 +594,19 @@ Chunk *parse_instruction_statement(void) {
         int relocation_type;
         if (relocation_op->relocation_type)
             relocation_type = relocation_op->relocation_type;
-        else if (chunk->cdc.primary->branch) // This is set for branch opcodes
+        else if (chunk->coc.primary->branch) // This is set for branch opcodes
             relocation_type = R_X86_64_PLT32;
         else
             relocation_type = R_X86_64_PC32;
 
-        chunk->cdc.primary->relocation.type = relocation_type;
-        chunk->cdc.primary->relocation.symbol = relocation_op->relocation_symbol;
-        chunk->cdc.primary->relocation.addend = relocation_addend;
+        chunk->coc.primary->relocation.type = relocation_type;
+        chunk->coc.primary->relocation.symbol = relocation_op->relocation_symbol;
+        chunk->coc.primary->relocation.addend = relocation_addend;
 
-        if (chunk->cdc.secondary) {
-            chunk->cdc.secondary->relocation.type = relocation_type;
-            chunk->cdc.secondary->relocation.symbol = relocation_op->relocation_symbol;
-            chunk->cdc.secondary->relocation.addend = relocation_addend;
+        if (chunk->coc.secondary) {
+            chunk->coc.secondary->relocation.type = relocation_type;
+            chunk->coc.secondary->relocation.symbol = relocation_op->relocation_symbol;
+            chunk->coc.secondary->relocation.addend = relocation_addend;
         }
     }
 
@@ -663,7 +666,7 @@ void emit_section_code(Section *section) {
 
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
-        Instructions *instr = chunk->cdc.using_primary ? chunk->cdc.primary : chunk->cdc.secondary;
+        Instructions *instr = chunk->coc.using_primary ? chunk->coc.primary : chunk->coc.secondary;
 
         // All branch instructions use 32 bit memory addresses for the time being,
         // so we're only taking the primary instructions into account.
@@ -710,12 +713,12 @@ void emit_section_code(Section *section) {
 
             // The symbol address is known and can be used directly.
             else {
-                if (chunk->cdc.using_primary) {
+                if (chunk->coc.using_primary) {
                     int relative_offset = instr->relocation.symbol->value - (base_offset + instr->relocation.offset + 4) + instr->relocation.addend;
                     memcpy(instr->data + instr->relocation.offset, &relative_offset, 4); // 32 bit address
                 }
                 else {
-                    instr = chunk->cdc.secondary;
+                    instr = chunk->coc.secondary;
 
                     // Double check relative offset doesn't exceed the limits of a signed char.
                     int relative_offset_int = instr->relocation.symbol->value - (base_offset + instr->relocation.offset + 1) + instr->relocation.addend;
@@ -736,14 +739,13 @@ void emit_section_code(Section *section) {
                 break;
 
             case CT_DATA: {
-                if (chunk->stc.expr) {
-                    Value value = evaluate_node(chunk->stc.expr, base_offset);
-                    // printf("expression sym=%s num=%ld\n", value.symbol ? value.symbol->name : "?", value.number); // wwip
-                    chunk->stc.data = (char *) &value.number;
+                if (chunk->dac.expr) {
+                    Value value = evaluate_node(chunk->dac.expr, base_offset);
+                    chunk->dac.data = (char *) &value.number;
 
                     if (value.symbol) {
                         int relocation_type;
-                        switch (chunk->stc.size) {
+                        switch (chunk->dac.size) {
                             case 1: relocation_type = R_X86_64_8;  break;
                             case 2: relocation_type = R_X86_64_16; break;
                             case 4: relocation_type = R_X86_64_32; break;
@@ -759,7 +761,7 @@ void emit_section_code(Section *section) {
                     }
                 }
 
-                add_to_section(section, chunk->stc.data, chunk->stc.size);
+                add_to_section(section, chunk->dac.data, chunk->dac.size);
 
                 break;
             }

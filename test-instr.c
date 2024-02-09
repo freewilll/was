@@ -50,7 +50,7 @@ void test_assembly(char *input, ...) {
     init_lexer_from_string(input);
     init_parser();
     Chunk *c = parse_instruction_statement();
-    Instructions *instr = c->cdc.primary;
+    Instructions *instr = c->coc.primary;
     assert_instructions(instr, ap);
 
     printf("pass\n");
@@ -861,7 +861,7 @@ void test_relocations_with_imm_rip_and_undefined_symbol(void) {
     // The offset is 2 and instruction size 10.
     // The relocation has to have an addend of -(10 - 2) = -8
     assert_relocations(".rela.text",
-        R_X86_64_PC32, first_symbol_index, 0x02, 0x00 - 8,
+        R_X86_64_PC32, get_symbol_symtab_index("foo"), 0x02, 0x00 - 8,
         END
     );
 }
@@ -881,9 +881,9 @@ void test_relocations_with_rip_and_undefined_symbol(void) {
         END);
 
     assert_relocations(".rela.text",
-        R_X86_64_PC32, first_symbol_index, 0x00 + 0x03, -0x42 - 4,
-        R_X86_64_PC32, first_symbol_index, 0x07 + 0x03,  0x00 - 4,
-        R_X86_64_PC32, first_symbol_index, 0x0e + 0x03,  0x42 - 4,
+        R_X86_64_PC32, get_symbol_symtab_index("foo"), 0x00 + 0x03, -0x42 - 4,
+        R_X86_64_PC32, get_symbol_symtab_index("foo"), 0x07 + 0x03,  0x00 - 4,
+        R_X86_64_PC32, get_symbol_symtab_index("foo"), 0x0e + 0x03,  0x42 - 4,
         END
     );
 }
@@ -940,14 +940,13 @@ void test_global_defined_symbol_relocation(void) {
     );
 
     assert_relocations(".rela.text",
-        R_X86_64_PLT32, first_symbol_index, 0x01, -4,
+        R_X86_64_PLT32, get_symbol_symtab_index("bar"), 0x01, -4,
         END
     );
 }
 
-// Test data referencing an undefined symbol
-// An undefined symbol is added at position first_symbol_index. The relocation
-// table points to it.
+// Test data referencing an undefined symbol An undefined symbol is added. The
+// relocation table points to it.
 void test_data_with_undefined_symbol(void) {
     char *input;
 
@@ -957,9 +956,9 @@ void test_data_with_undefined_symbol(void) {
     test_full_assembly("data_with_undefined_symbol byte", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_8, first_symbol_index, 0x00,  0,
-        R_X86_64_8, first_symbol_index, 0x01,  1,
-        R_X86_64_8, first_symbol_index, 0x02, -1,
+        R_X86_64_8, get_symbol_symtab_index("a"), 0x00,  0,
+        R_X86_64_8, get_symbol_symtab_index("a"), 0x01,  1,
+        R_X86_64_8, get_symbol_symtab_index("a"), 0x02, -1,
         END
     );
 
@@ -976,9 +975,9 @@ void test_data_with_undefined_symbol(void) {
     test_full_assembly("data_with_undefined_symbol word", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_16, first_symbol_index, 0x00,  0,
-        R_X86_64_16, first_symbol_index, 0x02,  1,
-        R_X86_64_16, first_symbol_index, 0x04, -1,
+        R_X86_64_16, get_symbol_symtab_index("a"), 0x00,  0,
+        R_X86_64_16, get_symbol_symtab_index("a"), 0x02,  1,
+        R_X86_64_16, get_symbol_symtab_index("a"), 0x04, -1,
         END
     );
 
@@ -995,9 +994,9 @@ void test_data_with_undefined_symbol(void) {
     test_full_assembly("data_with_undefined_symbol long", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_32, first_symbol_index, 0x00,  0,
-        R_X86_64_32, first_symbol_index, 0x04,  1,
-        R_X86_64_32, first_symbol_index, 0x08, -1,
+        R_X86_64_32, get_symbol_symtab_index("a"), 0x00,  0,
+        R_X86_64_32, get_symbol_symtab_index("a"), 0x04,  1,
+        R_X86_64_32, get_symbol_symtab_index("a"), 0x08, -1,
         END
     );
 
@@ -1014,9 +1013,9 @@ void test_data_with_undefined_symbol(void) {
     test_full_assembly("data_with_undefined_symbol quad", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_64, first_symbol_index, 0x00,  0,
-        R_X86_64_64, first_symbol_index, 0x08,  1,
-        R_X86_64_64, first_symbol_index, 0x10, -1,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x00,  0,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x08,  1,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x10, -1,
         END
     );
 
@@ -1033,9 +1032,9 @@ void test_data_with_undefined_symbol(void) {
     test_full_assembly("data_with_undefined_symbol quad in .rodata", input, END); // No code
 
     assert_relocations(".rela.rodata",
-        R_X86_64_64, first_symbol_index, 0x00,  0,
-        R_X86_64_64, first_symbol_index, 0x08,  1,
-        R_X86_64_64, first_symbol_index, 0x10, -1,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x00,  0,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x08,  1,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x10, -1,
         END
     );
 
@@ -1057,9 +1056,9 @@ void test_data_with_undefined_symbol(void) {
         END); // No code
 
     assert_relocations(".rela.text",
-        R_X86_64_64, first_symbol_index, 0x00,  0,
-        R_X86_64_64, first_symbol_index, 0x08,  1,
-        R_X86_64_64, first_symbol_index, 0x10, -1,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x00,  0,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x08,  1,
+        R_X86_64_64, get_symbol_symtab_index("a"), 0x10, -1,
         END
     );
 }
@@ -1073,9 +1072,9 @@ void test_data_with_defined_symbol(void) {
     test_full_assembly("data_with_defined_symbol byte", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_8, section_data->index, 0x01,  0,
-        R_X86_64_8, section_data->index, 0x02,  1,
-        R_X86_64_8, section_data->index, 0x03, -1,
+        R_X86_64_8, section_data->symtab_index, 0x01,  0,
+        R_X86_64_8, section_data->symtab_index, 0x02,  1,
+        R_X86_64_8, section_data->symtab_index, 0x03, -1,
         END
     );
 
@@ -1093,9 +1092,9 @@ void test_data_with_defined_symbol(void) {
     test_full_assembly("data_with_defined_symbol word", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_16, section_data->index, 0x02,  0,
-        R_X86_64_16, section_data->index, 0x04,  1,
-        R_X86_64_16, section_data->index, 0x06, -1,
+        R_X86_64_16, section_data->symtab_index, 0x02,  0,
+        R_X86_64_16, section_data->symtab_index, 0x04,  1,
+        R_X86_64_16, section_data->symtab_index, 0x06, -1,
         END
     );
 
@@ -1113,9 +1112,9 @@ void test_data_with_defined_symbol(void) {
     test_full_assembly("data_with_defined_symbol long", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_32, section_data->index, 0x04,  0,
-        R_X86_64_32, section_data->index, 0x08,  1,
-        R_X86_64_32, section_data->index, 0x0c, -1,
+        R_X86_64_32, section_data->symtab_index, 0x04,  0,
+        R_X86_64_32, section_data->symtab_index, 0x08,  1,
+        R_X86_64_32, section_data->symtab_index, 0x0c, -1,
         END
     );
 
@@ -1133,9 +1132,9 @@ void test_data_with_defined_symbol(void) {
     test_full_assembly("data_with_defined_symbol quad", input, END); // No code
 
     assert_relocations(".rela.data",
-        R_X86_64_64, section_data->index, 0x08,  0,
-        R_X86_64_64, section_data->index, 0x10,  1,
-        R_X86_64_64, section_data->index, 0x18, -1,
+        R_X86_64_64, section_data->symtab_index, 0x08,  0,
+        R_X86_64_64, section_data->symtab_index, 0x10,  1,
+        R_X86_64_64, section_data->symtab_index, 0x18, -1,
         END
     );
 
@@ -1153,9 +1152,9 @@ void test_data_with_defined_symbol(void) {
     test_full_assembly("data_with_defined_symbol quad in .rodata", input, END); // No code
 
     assert_relocations(".rela.rodata",
-        R_X86_64_64, section_rodata->index, 0x08,  0,
-        R_X86_64_64, section_rodata->index, 0x10,  1,
-        R_X86_64_64, section_rodata->index, 0x18, -1,
+        R_X86_64_64, section_rodata->symtab_index, 0x08,  0,
+        R_X86_64_64, section_rodata->symtab_index, 0x10,  1,
+        R_X86_64_64, section_rodata->symtab_index, 0x18, -1,
         END
     );
 
@@ -1179,9 +1178,9 @@ void test_data_with_defined_symbol(void) {
         END);
 
     assert_relocations(".rela.text",
-        R_X86_64_64, section_text->index, 0x08,  0,
-        R_X86_64_64, section_text->index, 0x10,  1,
-        R_X86_64_64, section_text->index, 0x18, -1,
+        R_X86_64_64, section_text->symtab_index, 0x08,  0,
+        R_X86_64_64, section_text->symtab_index, 0x10,  1,
+        R_X86_64_64, section_text->symtab_index, 0x18, -1,
         END
     );
 }
@@ -1195,7 +1194,7 @@ void test_GOTPCREL_relocations(void) {
         0x48, 0x8b, 0x05, 0x00, 0x00, 0x00, 0x00, END);
 
     assert_relocations(".rela.text",
-        R_X86_64_REX_GOTP, first_symbol_index, 0x03, -4,
+        R_X86_64_REX_GOTP, get_symbol_symtab_index("foo"), 0x03, -4,
         END
     );
 
@@ -1206,7 +1205,7 @@ void test_GOTPCREL_relocations(void) {
         END);
 
     assert_relocations(".rela.text",
-        R_X86_64_REX_GOTP, first_symbol_index, 0x04, -4,
+        R_X86_64_REX_GOTP, get_symbol_symtab_index("foo"), 0x04, -4,
         END
     );
 
@@ -1216,7 +1215,7 @@ void test_GOTPCREL_relocations(void) {
         END);
 
     assert_relocations(".rela.text",
-        R_X86_64_REX_GOTP, first_symbol_index, 0x01, -4,
+        R_X86_64_REX_GOTP, get_symbol_symtab_index("foo"), 0x01, -4,
         END
     );
 
@@ -1227,7 +1226,7 @@ void test_GOTPCREL_relocations(void) {
         END);
 
     assert_relocations(".rela.text",
-        R_X86_64_REX_GOTP, first_symbol_index, 0x02, -4,
+        R_X86_64_REX_GOTP, get_symbol_symtab_index("foo"), 0x02, -4,
         END
     );
 }
@@ -1307,9 +1306,9 @@ void test_symbol_types_and_binding(void) {
         ".local foo3; .comm foo3, 4, 8",
         END);
     assert_symbols(
+        8,  4, STT_OBJECT, STB_LOCAL, bss_index, "foo2",
         0,  8, STT_OBJECT, STB_LOCAL, bss_index, "foo1", // The odd order is due to the strmap_iterator
         12, 4, STT_OBJECT, STB_LOCAL, bss_index, "foo3",
-        8,  4, STT_OBJECT, STB_LOCAL, bss_index, "foo2",
         END);
 
     // A .local followed by a .globl
@@ -1409,6 +1408,21 @@ static void test_string_with_label(void) {
     assert_symbols(0, 0, STT_NOTYPE, STB_LOCAL, text_index, "foo", END);
 }
 
+static void test_relocation_to_section_symbol(void) {
+    // Test usage of a section symbol before and after the section has been defined
+    char *input =
+        ".data\n"
+        "    .long .test\n"
+        ".section .test\n"
+        "    .long .test\n";
+
+    test_full_assembly("test_relocation_to_section_symbol", input, END);
+
+    assert_relocations(".rela.data", R_X86_64_32, get_symbol_symtab_index(".test"), 0, 0, END);
+    assert_relocations(".rela.test", R_X86_64_32, get_symbol_symtab_index(".test"), 0, 0, END);
+}
+
+
 int main() {
     init_tests();
 
@@ -1429,4 +1443,5 @@ int main() {
     test_section_creation();
     test_align();
     test_string_with_label();
+    test_relocation_to_section_symbol();
 }

@@ -11,6 +11,7 @@ void assemble(char *input_filename, char *output_filename) {
     init_lexer(input_filename);
     init_sections();
     init_symbols();
+    init_default_sections();
     init_relocations();
     init_opcodes();
     init_parser();

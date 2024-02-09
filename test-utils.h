@@ -17,3 +17,4 @@ void assert_relocations(char *section_name, ...);
 void dump_symbols(void);
 void assert_symbols(int first, ...);
 void assert_section(char *name, int type, int flags);
+int get_symbol_symtab_index(char *name);

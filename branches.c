@@ -45,7 +45,7 @@ void dump_frags(List *chunks) {
                 frag->chunk_index, frag->offset, chunk->aic.alignment);
         else
             printf("%5d %06x -> %s\n",
-                frag->chunk_index, frag->offset, chunk->cdc.primary ? chunk->cdc.primary->relocation.symbol->name: "(none)");
+                frag->chunk_index, frag->offset, chunk->coc.primary ? chunk->coc.primary->relocation.symbol->name: "(none)");
 
         int start = frag->branch_targets_index;
         int end = frag->next ? frag->next->branch_targets_index : branch_target_list->length;
@@ -105,9 +105,9 @@ static void make_frags(List *chunks) {
             }
         }
 
-        if (chunk->type == CT_CODE && chunk->cdc.secondary) {
-            chunk_target_symbol_is_before[i] = (char) (long) strmap_get(seen_symbols, chunk->cdc.primary->relocation.symbol->name);
-            strmap_put(branch_target_set, chunk->cdc.primary->relocation.symbol->name, (void *) 1);
+        if (chunk->type == CT_CODE && chunk->coc.secondary) {
+            chunk_target_symbol_is_before[i] = (char) (long) strmap_get(seen_symbols, chunk->coc.primary->relocation.symbol->name);
+            strmap_put(branch_target_set, chunk->coc.primary->relocation.symbol->name, (void *) 1);
         }
     }
 
@@ -141,7 +141,7 @@ static void make_frags(List *chunks) {
         }
 
         // It's a branch or alignment; any instruction that isn't a fixed size
-        if (chunk->type == CT_ALIGN || (chunk->type == CT_CODE && chunk->cdc.secondary)) {
+        if (chunk->type == CT_ALIGN || (chunk->type == CT_CODE && chunk->coc.secondary)) {
             // Create a new frag
             if (!frag) {
                 head = calloc(1, sizeof(Fragment));
@@ -215,19 +215,19 @@ static void reduce(List *chunks) {
             Chunk *chunk = chunks->elements[frag->chunk_index];
 
             // If it's a branch not already been reduced ...
-            if (chunk->type == CT_CODE && chunk->cdc.secondary && chunk->cdc.using_primary) {
-                int symbol_offset = chunk->cdc.primary->relocation.symbol->value;
+            if (chunk->type == CT_CODE && chunk->coc.secondary && chunk->coc.using_primary) {
+                int symbol_offset = chunk->coc.primary->relocation.symbol->value;
 
                 // Symbols in the past have had their offset set. Symbols in the
                 // future are displaced backwards as the iteration goes on
                 if (!frag->target_symbol_is_before) symbol_offset += compression;
 
-                int relative_offset = symbol_offset - (offset + chunk->cdc.secondary->relocation.offset + 1 + 4);
+                int relative_offset = symbol_offset - (offset + chunk->coc.secondary->relocation.offset + 1 + 4);
 
                 if (relative_offset >= -128 && relative_offset <= 127) {
-                    chunk->cdc.using_primary = 0;
+                    chunk->coc.using_primary = 0;
                     changed = 1;
-                    compression += chunk->cdc.secondary->size - chunk->cdc.primary->size;
+                    compression += chunk->coc.secondary->size - chunk->coc.primary->size;
                 }
             }
 

@@ -21,6 +21,7 @@ void init_tests(void) {
     init_sections();
     init_opcodes();
     init_symbols();
+    init_default_sections();
     init_relocations();
 }
 
@@ -40,6 +41,7 @@ void test_full_assembly(char *summary, char *input, ...) {
     init_lexer_from_string(input);
     init_sections();
     init_symbols();
+    init_default_sections();
     init_relocations();
     init_parser();
     parse();
@@ -216,7 +218,7 @@ void assert_symbols(int first, ...) {
     va_start(ap, first);
 
     int processed_first = 0;
-    int pos = first_symbol_index * sizeof(ElfSymbol); // Skip section symbols
+    int pos = 1 * sizeof(ElfSymbol); // Skip null symbol
 
     while (1) {
         int expected_value;
@@ -234,6 +236,15 @@ void assert_symbols(int first, ...) {
         unsigned int expected_index = va_arg(ap, unsigned int);
         char *expected_name = va_arg(ap, char *);
 
+        ElfSymbol *symbol = NULL;
+        while (pos < section->size) {
+            symbol = (ElfSymbol *) &section->data[pos];
+            int type = symbol->st_info & 0xf;
+            if (type != STT_SECTION && type != STT_FILE) break;
+
+            pos += sizeof(ElfSymbol);
+        }
+
         if (expected_value == END) {
             if (pos != section->size) {
                 dump_symbols();
@@ -243,7 +254,10 @@ void assert_symbols(int first, ...) {
             return; // Success
         }
 
-        ElfSymbol *symbol = (ElfSymbol *) &section->data[pos];
+        if (pos == section->size) {
+            dump_symbols();
+            panic("Expected extra data");
+        }
 
         int got_value = symbol->st_value;
         int got_size = symbol->st_size;
@@ -251,11 +265,6 @@ void assert_symbols(int first, ...) {
         char got_binding = (symbol->st_info >> 4) & 0xf;
         unsigned short got_index = symbol->st_shndx;
         char *got_name = symbol->st_name ? &section_strtab->data[symbol->st_name] : 0;
-
-        if (pos == section->size) {
-            dump_symbols();
-            panic("Expected extra data at position %d", (pos - 1) / sizeof(ElfSymbol));
-        }
 
         int name_matches = ((!got_name && !expected_name) || (expected_name && !strcmp(expected_name, got_name)));
 
@@ -294,4 +303,10 @@ void assert_section(char *name, int type, int flags) {
 
     if (section->type != type) panic("Mismatched type, expected %d, got %d", type, section->type);
     if (section->flags != flags) panic("Mismatched flags, expected %d, got %d", flags, section->flags);
+}
+
+// Get index in the symbol table for a symbol. Returns zero if none.
+int get_symbol_symtab_index(char *name) {
+    Symbol *symbol = get_symbol(name);
+    return symbol ? symbol->symtab_index : 0;
 }

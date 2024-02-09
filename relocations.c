@@ -40,12 +40,10 @@ void add_elf_relocations(void) {
 
         // Global symbols that have been declared don't get rewritten to a section offset.
         // Symbols that use the global offset table also don't get rewritten to a section offset.
-        if (r->symbol->section_index && !r->symbol->binding == STB_GLOBAL && r->type != R_X86_64_REX_GOTP) {
+        if (r->symbol->section_index && !r->symbol->binding == STB_GLOBAL && r->type != R_X86_64_REX_GOTP)
             add_elf_relocation(r->section, r->type, r->symbol->section->symtab_index, r->offset, r->symbol->value + r->addend);
-        }
-        else {
+        else
             add_elf_relocation(r->section, r->type, r->symbol->symtab_index, r->offset, r->addend);
-        }
     }
 }
 

@@ -4,6 +4,16 @@
 #include "elf.h"
 #include "strmap.h"
 
+// The naming is dubious: this covers both symbols and sections
+
+extern Section *section_text;
+extern Section *section_data;
+extern Section *section_bss;
+extern Section *section_rodata;
+extern Section *section_symtab;
+extern Section *section_strtab;
+extern Section *section_shstrtab;
+
 typedef struct symbol {
     char *name;         // Name
     int size;           // Size
@@ -21,6 +31,8 @@ void init_symbols(void);
 Symbol *get_symbol(char *name);
 Symbol *add_symbol(char *name);
 Symbol *get_or_add_symbol(char *name);
+Section *add_section(char *name, int type, int flags, int align);
 void make_symbols_section(void);
+void init_default_sections(void);
 
 #endif

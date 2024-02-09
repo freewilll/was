@@ -6,11 +6,17 @@
 // Code (instructions) and data (.byte, .word, etc) chunks are treated in a similar
 // way since they both can have relocations.
 // It's a bit of a hack, a data chunk carries a lot of unnecessary baggage.
-typedef struct code_or_data_chunk {
+typedef struct code_chunk {
     int using_primary;
     Instructions *primary;
     Instructions *secondary;
-} CodeOrDataChunk;
+} CodeChunk;
+
+typedef struct data_chunk {
+    char *data;         // Either data or expr has a value
+    Node *expr;
+    int size;
+} DataChunk;
 
 typedef struct zero_chunk {
     int size;
@@ -25,12 +31,6 @@ typedef struct size_chunk {
     Symbol *size_symbol;        // Symbol in a .size statement
 } SizeChunk;
 
-typedef struct string_chunk { // wwip rename
-    char *data;         // Either data or expr has a value
-    Node *expr;
-    int size;
-} StringChunk;
-
 typedef enum chunk_type {
     CT_CODE       = 1, // Code, i.e. instructions
     CT_DATA       = 2, // Data, coming from .byte, .word, .long, .quad or .string, evaluated in the second pass
@@ -43,18 +43,18 @@ typedef struct chunk {
     ChunkType type;
     int offset;
     union {
-        CodeOrDataChunk   cdc;
+        CodeChunk         coc;
         ZeroChunk         zec;
         AlignChunk        aic;
         SizeChunk         sic;
-        StringChunk       stc;
+        DataChunk         dac;
     };
     List *symbols; // Zero or more symbols associated with the address at this instruction
 } Chunk;
 
-#define CODE_OR_DATA_CHUNK_SIZE(chunk) ((chunk)->cdc.using_primary ? (chunk)->cdc.primary->size : (chunk)->cdc.secondary->size)
+#define CODE_OR_DATA_CHUNK_SIZE(chunk) ((chunk)->coc.using_primary ? (chunk)->coc.primary->size : (chunk)->coc.secondary->size)
 #define ZERO_CHUNK_SIZE(chunk) ((chunk)->zec.size)
-#define DATA_CHUNK_SIZE(chunk) ((chunk)->stc.size)
+#define DATA_CHUNK_SIZE(chunk) ((chunk)->dac.size)
 
 #define CHUNK_SIZE(chunk) ( \
       ((chunk)->type == CT_CODE) ? CODE_OR_DATA_CHUNK_SIZE(chunk) \
