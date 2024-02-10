@@ -20,21 +20,14 @@ typedef struct simple_expression {
     long value;     // Optional value. If symbol is set, it's an offset
 } SimpleExpression;
 
-StrMap *chunks_map;     // Map from section name to a list of chunks
-List *cur_chunks;       // Chunks list for current section
+static List *cur_chunks;       // Chunks list for current section
 
 // Lookup or create section by name and make it the current section things are being added to
 static void set_current_section(char *name) {
     Section *section = get_section(name);
-    if (!section)
-        section = add_section(name, SHT_PROGBITS, 0, 1);
-
-    cur_chunks = strmap_get(chunks_map, name);
-
-    if (!cur_chunks) {
-        cur_chunks = new_list(10240);
-        strmap_put(chunks_map, name, cur_chunks);
-    }
+    if (!section) section = add_section(name, SHT_PROGBITS, 0, 1);
+    if (!section->chunks) section->chunks = new_list(10240);
+    cur_chunks = section->chunks;
 }
 
 static long parse_signed_integer(void) {
@@ -651,9 +644,9 @@ void parse(void) {
 }
 
 void emit_section_code(Section *section) {
-    List *chunks = strmap_get(chunks_map, section->name);
+    List *chunks = section->chunks;
 
-    reduce_branch_instructions(section, chunks);
+    layout_section(section);
 
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
@@ -783,14 +776,17 @@ void emit_section_code(Section *section) {
 }
 
 void emit_code(void) {
-    for (StrMapIterator it = strmap_iterator(chunks_map); !strmap_iterator_finished(&it); strmap_iterator_next(&it)) {
-        char *section_name = strmap_iterator_key(&it);
-        Section *section = get_section(section_name);
-        emit_section_code(section);
+    for (int i = 0; i < sections_list->length; i++) {
+        Section *section = sections_list->elements[i];
+        if (section->chunks) layout_section(section);
+    }
+
+    for (int i = 0; i < sections_list->length; i++) {
+        Section *section = sections_list->elements[i];
+        if (section->chunks) emit_section_code(section);
     }
 }
 
 void init_parser(void) {
-    chunks_map = new_strmap();
     set_current_section(".text");
 }

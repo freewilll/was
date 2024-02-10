@@ -1366,6 +1366,22 @@ static void test_quad_label_difference(void) {
         END);
 }
 
+// A convolutes test that checks all sections are laid out before
+// code generation.
+static void test_cross_section_quad_label_difference(void) {
+    test_full_assembly("test_cross_section_quad_label_difference",
+        ".text\n"
+        "    .quad   .b - .a\n"
+        ".data\n"
+        ".a:\n"
+        "    .quad -1\n"
+        ".b:\n", 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, END);
+
+    assert_section_data(section_data,
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        END);
+}
+
 static void test_section_creation(void) {
     test_full_assembly(".section .foo", ".section .foo", END);
     assert_section(".foo", SHT_PROGBITS, 0);
@@ -1457,6 +1473,7 @@ int main() {
     test_size_with_number();
     test_size_difference();
     test_quad_label_difference();
+    test_cross_section_quad_label_difference();
     test_section_creation();
     test_align();
     test_string_with_label();

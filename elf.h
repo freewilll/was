@@ -122,6 +122,7 @@ typedef struct section {
     long entsize;                 // Contains the size, in bytes, of each entry, for sections that contain fixed-size entries. Otherwise, this field contains zero.
     long symtab_index;            // Index in the symbol table for this section
     struct section *rela_section; // Optional related relocation section
+    List *chunks;                 // Used by the parser
 } Section;
 
 typedef struct elf_symbol {

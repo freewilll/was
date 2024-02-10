@@ -25,17 +25,19 @@ void test_assembly(char *input, ...) {
     init_lexer_from_string(lexer_str);
     init_parser();
 
-    parse_directive_statement();
-    next();
     Section *section = get_section(".data");
     section->size = 0;
+    section->chunks = NULL;
+
+    parse_directive_statement();
+    next();
 
     while (cur_token != TOK_EOF) {
         parse_directive_statement();
         while (cur_token == TOK_EOL) next();
     }
 
-    emit_section_code(section);
+    if (section->chunks) emit_section_code(section);
     vassert_section_data(section, ap);
 
     printf("pass\n");

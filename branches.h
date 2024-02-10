@@ -4,6 +4,6 @@
 #include "elf.h"
 #include "list.h"
 
-void reduce_branch_instructions(Section *section, List *chunks);
+void layout_section(Section *section);
 
 #endif
