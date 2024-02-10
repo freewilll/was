@@ -65,7 +65,7 @@ static SimpleExpression parse_simple_expression(void) {
     return result;
 }
 
-// Parse .byte, .word, .long and .quad
+// Parse .byte, .word, .long, .quad, etc
 static Chunk *parse_data_directive(int size) {
     Chunk *chunk = calloc(1, sizeof(Chunk));
     chunk->type = CT_DATA;
@@ -129,6 +129,7 @@ Chunk *parse_directive_statement(void) {
             break;
 
         case TOK_DIRECTIVE_WORD:
+        case TOK_DIRECTIVE_VALUE:
             result = parse_data_directive(2);
             break;
 

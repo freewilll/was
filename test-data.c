@@ -44,10 +44,11 @@ void test_assembly(char *input, ...) {
 int main() {
     init_tests();
 
-    test_assembly(".byte 1", 0x01, END);
-    test_assembly(".word 1", 0x01, 0x00, END);
-    test_assembly(".long 1", 0x01, 0x00, 0x00, 0x00, END);
-    test_assembly(".quad 1", 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, END);
+    test_assembly(".byte 1",  0x01, END);
+    test_assembly(".word 1",  0x01, 0x00, END);
+    test_assembly(".value 1", 0x01, 0x00, END);
+    test_assembly(".long 1",  0x01, 0x00, 0x00, 0x00, END);
+    test_assembly(".quad 1",  0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, END);
 
     test_assembly(".byte 1",    0x01, END);
     test_assembly(".byte 127",  0x7f, END);

@@ -33,13 +33,14 @@ enum {
     TOK_DIRECTIVE_TYPE,
     TOK_DIRECTIVE_ULEB128,
     TOK_DIRECTIVE_WORD,
+    TOK_DIRECTIVE_VALUE,
     TOK_DIRECTIVE_ZERO,
     TOK_DOT_SYMBOL,
     TOK_INSTRUCTION,
     TOK_REGISTER,
     TOK_RPAREN,
-    TOK_LPAREN,
-    TOK_COMMA,                      // 30
+    TOK_LPAREN,                     // 30
+    TOK_COMMA,
     TOK_PLUS,
     TOK_MINUS,
     TOK_MULTIPLY,

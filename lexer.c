@@ -354,6 +354,7 @@ void next(void) {
                 else if (!strcmp(cur_identifier, ".type"    )) { cur_token = TOK_DIRECTIVE_TYPE;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".uleb128" )) { cur_token = TOK_DIRECTIVE_ULEB128; seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".word"    )) { cur_token = TOK_DIRECTIVE_WORD;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".value"   )) { cur_token = TOK_DIRECTIVE_VALUE;   seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".zero"    )) { cur_token = TOK_DIRECTIVE_ZERO;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, "."        )) { cur_token = TOK_DOT_SYMBOL;        seen_directive = 1; }
                 else {
