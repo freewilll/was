@@ -31,35 +31,40 @@ typedef struct size_chunk {
     Symbol *size_symbol;        // Symbol in a .size statement
 } SizeChunk;
 
+typedef struct label_chunk {
+    Symbol *symbol;
+} LabelChunk;
 typedef enum chunk_type {
     CT_CODE       = 1, // Code, i.e. instructions
     CT_DATA       = 2, // Data, coming from .byte, .word, .long, .quad or .string, evaluated in the second pass
     CT_ZERO       = 3, // This is a bunch of zeroes.
     CT_ALIGN      = 4, // This is either a bunch of zeroes or NOPs, dependent on alignment and if it's in .text.
-    CT_SIZE_EXPR  = 5, // A size expression to be evaluated in the second pass
+    CT_SIZE_EXPR  = 5, // A size expression to be evaluated in the second pass; doesn't have a payload
+    CT_LABEL      = 6, // A label; doesn't have a payload
 } ChunkType;
 
 typedef struct chunk {
     ChunkType type;
     int offset;
     union {
-        CodeChunk         coc;
-        ZeroChunk         zec;
-        AlignChunk        aic;
-        SizeChunk         sic;
-        DataChunk         dac;
+        CodeChunk   coc;
+        ZeroChunk   zec;
+        AlignChunk  aic;
+        SizeChunk   sic;
+        DataChunk   dac;
+        LabelChunk  lac;
     };
-    List *symbols; // Zero or more symbols associated with the address at this instruction
 } Chunk;
 
-#define CODE_OR_DATA_CHUNK_SIZE(chunk) ((chunk)->coc.using_primary ? (chunk)->coc.primary->size : (chunk)->coc.secondary->size)
+#define CODE_CHUNK_SIZE(chunk) ((chunk)->coc.using_primary ? (chunk)->coc.primary->size : (chunk)->coc.secondary->size)
 #define ZERO_CHUNK_SIZE(chunk) ((chunk)->zec.size)
 #define DATA_CHUNK_SIZE(chunk) ((chunk)->dac.size)
 
 #define CHUNK_SIZE(chunk) ( \
-      ((chunk)->type == CT_CODE) ? CODE_OR_DATA_CHUNK_SIZE(chunk) \
+      ((chunk)->type == CT_CODE) ? CODE_CHUNK_SIZE(chunk) \
+    : ((chunk)->type == CT_DATA) ? DATA_CHUNK_SIZE(chunk) \
     : ((chunk)->type == CT_ZERO) ? ZERO_CHUNK_SIZE(chunk) \
-    :                              DATA_CHUNK_SIZE(chunk) \
+    : 0 \
 )
 
 Chunk *parse_instruction_statement(void);

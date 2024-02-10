@@ -614,16 +614,6 @@ Chunk *parse_instruction_statement(void) {
     return chunk;
 }
 
-static void add_labels_to_chunk(Chunk *chunk, List *labels) {
-    for (int i = 0; i < labels->length; i++) {
-        char *name = labels->elements[i];
-        Symbol *symbol = get_or_add_symbol(strdup(name));
-
-        if (!chunk->symbols) chunk->symbols = new_list(labels->length);
-        append_to_list(chunk->symbols, symbol);
-    }
-}
-
 void parse(void) {
     while (cur_token != TOK_EOF) {
         while (cur_token == TOK_EOL) next();
@@ -633,21 +623,21 @@ void parse(void) {
         // Collect labels
         while (cur_token == TOK_LABEL) {
             append_to_list(labels, strdup(cur_identifier));
+
+            Chunk *chunk = calloc(1, sizeof(Chunk));
+            chunk->type = CT_LABEL;
+            chunk->lac.symbol = get_or_add_symbol(strdup(cur_identifier));
+            append_to_list(cur_chunks, chunk);
+
             next();
             while (cur_token == TOK_EOL) next(); // More labels can follow
         }
 
         // Parse statement
-        if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO) {
-            Chunk *chunk = parse_directive_statement();
-
-            if (chunk) add_labels_to_chunk(chunk, labels);
-        }
-        else if (cur_token == TOK_INSTRUCTION) {
-            Chunk *chunk = parse_instruction_statement();
-
-            add_labels_to_chunk(chunk, labels);
-        }
+        if (cur_token >= TOK_DIRECTIVE_ALIGN && cur_token <= TOK_DIRECTIVE_ZERO)
+            parse_directive_statement();
+        else if (cur_token == TOK_INSTRUCTION)
+            parse_instruction_statement();
         else if (cur_token == TOK_EOF)
             break;
         else
@@ -782,6 +772,7 @@ void emit_section_code(Section *section) {
             }
 
             case CT_SIZE_EXPR:
+            case CT_LABEL:
                 // Nothing to do here
                 break;
 

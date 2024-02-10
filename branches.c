@@ -66,23 +66,17 @@ static void make_symbol_offsets(Section *section, List *chunks) {
 
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
+        if (chunk->type == CT_LABEL) {
+            chunk->lac.symbol->section = section;
+            chunk->lac.symbol->value = offset;
+        }
 
         chunk->offset = offset;
 
-        List *symbols = chunk->symbols;
-        if (symbols) {
-            for (int j = 0; j < symbols->length; j++) {
-                Symbol *symbol = symbols->elements[j];
-                symbol->section = section;
-                symbol->value = offset;
-            }
-        }
-
         if (chunk->type == CT_ALIGN)
             offset += PADDING_FOR_ALIGN_UP(offset, chunk->aic.alignment);
-        else if (chunk->type != CT_SIZE_EXPR)
+        else
             offset += CHUNK_SIZE(chunk);
-
     }
 }
 
@@ -97,13 +91,8 @@ static void make_frags(List *chunks) {
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
 
-        List *symbols = chunk->symbols;
-        if (symbols) {
-            for (int j = 0; j < symbols->length; j++) {
-                Symbol *symbol = symbols->elements[j];
-                strmap_put(seen_symbols, symbol->name, (void *) 1);
-            }
-        }
+        if (chunk->type == CT_LABEL)
+            strmap_put(seen_symbols, chunk->lac.symbol->name, (void *) 1);
 
         if (chunk->type == CT_CODE && chunk->coc.secondary) {
             chunk_target_symbol_is_before[i] = (char) (long) strmap_get(seen_symbols, chunk->coc.primary->relocation.symbol->name);
@@ -121,22 +110,16 @@ static void make_frags(List *chunks) {
     for (int i = 0; i < chunks->length; i++) {
         Chunk *chunk = chunks->elements[i];
 
-        // Loop over all labels and add them to branch_target_list if they
-        // are a branch target.
-        List *symbols = chunk->symbols;
-        if (symbols) {
-            for (int j = 0; j < symbols->length; j++) {
-                Symbol *symbol = symbols->elements[j];
+        // Addf labels branch_target_list if they are a branch target.
+        if (chunk->type == CT_LABEL) {
+            Symbol *symbol = chunk->lac.symbol;
+            if (strmap_get(branch_target_set, symbol->name)) {
+                // Set branch_targets_index unless there is no frag yet or it's
+                // already set.
+                if (frag && frag->branch_targets_index == -1)
+                    frag->branch_targets_index = branch_target_list->length;
 
-                // If the symbol is a branch target ...
-                if (strmap_get(branch_target_set, symbol->name)) {
-                    // Set branch_targets_index unless there is no frag yet or it's
-                    // already set.
-                    if (frag && frag->branch_targets_index == -1)
-                        frag->branch_targets_index = branch_target_list->length;
-
-                    append_to_list(branch_target_list, symbol);
-                }
+                append_to_list(branch_target_list, symbol);
             }
         }
 
@@ -162,7 +145,7 @@ static void make_frags(List *chunks) {
                 frag->prev->fixed_size = offset - frag->prev->offset - CHUNK_SIZE((Chunk *) chunks->elements[frag->prev->chunk_index]);
         }
 
-        if (chunk->type != CT_SIZE_EXPR) offset += CHUNK_SIZE(chunk);
+        offset += CHUNK_SIZE(chunk);
     }
 
     free_strmap(branch_target_set);
