@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "dwarf.h"
 #include "elf.h"
 #include "lexer.h"
 #include "instr.h"
@@ -49,6 +50,7 @@ void test_assembly(char *input, ...) {
     printf("%-60s", input);
     init_lexer_from_string(input);
     init_parser();
+    init_dwarf();
     Chunk *c = parse_instruction_statement();
     Instructions *instr = c->coc.primary;
     assert_instructions(instr, ap);
@@ -1454,6 +1456,65 @@ static void test_relocation_to_section_symbol(void) {
     assert_relocations(".rela.test", R_X86_64_32, get_symbol_symtab_index(".test"), 0, 0, END);
 }
 
+static void test_debug_line_files(void) {
+    char *input;
+
+    input =
+        ".section .debug_info, \"\", @progbits\n"
+        ".file       2 \"test2.c\"\n"
+        ".file       3 \"a/test3.c\"\n"
+        ".file       4 \"/a/test4.c\"\n"
+        ".file       5 \"/a/b/test5.c\"\n"
+        ".file       1 \"../a/test1.c\"\n"
+        ".file       6 \"/test6.c\"\n"
+        ".file       7 \"/a/test7.c\"\n";
+
+    test_full_assembly("test_debug_line_dirs", input, ENDL);
+
+    assert_dwarf_dirs("a", "/a", "/a/b", "../a", ENDL);
+
+    assert_dwarf_files(
+        4, "test1.c",
+        0, "test2.c",
+        1, "test3.c",
+        2, "test4.c",
+        3, "test5.c",
+        0, "/test6.c",
+        2, "test7.c",
+        END);
+
+    // Check entire section is OK
+    assert_section_data(get_section(".debug_line"),
+        // Header
+        0x76, 0x00, 0x00, 0x00,             // unit_length
+        0x03, 0x00,                         // DWARF version
+        0x70, 0x00, 0x00, 0x00,             // Header length
+        1,                                  // minimum_instruction_length
+        1,                                  // default_is_stmt
+        -5,                                 // line_base
+        14,                                 // line_range
+        13,                                 // opcode_base
+        0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, // standard_opcode_lengths
+
+        // Directory table
+        0x61, 0x00,                     // a
+        0x2f, 0x61, 0x00,               // /a
+        0x2f, 0x61, 0x2f, 0x62, 0x00,   // /a/b
+        0x2e, 0x2e, 0x2f, 0x61, 0x00,   // ../a
+        0x00,                           // Terminator
+
+        // File table
+        0x74, 0x65, 0x73, 0x74, 0x31, 0x2e, 0x63, 0x00,       0x04, 0x00, 0x00, // 4, test1.c
+        0x74, 0x65, 0x73, 0x74, 0x32, 0x2e, 0x63, 0x00,       0x00, 0x00, 0x00, // 0, test2.c
+        0x74, 0x65, 0x73, 0x74, 0x33, 0x2e, 0x63, 0x00,       0x01, 0x00, 0x00, // 1, test3.c
+        0x74, 0x65, 0x73, 0x74, 0x34, 0x2e, 0x63, 0x00,       0x02, 0x00, 0x00, // 2, test4.c
+        0x74, 0x65, 0x73, 0x74, 0x35, 0x2e, 0x63, 0x00,       0x03, 0x00, 0x00, // 3, test5.c
+        0x2f, 0x74, 0x65, 0x73, 0x74, 0x36, 0x2e, 0x63, 0x00, 0x00, 0x00, 0x00, // 0, /test6.c
+        0x74, 0x65, 0x73, 0x74, 0x37, 0x2e, 0x63, 0x00,       0x02, 0x00, 0x00, // 2, test7.c
+        0x00,                                                                   // Terminator
+        END);
+
+}
 
 int main() {
     init_tests();
@@ -1478,4 +1539,5 @@ int main() {
     test_align();
     test_string_with_label();
     test_relocation_to_section_symbol();
+    test_debug_line_files();
 }

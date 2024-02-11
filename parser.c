@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "branches.h"
+#include "dwarf.h"
 #include "elf.h"
 #include "expr.h"
 #include "instr.h"
@@ -79,19 +80,8 @@ static Chunk *parse_uleb128(void) {
     int value = cur_long;
     next();
 
-    char *data = malloc(8);
-
-    int pos = 0;
-    while (1) {
-        unsigned char c = value & 0x7f;
-        value >>= 7;
-        if (value) c |= 0x80;
-        data[pos++] = c;
-        if (!value) break;
-    }
-
-    chunk->dac.data = data;
-    chunk->dac.size = pos;
+    chunk->dac.data = malloc(8);
+    chunk->dac.size = encode_uleb128(value, chunk->dac.data);
 
     append_to_list(cur_chunks, chunk);
 
@@ -138,11 +128,22 @@ Chunk *parse_directive_statement(void) {
             set_current_section(".data");
             break;
 
-        case TOK_DIRECTIVE_FILE:
-            expect(TOK_STRING_LITERAL, "filename");
-            add_file_symbol(strdup(cur_string_literal.data));
-            next();
+        case TOK_DIRECTIVE_FILE: {
+            if (cur_token == TOK_INTEGER) {
+                int number = cur_long;
+                next();
+                expect(TOK_STRING_LITERAL, "filename");
+                add_dwarf_file(number, strdup(cur_string_literal.data));
+                next();
+            }
+            else {
+                expect(TOK_STRING_LITERAL, "filename");
+                add_file_symbol(strdup(cur_string_literal.data));
+                next();
+            }
+
             break;
+        }
 
         case TOK_DIRECTIVE_COMM: {
             expect(TOK_IDENTIFIER, "symbol");
@@ -772,18 +773,6 @@ void emit_section_code(Section *section) {
             default:
                 panic("Unhandled chunk->type");
         }
-    }
-}
-
-void emit_code(void) {
-    for (int i = 0; i < sections_list->length; i++) {
-        Section *section = sections_list->elements[i];
-        if (section->chunks) layout_section(section);
-    }
-
-    for (int i = 0; i < sections_list->length; i++) {
-        Section *section = sections_list->elements[i];
-        if (section->chunks) emit_section_code(section);
     }
 }
 

@@ -73,3 +73,17 @@ int string_ends_with(const char *string, const char *substring) {
 
     return !memcmp(string + string_len - substring_len, substring, substring_len);
 }
+
+// Encode value into a preallocated array data, returning the size
+int encode_uleb128(int value, char *data) {
+    int pos = 0;
+    while (1) {
+        unsigned char c = value & 0x7f;
+        value >>= 7;
+        if (value) c |= 0x80;
+        data[pos++] = c;
+        if (!value) break;
+    }
+
+    return pos;
+}

@@ -5,8 +5,6 @@
 
 #define MIN_SIZE 0
 
-static void resize_list(List* l, int new_length);
-
 List *new_list(int initial_allocation) {
     List *l = malloc(sizeof(List));
 
@@ -34,7 +32,7 @@ static int round_up(int length) {
     return result;
 }
 
-static void resize_list(List* l, int new_length) {
+void resize_list(List* l, int new_length) {
     if (new_length < l->allocated) {
         l->length = new_length;
         return;

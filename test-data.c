@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dwarf.h"
 #include "elf.h"
 #include "lexer.h"
 #include "opcodes.h"
@@ -24,6 +25,7 @@ void test_assembly(char *input, ...) {
     sprintf(lexer_str, ".data; %s", input);
     init_lexer_from_string(lexer_str);
     init_parser();
+    init_dwarf();
 
     Section *section = get_section(".data");
     section->size = 0;

@@ -3,9 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "dwarf.h"
 #include "elf.h"
 #include "utils.h"
 #include "test-utils.h"
+#include "was.h"
 
 const char *symbol_type_names[] = {
     "NOTYPE", "OBJECT", "FUNC", "SECTION", "FILE", "COMMON", "?", "?",
@@ -44,8 +46,10 @@ void test_full_assembly(char *summary, char *input, ...) {
     init_default_sections();
     init_relocations();
     init_parser();
+    init_dwarf();
     parse();
     emit_code();
+    make_dwarf_debug_line_section();
     make_section_indexes();
     make_symbols_section();
     make_rela_sections();
@@ -309,4 +313,138 @@ void assert_section(char *name, int type, int flags) {
 int get_symbol_symtab_index(char *name) {
     Symbol *symbol = get_symbol(name);
     return symbol ? symbol->symtab_index : 0;
+}
+
+static void dump_dwarf_dirs(void) {
+    Section *section = get_section(".debug_line");
+    if (!section) panic("No .debug_line section");
+
+    printf("DWARF directory table:\n");
+    char *dirs = section->data + sizeof(LineNumberProgramHeader);
+    int pos = 1;
+    while (*dirs) {
+        printf("%4d %s\n", pos++, dirs);
+        dirs += strlen(dirs) + 1;
+    }
+}
+
+static void dump_dwarf_files(void) {
+    Section *section = get_section(".debug_line");
+    if (!section) panic("No .debug_line section");
+
+    char *files = section->data + sizeof(LineNumberProgramHeader);
+    while (*files) while (*files++); // Move past dirs
+    files++; // Move past terminating zero
+
+    printf("DWARF file table:\n");
+    printf("Entry  Dir  Name:\n");
+    int pos = 1;
+    while (*files) {
+        char *filename = files;
+        files += strlen(files) + 1;
+        int dir_index = *files++; // Decoding uleb128 isn't implemented, so it's just one byte.
+        files += 2; // time and length bytes
+        printf("%5d %4d  %s\n", pos++, dir_index, filename);
+    }
+}
+
+void assert_dwarf_dirs(char *first, ...) {
+    Section *section = get_section(".debug_line");
+    if (!section) panic("No .debug_line section");
+
+    char *dirs = section->data + sizeof(LineNumberProgramHeader);
+
+    va_list ap;
+    va_start(ap, first);
+
+    int processed_first = 0;
+    int pos = 1;
+
+    while (1) {
+        char *expected_value;
+        if (processed_first) {
+            expected_value = va_arg(ap, char *);
+        }
+        else {
+            expected_value = first;
+            processed_first = 1;
+        }
+
+        if ((long) expected_value == ENDL) {
+            if (dirs[0]) {
+                dump_dwarf_dirs();
+                panic("Unexpected data at position %d", pos);
+            }
+
+            return; // Success
+        }
+
+        if (!dirs[0]) {
+            dump_dwarf_dirs();
+            panic("Expected extra data");
+        }
+
+        if (strcmp(dirs, expected_value)) {
+            dump_dwarf_dirs();
+            panic("Mismatch at position %d: expected %s, got %s", pos, expected_value, dirs);
+        }
+
+        dirs += strlen(dirs) + 1;
+        pos++;
+    }
+}
+
+void assert_dwarf_files(int first, ...) {
+    Section *section = get_section(".debug_line");
+    if (!section) panic("No .debug_line section");
+
+    char *files = section->data + sizeof(LineNumberProgramHeader);
+    while (*files) while (*files++); // Move past dirs
+    files++; // Move past terminating zero
+
+    va_list ap;
+    va_start(ap, first);
+
+    int processed_first = 0;
+    int pos = 1;
+
+    while (1) {
+        char *expected_filename;
+        int expected_dir_index;
+        if (processed_first) {
+            expected_dir_index = va_arg(ap, int);
+        }
+        else {
+            expected_dir_index = first;
+            processed_first = 1;
+        }
+
+        expected_filename = va_arg(ap, char *);
+
+        if (expected_dir_index == END) {
+            if (files[0]) {
+                dump_dwarf_files();
+                panic("Unexpected data at position %d", pos);
+            }
+
+            return; // Success
+        }
+
+        if (!files[0]) {
+            dump_dwarf_files();
+            panic("Expected extra data");
+        }
+
+        char *got_filename = files;
+        files += strlen(files) + 1;
+        int got_dir_index = *files++; // Decoding uleb128 isn't implemented, so it's just one byte.
+        files += 2; // time and length bytes
+
+        if (strcmp(got_filename, expected_filename) || got_dir_index != expected_dir_index) {
+            dump_dwarf_files();
+            panic("Mismatch at position %d: expected %d/%s, got %d/%s", pos, expected_dir_index, expected_filename, got_dir_index, got_filename);
+        }
+
+        pos++;
+    }
 }

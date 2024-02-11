@@ -7,6 +7,7 @@
 #include "symbols.h"
 
 #define END -1
+#define ENDL -1L // End for a string
 
 void init_tests(void);
 void test_full_assembly(char *summary, char *input, ...);
@@ -18,3 +19,5 @@ void dump_symbols(void);
 void assert_symbols(int first, ...);
 void assert_section(char *name, int type, int flags);
 int get_symbol_symtab_index(char *name);
+void assert_dwarf_dirs(char *first, ...);
+void assert_dwarf_files(int first, ...);

@@ -2,6 +2,7 @@ all: was
 
 HEADERS = \
 	branches.h \
+	dwarf.h \
 	elf.h \
 	expr.h \
 	instr.h \
@@ -17,6 +18,7 @@ HEADERS = \
 
 OBJECTS = \
 	branches.o \
+	dwarf.o \
 	elf.o \
 	expr.o \
 	instr.o \

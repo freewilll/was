@@ -72,6 +72,5 @@ Chunk *parse_directive_statement(void);
 void parse(void);
 void init_parser(void);
 void emit_section_code(Section *section);
-void emit_code(void);
 
 #endif
