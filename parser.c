@@ -71,22 +71,31 @@ static Chunk *parse_data_directive(int size) {
     return chunk;
 }
 
-// Parse and encode .uleb128
-static Chunk *parse_uleb128(void) {
+// Parse and encode .sleb128 and .uleb128
+static Chunk *common_parse_leb128(int (*encoder)(int, char *)) {
     Chunk *chunk = calloc(1, sizeof(Chunk));
     chunk->type = CT_DATA;
 
-    expect(TOK_INTEGER, "integer");
-    int value = cur_long;
-    next();
+    long value = parse_signed_integer();
 
     chunk->dac.data = malloc(8);
-    chunk->dac.size = encode_uleb128(value, chunk->dac.data);
+    chunk->dac.size = encoder(value, chunk->dac.data);
 
     append_to_list(cur_chunks, chunk);
 
     return chunk;
 }
+
+// Parse and encode .sleb128
+static Chunk *parse_sleb128(void) {
+    return common_parse_leb128(encode_sleb128);
+}
+
+// Parse and encode .uleb128
+static Chunk *parse_uleb128(void) {
+    return common_parse_leb128(encode_uleb128);
+}
+
 
 Chunk *parse_directive_statement(void) {
     Chunk *result = NULL;
@@ -141,6 +150,24 @@ Chunk *parse_directive_statement(void) {
                 add_file_symbol(strdup(cur_string_literal.data));
                 next();
             }
+
+            break;
+        }
+
+        case TOK_DIRECTIVE_LOC: {
+            expect(TOK_INTEGER, "integer");
+            int file_index = cur_long;
+            next();
+
+            int line_number = cur_long;
+            consume(TOK_INTEGER, "integer");
+
+            Chunk *chunk = calloc(1, sizeof(Chunk));
+            chunk->type = CT_LOC;
+            chunk->loc.file_index = file_index;
+            chunk->loc.line_number = line_number;
+
+            append_to_list(cur_chunks, chunk);
 
             break;
         }
@@ -313,6 +340,10 @@ Chunk *parse_directive_statement(void) {
 
             next();
 
+            break;
+
+        case TOK_DIRECTIVE_SLEB128:
+            result = parse_sleb128();
             break;
 
         case TOK_DIRECTIVE_ULEB128:
@@ -764,6 +795,11 @@ void emit_section_code(Section *section) {
                 }
                 break;
             }
+
+            case CT_LOC:
+                add_dwarf_loc(chunk->loc.file_index, chunk->loc.line_number, base_offset);
+
+                break;
 
             case CT_SIZE_EXPR:
             case CT_LABEL:

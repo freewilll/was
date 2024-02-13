@@ -59,53 +59,58 @@ void test_full_assembly(char *summary, char *input, ...) {
     printf("pass\n");
 }
 
-// Print hex bytes for the encoded instructions
-int dump_section(Section *section) {
-    for (int i = 0; i < section->size; i++) {
+// Print hex bytes
+static int hexdump(char *data, int size) {
+    for (int i = 0; i < size; i++) {
         if (i != 0) printf(", ");
-        printf("%#04x", (unsigned char) section->data[i]);
+        printf("0x%02x", (unsigned char) data[i]);
     }
     printf("\n");
 }
 
+// Print hex bytes for a section
+int dump_section(Section *section) {
+    hexdump(section->data, section->size);
+}
 
-void vassert_section_data(Section* section, va_list ap) {
-    if (!section) panic("Assert section on a NULL");
-
+void vassert_data(char *data, int size, va_list ap) {
     int pos = 0;
 
     while (1) {
         unsigned int expected = va_arg(ap, unsigned int);
 
         if (expected == END) {
-            if (pos != section->size) {
-                dump_section(section);
+            if (pos != size) {
+                hexdump(data, size);
                 panic("Unexpected data at position %d", pos);
             }
 
             return; // Success
         }
 
-        if (pos == section->size) {
-            dump_section(section);
+        if (pos == size) {
+            hexdump(data, size);
             panic("Expected extra data at position %d: %#02x", pos, expected & 0xff);
         }
 
-        if ((expected & 0xff) != (section->data[pos] & 0xff)) {
-            dump_section(section);
-            panic("Mismatch at position %d: expected %#02x, got %#02x", pos, (uint8_t) expected & 0xff, section->data[pos] & 0xff);
+        if ((expected & 0xff) != (data[pos] & 0xff)) {
+            hexdump(data, size);
+            panic("Mismatch at position %d: expected %#02x, got %#02x", pos, (uint8_t) expected & 0xff, data[pos] & 0xff);
         }
 
         pos++;
     }
 }
 
+void vassert_section_data(Section* section, va_list ap) {
+    if (!section) panic("Assert section on a NULL");
+    vassert_data(section->data, section->size, ap);
+}
+
 void assert_section_data(Section* section, ...) {
     va_list ap;
     va_start(ap, section);
-
     vassert_section_data(section, ap);
-
     va_end(ap);
 }
 
@@ -447,4 +452,20 @@ void assert_dwarf_files(int first, ...) {
 
         pos++;
     }
+}
+
+// Assert the contents of the dwarf line numbers program. The dummy is
+// a sential to lazily avoid mind fucks when it comes to vararg processing.
+void assert_dwarf_line_program(int dummy, ...) {
+    Section *section = get_section(".debug_line");
+    if (!section) panic("No .debug_line section");
+
+    LineNumberProgramHeader *header = (LineNumberProgramHeader *) section->data;
+    char *data = ((char *) &header->header_length) + header->header_length + 4;
+    int size = section->data + section->size - data;
+
+    va_list ap;
+    va_start(ap, dummy);
+    vassert_data(data, size, ap);
+    va_end(ap);
 }

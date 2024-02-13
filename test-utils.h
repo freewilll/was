@@ -6,6 +6,7 @@
 #include "relocations.h"
 #include "symbols.h"
 
+#define START 0 // Dummy value
 #define END -1
 #define ENDL -1L // End for a string
 
@@ -21,3 +22,4 @@ void assert_section(char *name, int type, int flags);
 int get_symbol_symtab_index(char *name);
 void assert_dwarf_dirs(char *first, ...);
 void assert_dwarf_files(int first, ...);
+void assert_dwarf_line_program(int dummy, ...);

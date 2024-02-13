@@ -12,6 +12,9 @@
 #include "utils.h"
 #include "test-utils.h"
 
+#define DWARF_PROLOGUE 0x00, 0x09, 0x02, 0, 0, 0, 0, 0, 0, 0, 0
+#define DWARF_EPILOGUE 0x00, 0x01, 0x01
+
 void assert_instructions(Instructions* instr, va_list ap) {
     if (!instr) panic("Assert instruction on a NULL");
 
@@ -1516,6 +1519,181 @@ static void test_debug_line_files(void) {
 
 }
 
+static void test_debug_line_program(void) {
+    char *input;
+
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 4\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+3", input, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x15,               // Special opcode 8: advance Address by 0 to 0x0 and Line by 3 to 4
+        0x20,               // Special opcode 19: advance Address by 1 to 0x1 and Line by 0 to 4
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 4\n"
+        "nop\n"
+        ".loc 1 10\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+4, loc+6", input, 0x90, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x15,               // Special opcode 8: advance Address by 0 to 0x0 and Line by 3 to 4
+        0x26,               // Special opcode 25: advance Address by 1 to 0x1 and Line by 6 to 10
+        0x20,               // Special opcode 19: advance Address by 1 to 0x2 and Line by 0 to 10
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    // The max line increment goes from -5 to 8 (inclusive)
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 100\n"
+        "nop\n"
+        ".loc 1 94\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc-6", input, 0x90, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0x03, 0x7a,         // Advance Line by -6 to 94
+        0x02, 0x01,         // Advance PC by 1 to 0x1
+        0x20,               // Special opcode 19: advance Address by 1 to 0x2 and Line by 0 to 10
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 100\n"
+        "nop\n"
+        ".loc 1 95\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc-5", input, 0x90, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0x1b,               // Special opcode 14: advance Address by 1 to 0x1 and Line by -5 to 95
+        0x20,               // Special opcode 19: advance Address by 1 to 0x2 and Line by 0 to 10
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 100\n"
+        "nop\n"
+        ".loc 1 108\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc+8", input, 0x90, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0x28,               // Special opcode 27: advance Address by 1 to 0x1 and Line by 8 to 108
+        0x20,               // Special opcode 19: advance Address by 1 to 0x2 and Line by 0 to 10
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 100\n"
+        "nop\n"
+        ".loc 1 109\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc+9", input, 0x90, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0x03, 0x09,         // Advance Line by 9 to 109
+        0x02, 0x01,         // Advance PC by 1 to 0x1
+        0x20,               // Special opcode 19: advance Address by 1 to 0x2 and Line by 0 to 109
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    // Test locs such that opcode 0xff is emitted
+    // Test opcode=255 -> adjusted_opcode=242
+    // address increment = (adjusted_opcode / line_range) = 17
+    // line increment = line_base + (adjusted_opcode % line_range) = -5 + (242 % 14) = -1
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 100\n"
+        ".zero 17\n"
+        ".loc 1 99\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc-9/addr+17", input,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0xff,               // Special opcode 242: advance Address by 17 to 0x11 and Line by -1 to 99
+        0x20,               // Special opcode 19: advance Address by 1 to 0x12 and Line by 0 to 99
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    // Test use of DW_LNS_const_add_pc for address deltas up to 2x the address amount of opcode 255
+    // See page 101 of https://dwarfstd.org/doc/Dwarf3.pdf
+    input =
+        ".section .debug_info\n.text\n"
+        ".loc 1 100\n"
+        ".zero 30\n"
+        ".loc 1 101\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc+1/addr+30", input,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0x08,               // Advance PC by constant 17 to 0x11
+        0xc9,               // Special opcode 188: advance Address by 13 to 0x1e and Line by 1 to 101
+        0x20,               // Special opcode 19: advance Address by 1 to 0x1f and Line by 0 to 101
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    // Test potential address double with DW_LNS_const_add_pc exceeding the opcode range
+    // This would trigger an opcode 256, which isn't possible
+    input =
+        ".section .debug_info\n.text\n"
+        ".zero 34\n"
+        ".loc 1 1\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc+0/addr+34", input,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0,
+        0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x02, 0x22,         // Advance PC by 34 to 0x22
+        0x20,               // Special opcode 19: advance Address by 1 to 0x1f and Line by 0 to 101
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+
+    // Test file index changing
+    input =
+        ".section .debug_info\n.text\n"
+        ".file 1 \"test1.c\"\n"
+        ".file 2 \"test2.c\"\n"
+        ".loc 2 100\n"
+        "nop\n"
+        ".loc 1 2\n"
+        "nop\n";
+    test_full_assembly("test_debug_line_dirs loc+99, loc+0/addr+34", input, 0x90, 0x90, END);
+    assert_dwarf_line_program(START,
+        DWARF_PROLOGUE,
+        0x04, 0x02,         // Set File Name to entry 2 in the File Name Table
+        0x03, 0xe3, 0x00,   // Advance Line by 99 to 100
+        0x04, 0x01,         // Set File Name to entry 1 in the File Name Table
+        0x03, 0x9e, 0x7f,   // Advance Line by -98 to 2
+        0x02, 0x01,         // Advance PC by 1 to 0x1
+        0x20,               // Special opcode 19: advance Address by 1 to 0x2 and Line by 0 to 2
+        DWARF_EPILOGUE,     // Extended opcode 1: End of Sequence
+        END);
+}
+
 int main() {
     init_tests();
 
@@ -1540,4 +1718,5 @@ int main() {
     test_string_with_label();
     test_relocation_to_section_symbol();
     test_debug_line_files();
+    test_debug_line_program();
 }

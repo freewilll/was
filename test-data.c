@@ -109,6 +109,31 @@ int main() {
     test_assembly(".byte 1; .align 4; .byte 2", 0x01, 0x00, 0x00, 0x00, 0x02, END);
     test_assembly(".byte 1; .align 8; .byte 2", 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, END);
 
+    test_assembly(".sleb128 0",        0x00, END);
+    test_assembly(".sleb128 1",        0x01, END);
+    test_assembly(".sleb128 63",       0x3f, END);
+    test_assembly(".sleb128 64",       0xc0, 0x00, END);
+    test_assembly(".sleb128 65",       0xc1, 0x00, END);
+    test_assembly(".sleb128 127",      0xff, 0x00, END);
+    test_assembly(".sleb128 128",      0x80, 0x01, END);
+    test_assembly(".sleb128 1000",     0xe8, 0x07, END);
+    test_assembly(".sleb128 10000",    0x90, 0xce, 0x00, END);
+    test_assembly(".sleb128 100000",   0xa0, 0x8d, 0x06, END);
+    test_assembly(".sleb128 1000000",  0xc0, 0x84, 0x3d, END);
+    test_assembly(".sleb128 10000000", 0x80, 0xad, 0xe2, 0x04, END);
+
+    test_assembly(".sleb128 -1",        0x7f, END);
+    test_assembly(".sleb128 -63",       0x41, END);
+    test_assembly(".sleb128 -64",       0x40, END);
+    test_assembly(".sleb128 -65",       0xbf, 0x7f, END);
+    test_assembly(".sleb128 -127",      0x81, 0x7f, END);
+    test_assembly(".sleb128 -128",      0x80, 0x7f, END);
+    test_assembly(".sleb128 -1000",     0x98, 0x78, END);
+    test_assembly(".sleb128 -10000",    0xf0, 0xb1, 0x7f, END);
+    test_assembly(".sleb128 -100000",   0xe0, 0xf2, 0x79, END);
+    test_assembly(".sleb128 -1000000",  0xc0, 0xfb, 0x42, END);
+    test_assembly(".sleb128 -10000000", 0x80, 0xd3, 0x9d, 0x7b, END);
+
     test_assembly(".uleb128 0",        0x00, END);
     test_assembly(".uleb128 1",        0x01, END);
     test_assembly(".uleb128 127",      0x7f, END);

@@ -344,11 +344,13 @@ void next(void) {
                 else if (!strcmp(cur_identifier, ".data"    )) { cur_token = TOK_DIRECTIVE_DATA;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".file"    )) { cur_token = TOK_DIRECTIVE_FILE;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".globl"   )) { cur_token = TOK_DIRECTIVE_GLOBL;   seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".loc"     )) { cur_token = TOK_DIRECTIVE_LOC;     seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".local"   )) { cur_token = TOK_DIRECTIVE_LOCAL;   seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".long"    )) { cur_token = TOK_DIRECTIVE_LONG;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".quad"    )) { cur_token = TOK_DIRECTIVE_QUAD;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".section" )) { cur_token = TOK_DIRECTIVE_SECTION; seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".size"    )) { cur_token = TOK_DIRECTIVE_SIZE;    seen_directive = 1; }
+                else if (!strcmp(cur_identifier, ".sleb128" )) { cur_token = TOK_DIRECTIVE_SLEB128; seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".string"  )) { cur_token = TOK_DIRECTIVE_STRING;  seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".text"    )) { cur_token = TOK_DIRECTIVE_TEXT;    seen_directive = 1; }
                 else if (!strcmp(cur_identifier, ".type"    )) { cur_token = TOK_DIRECTIVE_TYPE;    seen_directive = 1; }

@@ -31,16 +31,23 @@ typedef struct size_chunk {
     Symbol *size_symbol;        // Symbol in a .size statement
 } SizeChunk;
 
+typedef struct loc_chunk {
+    int file_index;
+    int line_number;
+} LocChunk;
+
 typedef struct label_chunk {
     Symbol *symbol;
 } LabelChunk;
+
 typedef enum chunk_type {
     CT_CODE       = 1, // Code, i.e. instructions
     CT_DATA       = 2, // Data, coming from .byte, .word, .long, .quad or .string, evaluated in the second pass
     CT_ZERO       = 3, // This is a bunch of zeroes.
     CT_ALIGN      = 4, // This is either a bunch of zeroes or NOPs, dependent on alignment and if it's in .text.
     CT_SIZE_EXPR  = 5, // A size expression to be evaluated in the second pass; doesn't have a payload
-    CT_LABEL      = 6, // A label; doesn't have a payload
+    CT_LOC        = 6, // A loc doesn't have a payload
+    CT_LABEL      = 7, // A label; doesn't have a payload
 } ChunkType;
 
 typedef struct chunk {
@@ -48,10 +55,11 @@ typedef struct chunk {
     int offset;
     union {
         CodeChunk   coc;
+        DataChunk   dac;
         ZeroChunk   zec;
         AlignChunk  aic;
         SizeChunk   sic;
-        DataChunk   dac;
+        LocChunk    loc;
         LabelChunk  lac;
     };
 } Chunk;
