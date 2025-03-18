@@ -56,6 +56,11 @@ int main(int argc, char **argv) {
 
     if (!output_filename) output_filename = "a.out";
 
+    if (!input_filename) {
+        printf("Missing input filename\n");
+        exit(1);
+    }
+
     assemble(input_filename, output_filename);
 
     exit(exit_code);
