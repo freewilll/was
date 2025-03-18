@@ -580,7 +580,7 @@ Instructions make_instructions(char *mnemonic, Operand *op1, Operand *op2, Opera
 
     List *opcode_alias_list = strmap_get(opcode_alias_map, mnemonic);
 
-    if (!opcode_alias_list) error("Unknown instruction %", mnemonic);
+    if (!opcode_alias_list) error("Unknown instruction %s", mnemonic);
 
     // Loop over all possible encodings, picking the one that generates
     // the smallest number of bytes.
