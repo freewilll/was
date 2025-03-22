@@ -82,5 +82,8 @@ clean:
 	@rm -f was
 	@rm -f venv
 	@rm -f test-instr
+	@rm -f test-expr
+	@rm -f test-data
+	@rm -Rf build/willos
 
 	make -C tests clean
