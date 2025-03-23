@@ -192,12 +192,12 @@ static int layout_elf_sections(ElfSectionHeader *section_headers) {
     int shdr_size = sizeof(ElfSectionHeader);
 
     // Determine section offsets
-    int offset = ALIGN_DOWN(sizeof(ElfHeader) + shdr_size * sections_list->length, 16);
+    int offset = ALIGN_UP(sizeof(ElfHeader) + shdr_size * sections_list->length, 16);
     for (int i = 1; i < sections_list->length; i++) {
         Section *section = sections_list->elements[i];
         section->start = offset;
         section_headers[i].sh_offset = offset;
-        offset = ALIGN_DOWN(offset + section->size, 16);
+        offset = ALIGN_UP(offset + section->size, 16);
     }
 
     return offset;
