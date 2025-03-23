@@ -13,3 +13,4 @@ test-expr
 /hello.c
 /hello.s
 /hello
+.vscode
